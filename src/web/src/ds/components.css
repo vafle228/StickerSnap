@@ -48,11 +48,11 @@
   border: 0; border-radius: var(--radius-md); background: var(--surface-raised); color: var(--ink-muted);
   box-shadow: var(--shadow-raised); cursor: pointer; position: relative; flex: none;
   transition: color var(--duration-fast) var(--ease-soft), background-color var(--duration-fast) var(--ease-soft); }
-.ss-iconbtn:hover { color: var(--ink); }
+.ss-iconbtn:hover:not([disabled]) { color: var(--ink); }
 .ss-iconbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .ss-iconbtn.is-active { background: var(--primary-soft); color: var(--primary-ink); box-shadow: none; }
 .ss-iconbtn-flat { background: transparent; box-shadow: none; }
-.ss-iconbtn-flat:hover { background: var(--surface-sunken); }
+.ss-iconbtn-flat:hover:not([disabled]) { background: var(--surface-sunken); }
 .ss-iconbtn-sm { width: var(--size-control-sm); height: var(--size-control-sm); border-radius: var(--radius-sm); }
 .ss-dot { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--highlight); box-shadow: 0 0 0 2px var(--surface-raised); }
 
@@ -226,11 +226,11 @@ button.ss-badge:focus-visible { outline: 2px solid var(--focus); outline-offset:
 .ss-menu-item { display: flex; align-items: center; gap: 10px; height: var(--size-control); padding: 0 10px; border: 0; border-radius: var(--radius-md);
   background: transparent; color: var(--ink); font: 500 14px/20px var(--font-sans); cursor: pointer; text-align: left; }
 .ss-menu-item .ss-icon { color: var(--ink-muted); }
-.ss-menu-item:hover, .ss-menu-item:focus-visible { background: var(--primary-soft); color: var(--primary-ink); outline: none; }
-.ss-menu-item:hover .ss-icon, .ss-menu-item:focus-visible .ss-icon { color: inherit; }
+.ss-menu-item:hover:not([disabled]), .ss-menu-item:focus-visible { background: var(--primary-soft); color: var(--primary-ink); outline: none; }
+.ss-menu-item:hover:not([disabled]) .ss-icon, .ss-menu-item:focus-visible .ss-icon { color: inherit; }
 .ss-menu-item.is-selected { color: var(--primary-ink); font-weight: 600; }
 .ss-menu-item.is-danger, .ss-menu-item.is-danger .ss-icon { color: var(--danger); }
-.ss-menu-item.is-danger:hover, .ss-menu-item.is-danger:focus-visible { background: var(--danger-soft); }
+.ss-menu-item.is-danger:hover:not([disabled]), .ss-menu-item.is-danger:focus-visible { background: var(--danger-soft); }
 .ss-menu-item[disabled] { opacity: 0.45; cursor: not-allowed; background: transparent; }
 .ss-menu-label { flex: 1; min-width: 0; }
 .ss-menu-item.has-desc { height: auto; min-height: 52px; padding: 6px 10px; }
