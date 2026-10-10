@@ -209,7 +209,7 @@ button.ss-badge:focus-visible { outline: 2px solid var(--focus); outline-offset:
 
 /* Dialog & ConfirmDialog */
 .ss-overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: var(--space-5);
-  background: color-mix(in srgb, var(--surface-inverse) 32%, transparent); }
+  background: var(--scrim); }
 .ss-overlay-inline { position: relative; inset: auto; min-height: 100%; }
 .ss-dialog { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; max-width: 440px; padding: var(--space-5);
   border-radius: var(--radius-xl); background: var(--surface-raised); box-shadow: var(--shadow-float); }
