@@ -8,3 +8,32 @@ body {
 body {
   font: var(--type-body);
 }
+
+/* Scrollbars on the design system's tokens: thin, no track, a soft pill that darkens on hover.
+   Chromium (Electron) reads the ::-webkit-scrollbar rules; others get the standard thin one. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--border-strong) 45%, transparent) padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong) padding-box;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--border-strong) 45%, transparent) transparent;
+  }
+}

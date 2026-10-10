@@ -41,8 +41,11 @@
   min-height: 0;
   /* room for the cards' raised shadows inside the scroll box, within the padding of <main> */
   margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-4));
-  padding: var(--space-3) var(--space-4);
+  /* The scrollbar's 8px always reserved inside the right padding: the cards keep their width
+     whether «Растянуть» makes the column scroll or not. */
+  padding: var(--space-3) calc(var(--space-4) - 8px) var(--space-3) var(--space-4);
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .loading {
