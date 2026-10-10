@@ -1,5 +1,6 @@
 import { Button, NavRail, type NavRailItem } from "../ds";
 import { t, type StringKey } from "../shared/strings/ru";
+import { useLiveUpdates } from "../shared/api/live";
 import { NotifyHost } from "../shared/notify";
 import { OverlayHost } from "../shared/overlays";
 import {
@@ -34,6 +35,7 @@ const MODE_LABELS: Record<ThemeMode, StringKey> = {
 
 export function App() {
   useApplyTheme();
+  useLiveUpdates();
   const section = useApp((s) => s.section);
   const setSection = useApp((s) => s.setSection);
   const mode = useTheme((s) => s.mode);
