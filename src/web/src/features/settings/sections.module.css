@@ -11,6 +11,19 @@
   gap: var(--space-5) var(--space-6);
 }
 
+/* The theme switch fills its column, «Как в системе» a bit wider (artboard 5) */
+.themes {
+  display: flex;
+}
+
+.themes button {
+  flex: 1 1 0;
+}
+
+.themes button:last-child {
+  flex-grow: 1.4;
+}
+
 .label {
   font: 600 14px/20px var(--font-sans);
   color: var(--ink);
@@ -129,17 +142,9 @@
   gap: var(--space-4);
 }
 
-.tile {
-  display: flex;
+.logo {
   flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
   border-radius: var(--radius-lg);
-  background: var(--surface-sunken);
-  box-shadow: var(--shadow-inset);
-  color: var(--ink-muted);
 }
 
 .aboutBody {
@@ -161,8 +166,10 @@
   flex-direction: column;
   max-height: 320px;
   margin: 0;
-  padding: 0;
+  /* the scrollbar gets its own lane instead of covering the license names */
+  padding: 0 var(--space-3) 0 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   list-style: none;
 }
 

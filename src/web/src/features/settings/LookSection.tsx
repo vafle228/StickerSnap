@@ -51,6 +51,7 @@ export function LookSection() {
         <div className={styles.group}>
           <span className={styles.label}>{t("settings.theme")}</span>
           <Segmented<ThemeMode>
+            className={styles.themes}
             label={t("settings.theme")}
             items={MODES}
             value={mode}

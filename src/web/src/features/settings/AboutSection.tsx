@@ -1,4 +1,5 @@
-import { Button, Icon } from "../../ds";
+import appIcon from "../../assets/app-icon.png";
+import { Button } from "../../ds";
 import { useAppInfo } from "../../shared/api/queries";
 import type { AppInfo } from "../../shared/api/types";
 import { notify } from "../../shared/notify";
@@ -34,10 +35,7 @@ export function AboutSection() {
   return (
     <SettingsSection id="about" title={t("settings.about")}>
       <div className={styles.about}>
-        {/* A neutral tile instead of the app icon (decided 9 October) */}
-        <span className={styles.tile} aria-hidden>
-          <Icon name="sticker" size={28} />
-        </span>
+        <img className={styles.logo} src={appIcon} width={56} height={56} alt="" />
         <div className={styles.aboutBody}>
           <span className={styles.accountName}>StickerSnap</span>
           <span className={`${styles.muted} ${styles.mono}`}>
