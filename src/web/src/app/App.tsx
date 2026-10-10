@@ -1,5 +1,6 @@
 import { Button, NavRail, type NavRailItem } from "../ds";
 import { EditorScreen } from "../features/editor/EditorScreen";
+import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { t, type StringKey } from "../shared/strings/ru";
 import { useLiveUpdates } from "../shared/api/live";
 import { NotifyHost } from "../shared/notify";
@@ -56,7 +57,8 @@ export function App() {
       <main className={styles.main}>
         {/* The editor is never unmounted: switching sections keeps its scene and playhead. */}
         <EditorScreen hidden={section !== "editor"} />
-        {section !== "editor" && (
+        {section === "settings" && <SettingsScreen />}
+        {section !== "editor" && section !== "settings" && (
           <>
             <header className={styles.header}>
               <h1 className={styles.title}>{t(TITLES[section])}</h1>
