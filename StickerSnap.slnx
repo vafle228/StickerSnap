@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/server/">
+    <Project Path="src/server/StickerSnap.Server.csproj" />
+  </Folder>
+</Solution>

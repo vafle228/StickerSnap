@@ -24,6 +24,8 @@ pnpm-debug.log*
 .vite/
 dist/
 dist-electron/
+# Vite builds the SPA into the server's wwwroot
+src/server/wwwroot/
 build/
 out/
 release/

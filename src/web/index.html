@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru" class="ss-accent-indigo">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>StickerSnap</title>
+    <script>
+      // Theme before the first paint, so a dark window never flashes light.
+      // Mirrors shared/theme/theme.ts: keep the storage key and values in sync.
+      (function () {
+        var mode = "system";
+        var accent = "indigo";
+        try {
+          var saved = JSON.parse(localStorage.getItem("stickersnap.theme") || "{}").state || {};
+          mode = saved.mode || mode;
+          accent = saved.accent || accent;
+        } catch (e) {}
+        var dark =
+          mode === "dark" ||
+          (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        var root = document.documentElement;
+        root.setAttribute("data-theme", dark ? "dark" : "light");
+        root.className = "ss-accent-" + accent;
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
