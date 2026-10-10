@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Button, TextField } from "../../ds";
-import { useSettings, useUpdateSettings } from "../../shared/api/queries";
+import { useAppInfo, useSettings, useUpdateSettings } from "../../shared/api/queries";
 import type { Settings } from "../../shared/api/types";
 import { platform } from "../../shared/platform";
 import { t, type StringKey } from "../../shared/strings/ru";
@@ -18,6 +18,7 @@ const FOLDERS: readonly { folder: Folder; label: StringKey; note: StringKey }[] 
 export function FoldersSection() {
   const folders = useSettings().data?.folders;
   const { mutate } = useUpdateSettings();
+  const desktop = useAppInfo().data?.mode === "desktop";
 
   return (
     <SettingsSection id="folders" title={t("settings.folders")} text={t("settings.folders.text")}>
@@ -27,6 +28,7 @@ export function FoldersSection() {
           label={t(label)}
           note={t(note)}
           path={folders?.[folder] ?? ""}
+          desktop={desktop}
           onChange={(path) => mutate({ folders: { [folder]: path } })}
         />
       ))}
@@ -34,18 +36,21 @@ export function FoldersSection() {
   );
 }
 
-/** With paths (Electron) «Изменить…» opens the system folder picker and «Открыть» the file
- *  manager. The browser has neither: the field itself turns editable (Enter or leaving it
- *  saves, Esc cancels), and «Открыть» stays off with its reason. */
+/** The desktop app has a system folder picker behind «Изменить…» and a file manager behind
+ *  «Открыть». The web version has neither: the field itself turns editable (Enter or leaving
+ *  it saves, Esc cancels) and «Открыть» is not shown. */
 function FolderRow({
   label,
   note,
   path,
+  desktop,
   onChange,
 }: {
   label: string;
   note: string;
   path: string;
+  /** The server runs as the desktop app (GET /api/v1/app, mode) */
+  desktop: boolean;
   onChange: (path: string) => void;
 }) {
   const labelId = useId();
@@ -68,7 +73,7 @@ function FolderRow({
   };
 
   const change = async () => {
-    if (!platform.hasPaths) {
+    if (!desktop) {
       setDraft(path);
       return;
     }
@@ -113,13 +118,8 @@ function FolderRow({
         ) : (
           <Button onClick={() => void change()}>{t("settings.folders.change")}</Button>
         )}
-        {!editing && (
-          <Button
-            variant="ghost"
-            disabled={!platform.hasPaths}
-            reason={t("settings.folders.openReason")}
-            onClick={() => platform.openFolder(path)}
-          >
+        {desktop && !editing && (
+          <Button variant="ghost" onClick={() => platform.openFolder(path)}>
             {t("settings.folders.open")}
           </Button>
         )}

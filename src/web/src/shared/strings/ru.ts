@@ -137,7 +137,6 @@ export const ru = {
   "settings.folders.change": "Изменить…",
   "settings.folders.done": "Готово",
   "settings.folders.open": "Открыть",
-  "settings.folders.openReason": "В приложении для компьютера",
   "settings.folders.typeHint":
     "Путь к папке на компьютере, где запущен StickerSnap. Enter сохраняет, Esc отменяет.",
   "settings.keys.text": "Только для справки. Назначать свои клавиши можно будет позже.",
