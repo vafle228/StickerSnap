@@ -11,7 +11,7 @@ import {
   squareCrop,
   squashStretch,
 } from "../model/frame";
-import { stretchLike } from "../model/crop";
+import { stretchLike, stretchOf } from "../model/crop";
 import { editSegment, useEditor, useSegment } from "../model/store";
 import styles from "./Inspector.module.css";
 
@@ -25,6 +25,7 @@ export function FrameCard() {
   const source = useEditor((s) => s.source);
   const draft = useEditor((s) => s.frameDraft);
   const segments = useEditor((s) => s.scene?.segments);
+  const locked = useEditor((s) => s.stretchLocked);
   const limits = useAppInfo().data?.limits;
   if (!segment || !source) return null;
 
@@ -83,24 +84,24 @@ export function FrameCard() {
               height={output.height}
               side={side}
               disabled={segment.preset === "emoji"}
+              locked={locked}
+              onLock={(on) => useEditor.getState().setStretchLocked(on)}
               onChange={(size) =>
-                setFrame({
-                  mode: "stretch",
-                  preset: "free",
-                  aspect: stretchLike(size, frame.aspect, source),
-                })
+                setFrame(stretchOf(stretchLike(size, frame.aspect, source), source))
               }
             />
           )}
           <div role="radiogroup" aria-label={t("inspector.stretchPreset")} className={styles.pair}>
             <PresetButton
               checked={frame.preset === "source"}
+              locked={locked}
               onClick={() => setFrame(sourceStretch(source))}
             >
               {t("inspector.preset.source")}
             </PresetButton>
             <PresetButton
               checked={frame.preset === "squash"}
+              locked={locked}
               onClick={() => setFrame(squashStretch(source))}
             >
               {t("inspector.preset.squash")}
@@ -123,10 +124,13 @@ export function FrameCard() {
 
 function PresetButton({
   checked,
+  locked = false,
   onClick,
   children,
 }: {
   checked: boolean;
+  /** The stretch's proportion is locked: a preset would change it */
+  locked?: boolean;
   onClick: () => void;
   children: string;
 }) {
@@ -137,6 +141,8 @@ function PresetButton({
       role="radio"
       aria-checked={checked}
       className={styles.preset}
+      disabled={locked}
+      reason={t("inspector.lockedReason")}
       onClick={onClick}
     >
       {children}
@@ -149,23 +155,36 @@ interface StretchSizeProps {
   height: number;
   side: number;
   disabled: boolean;
-  onChange: (aspect: { width: number; height: number }) => void;
+  locked: boolean;
+  onLock: (locked: boolean) => void;
+  onChange: (size: { width: number; height: number }) => void;
 }
 
-/** Width and height of the output. The longer side snaps back to the preset's side on commit,
- *  so typing 300 × 200 gives 512 × 341. The lock keeps the proportion: then the sizes only show. */
-function StretchSize({ width, height, side, disabled, onChange }: StretchSizeProps) {
+/** Width and height of the output; one side is always the preset's (512). A typed side stays as
+ *  typed and the other becomes 512, so 512 × 288 with width 300 gives 300 × 512; a typed 512
+ *  keeps the other side. The lock fixes the proportion: the sizes only show, the presets and the
+ *  canvas handles stop changing it. */
+function StretchSize({
+  width,
+  height,
+  side,
+  disabled,
+  locked,
+  onLock,
+  onChange,
+}: StretchSizeProps) {
   const [draft, setDraft] = useState({ width: String(width), height: String(height) });
-  const [locked, setLocked] = useState(false);
+  const current = { width, height };
 
-  const commit = () => {
-    const w = clampSide(draft.width, side);
-    const h = clampSide(draft.height, side);
-    if (w === undefined || h === undefined) {
+  const commit = (key: "width" | "height") => {
+    const typed = clampSide(draft[key], side);
+    if (typed === undefined || typed === current[key]) {
       setDraft({ width: String(width), height: String(height) });
       return;
     }
-    if (w !== width || h !== height) onChange({ width: w, height: h });
+    const other = key === "width" ? "height" : "width";
+    const next = { ...current, [key]: typed, [other]: typed < side ? side : current[other] };
+    onChange(next);
   };
   const field = (key: "width" | "height") => ({
     className: styles.size,
@@ -173,9 +192,9 @@ function StretchSize({ width, height, side, disabled, onChange }: StretchSizePro
     value: draft[key],
     readOnly: locked || disabled,
     onChange: (e: ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, [key]: e.target.value }),
-    onBlur: commit,
+    onBlur: () => commit(key),
     onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") commit();
+      if (e.key === "Enter") commit(key);
     },
   });
 
@@ -188,7 +207,7 @@ function StretchSize({ width, height, side, disabled, onChange }: StretchSizePro
         flat
         active={locked}
         disabled={disabled}
-        onClick={() => setLocked(!locked)}
+        onClick={() => onLock(!locked)}
       />
       <TextField label={t("inspector.height")} {...field("height")} />
     </div>

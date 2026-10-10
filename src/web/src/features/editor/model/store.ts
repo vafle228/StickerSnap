@@ -35,6 +35,9 @@ interface EditorState {
   cropTool: boolean;
   /** The selected segment's frame while it is dragged on the canvas; lands as one edit on release */
   frameDraft?: Segment["frame"];
+  /** The lock in «Растянуть»: the stretch's proportion is fixed, nothing on the canvas or in
+   *  the inspector changes it */
+  stretchLocked: boolean;
   playing: boolean;
   /** Playhead, seconds of the source */
   time: number;
@@ -52,6 +55,7 @@ interface EditorState {
   setZoom: (zoom: Zoom) => void;
   setCropTool: (on: boolean) => void;
   setFrameDraft: (frame?: Segment["frame"]) => void;
+  setStretchLocked: (locked: boolean) => void;
   setPlaying: (playing: boolean) => void;
   setTime: (time: number) => void;
   setTimelineZoom: (zoom: number) => void;
@@ -70,6 +74,7 @@ const empty = {
   zoom: "fit" as Zoom,
   cropTool: false,
   frameDraft: undefined,
+  stretchLocked: false,
   playing: false,
   time: 0,
   timelineZoom: 0,
@@ -98,6 +103,7 @@ export const useEditor = create<EditorState>()((set) => ({
   setZoom: (zoom) => set({ zoom }),
   setCropTool: (cropTool) => set({ cropTool }),
   setFrameDraft: (frameDraft) => set({ frameDraft }),
+  setStretchLocked: (stretchLocked) => set({ stretchLocked }),
   setPlaying: (playing) => set({ playing }),
   setTime: (time) => set({ time }),
   setTimelineZoom: (timelineZoom) => set({ timelineZoom }),

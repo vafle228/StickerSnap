@@ -111,6 +111,7 @@ export const ru = {
   "inspector.height": "Высота",
   "inspector.keepAspect.on": "Сохранять пропорции: включено",
   "inspector.keepAspect.off": "Сохранять пропорции: выключено",
+  "inspector.lockedReason": "Пропорции закреплены замком",
   "inspector.stretchHint":
     "Кадр целиком, без обрезки. Пропорции можно ломать нарочно; одна сторона всегда {side}.",
   "inspector.speedLoop": "Скорость и цикл",
