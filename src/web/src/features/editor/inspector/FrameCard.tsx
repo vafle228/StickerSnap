@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent, type KeyboardEvent } from "react";
-import { Button, Card, IconButton, Segmented, TextField } from "../../../ds";
+import { Button, Card, Segmented, Switch, TextField } from "../../../ds";
 import { useAppInfo } from "../../../shared/api/queries";
 import type { Segment } from "../../../shared/api/types";
 import { t } from "../../../shared/strings/ru";
@@ -85,7 +85,6 @@ export function FrameCard() {
               side={side}
               disabled={segment.preset === "emoji"}
               locked={locked}
-              onLock={(on) => useEditor.getState().setStretchLocked(on)}
               onChange={(size) =>
                 setFrame(stretchOf(stretchLike(size, frame.aspect, source), source))
               }
@@ -110,6 +109,18 @@ export function FrameCard() {
           {side !== undefined && (
             <p className={styles.hint}>{t("inspector.stretchHint", { side })}</p>
           )}
+          <Switch
+            className={styles.long}
+            checked={locked}
+            disabled={segment.preset === "emoji"}
+            onChange={(on) => useEditor.getState().setStretchLocked(on)}
+            label={
+              <span className={styles.longText}>
+                <b>{t("inspector.lockAspect")}</b>
+                <span className={styles.quiet}>{t("inspector.lockAspectHint")}</span>
+              </span>
+            }
+          />
         </>
       )}
 
@@ -129,7 +140,7 @@ function PresetButton({
   children,
 }: {
   checked: boolean;
-  /** The stretch's proportion is locked: a preset would change it */
+  /** «Закрепить пропорции» is on: a preset would change the proportion */
   locked?: boolean;
   onClick: () => void;
   children: string;
@@ -142,7 +153,6 @@ function PresetButton({
       aria-checked={checked}
       className={styles.preset}
       disabled={locked}
-      reason={t("inspector.lockedReason")}
       onClick={onClick}
     >
       {children}
@@ -156,23 +166,14 @@ interface StretchSizeProps {
   side: number;
   disabled: boolean;
   locked: boolean;
-  onLock: (locked: boolean) => void;
   onChange: (size: { width: number; height: number }) => void;
 }
 
 /** Width and height of the output; one side is always the preset's (512). A typed side stays as
  *  typed and the other becomes 512, so 512 × 288 with width 300 gives 300 × 512; a typed 512
- *  keeps the other side. The lock fixes the proportion: the sizes only show, the presets and the
- *  canvas handles stop changing it. */
-function StretchSize({
-  width,
-  height,
-  side,
-  disabled,
-  locked,
-  onLock,
-  onChange,
-}: StretchSizeProps) {
+ *  keeps the other side. With «Закрепить пропорции» on, the sizes only show. No lock sits
+ *  between the fields: with one side pinned at 512, a kept proportion leaves nothing to type. */
+function StretchSize({ width, height, side, disabled, locked, onChange }: StretchSizeProps) {
   const [draft, setDraft] = useState({ width: String(width), height: String(height) });
   const current = { width, height };
 
@@ -201,14 +202,9 @@ function StretchSize({
   return (
     <div className={styles.sizes}>
       <TextField label={t("inspector.width")} {...field("width")} />
-      <IconButton
-        icon={locked ? "lock" : "unlock"}
-        label={t(locked ? "inspector.keepAspect.on" : "inspector.keepAspect.off")}
-        flat
-        active={locked}
-        disabled={disabled}
-        onClick={() => onLock(!locked)}
-      />
+      <span className={styles.times} aria-hidden>
+        ×
+      </span>
       <TextField label={t("inspector.height")} {...field("height")} />
     </div>
   );
