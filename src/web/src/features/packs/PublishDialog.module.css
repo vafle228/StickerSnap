@@ -1,0 +1,453 @@
+/* The publish window of artboard 7: 740px, two numbered questions, the send at the bottom. */
+.dialog {
+  max-width: 740px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  gap: var(--space-1);
+}
+
+.dialog :global(.ss-dialog-title) {
+  font: 700 22px/28px var(--font-sans);
+  letter-spacing: -0.01em;
+}
+
+.dialog :global(.ss-dialog-text) {
+  font: 500 13px/18px var(--font-sans);
+}
+
+.loading {
+  min-height: 240px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.qHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.qNum {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary-ink);
+  font: 700 13px/1 var(--font-sans);
+}
+
+.qTitle {
+  flex: 1;
+  margin: 0;
+  font: 600 15px/22px var(--font-sans);
+}
+
+.project {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.projectFixed {
+  font: 500 13px/18px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.projectFixed b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.note {
+  margin: 0;
+  font: 500 12px/16px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+/* Question 1: a row per segment */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px 12px;
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.row[data-need="true"] {
+  background: var(--warning-soft);
+}
+
+.row[data-off="true"] .rowArt,
+.row[data-off="true"] .rowText {
+  opacity: 0.6;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.rowArt {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: repeating-conic-gradient(var(--checker-b) 0% 25%, var(--checker-a) 0% 50%) 0 0 / 10px
+    10px;
+}
+
+.rowArt > span {
+  width: 34px;
+  height: 34px;
+  box-shadow: 0 0 0 2px var(--checker-a);
+}
+
+.rowText {
+  display: flex;
+  flex: 0 0 210px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rowName {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font: 600 13px/18px var(--font-sans);
+}
+
+.rowNote {
+  font: 500 12px/16px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.rowNote[data-tone="success"] {
+  color: var(--success);
+}
+
+.rowNote[data-tone="primary"] {
+  color: var(--primary-ink);
+}
+
+.rowNote[data-tone="danger"] {
+  color: var(--danger);
+}
+
+.rowEmoji {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.emojiChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  padding: 0 4px 0 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-raised);
+  font-size: 18px;
+}
+
+.emojiChip button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-subtle);
+  cursor: pointer;
+}
+
+.emojiChip button:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+
+.addEmoji {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--size-control-sm);
+  padding: 0 12px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-muted);
+  font: 600 13px/18px var(--font-sans);
+  cursor: pointer;
+}
+
+.addEmoji:hover {
+  color: var(--ink);
+  border-color: var(--ink-subtle);
+}
+
+.addEmoji[data-need="true"] {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.addEmoji[data-open="true"] {
+  border-style: solid;
+  border-color: transparent;
+  background: var(--primary-soft);
+  color: var(--primary-ink);
+}
+
+.addEmoji:focus-visible,
+.emojiChip button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Question 2: the packs three a row, or a new one */
+.targets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.target {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.target[data-checked="true"] {
+  background: var(--primary-soft);
+  box-shadow: inset 0 0 0 2px var(--primary-ink);
+}
+
+.target[data-off="true"] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.target input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.targetText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.targetTitle {
+  overflow: hidden;
+  font: 600 13px/18px var(--font-sans);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.targetMeta {
+  font: 500 12px/16px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.targetMeta[data-tone="warning"] {
+  color: var(--warning);
+}
+
+.targetMeta[data-tone="busy"] {
+  color: var(--primary-ink);
+}
+
+.newPack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.newField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.newLabel {
+  display: flex;
+  justify-content: space-between;
+  font: 600 13px/18px var(--font-sans);
+}
+
+.counter {
+  font-weight: 500;
+  color: var(--ink-subtle);
+}
+
+.link :global(.ss-field-box) {
+  font-family: var(--font-mono);
+}
+
+.link :global(.ss-field-box input) {
+  font: 500 13px/18px var(--font-mono);
+}
+
+.newType {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: 500 13px/18px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+/* The bottom line: what still stops the send, Отмена, the rainbow button */
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.status {
+  flex: 1;
+  min-width: 200px;
+  font: 600 13px/18px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.status[data-warn="true"] {
+  color: var(--warning);
+}
+
+/* The emoji picker beside the window */
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 360px;
+  max-height: min(560px, calc(100vh - 32px));
+  padding: var(--space-4);
+  border-radius: 20px;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-float);
+}
+
+.pickerHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pickerTitle {
+  flex: 1;
+  font: 600 14px/20px var(--font-sans);
+}
+
+.pickerCount {
+  font: 600 12px/16px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.emojiScroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.emojiGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.emojiGroupTitle {
+  margin: 0;
+  font: 600 12px/16px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.emojiGrid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.emojiCell {
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.emojiCell:hover:not([disabled]) {
+  background: var(--surface-sunken);
+}
+
+.emojiCell[aria-pressed="true"] {
+  background: var(--primary-soft);
+}
+
+.emojiCell[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.emojiCell:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.pickerNote {
+  margin: 0;
+  font: 500 12px/16px var(--font-sans);
+  color: var(--ink-muted);
+}
