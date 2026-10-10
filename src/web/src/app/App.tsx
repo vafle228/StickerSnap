@@ -1,6 +1,14 @@
 import { Button, NavRail, type NavRailItem } from "../ds";
 import { t, type StringKey } from "../shared/strings/ru";
-import { THEME_MODES, useApplyTheme, useTheme, type ThemeMode } from "../shared/theme/theme";
+import { NotifyHost } from "../shared/notify";
+import { OverlayHost } from "../shared/overlays";
+import {
+  THEME_MODES,
+  useApplyTheme,
+  useSetTheme,
+  useTheme,
+  type ThemeMode,
+} from "../shared/theme/theme";
 import styles from "./App.module.css";
 import { useApp, type Section } from "./store";
 
@@ -29,7 +37,7 @@ export function App() {
   const section = useApp((s) => s.section);
   const setSection = useApp((s) => s.setSection);
   const mode = useTheme((s) => s.mode);
-  const setMode = useTheme((s) => s.setMode);
+  const setTheme = useSetTheme();
 
   return (
     <div className={`ss-root ${styles.shell}`}>
@@ -52,7 +60,7 @@ export function App() {
                 size="sm"
                 variant={m === mode ? "primary" : "ghost"}
                 aria-pressed={m === mode}
-                onClick={() => setMode(m)}
+                onClick={() => setTheme({ theme: m })}
               >
                 {t(MODE_LABELS[m])}
               </Button>
@@ -61,6 +69,8 @@ export function App() {
         </header>
         <p className={styles.empty}>{t("shell.empty")}</p>
       </main>
+      <OverlayHost />
+      <NotifyHost />
     </div>
   );
 }
