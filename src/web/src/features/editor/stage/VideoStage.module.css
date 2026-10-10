@@ -1,0 +1,177 @@
+/* The canvas of artboard 3a: a checkerboard so transparency reads as transparency. */
+.stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background-color: var(--checker-a);
+  background-image: conic-gradient(
+    var(--checker-b) 25%,
+    transparent 0 50%,
+    var(--checker-b) 0 75%,
+    transparent 0
+  );
+  background-size: 16px 16px;
+}
+
+/* Scrolls when zoomed past the window; margin: auto on the media centers it without clipping. */
+.viewport {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow: auto;
+}
+
+.media {
+  position: relative;
+  flex: none;
+  margin: auto;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--border-strong) 30%, var(--surface-sunken));
+}
+
+.video {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.placeholder {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  font: var(--type-caption);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+/* Output frame. The dim around the crop darkens in both themes, so it is not --surface-inverse. */
+.crop,
+.stretch {
+  --frame-dim: color-mix(in srgb, var(--surface-inverse) 50%, transparent);
+
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--primary);
+  pointer-events: none;
+}
+
+:global([data-theme="dark"]) .crop {
+  --frame-dim: color-mix(in srgb, var(--bg) 60%, transparent);
+}
+
+.crop {
+  border-radius: 4px;
+  box-shadow: 0 0 0 9999px var(--frame-dim);
+}
+
+.stretch {
+  border-radius: var(--radius-md);
+}
+
+.frameLabel {
+  position: absolute;
+  bottom: var(--space-3);
+  left: 50%;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font: 500 12px/18px var(--font-mono);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+/* Glass bar */
+.glassBar {
+  position: absolute;
+  top: var(--space-4);
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: calc(100% - 2 * var(--space-4));
+  padding: var(--space-1);
+  border-radius: var(--radius-pill);
+  transform: translateX(-50%);
+}
+
+.divider {
+  flex: none;
+  width: 1px;
+  height: 20px;
+  margin: 0 var(--space-1);
+  background: var(--border);
+}
+
+/* A ghost button that stays pressed: the tonal look of artboard 3a (no such variant in the DS). */
+.toggle {
+  color: var(--ink);
+}
+
+.toggle[aria-pressed="true"],
+.toggle[aria-checked="true"] {
+  background: var(--primary-soft);
+  color: var(--primary-ink);
+}
+
+.round {
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+}
+
+.ink {
+  color: var(--ink);
+}
+
+.zoomValue {
+  min-width: 64px;
+  height: var(--size-control-sm);
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink);
+  font: var(--type-timecode);
+  cursor: pointer;
+}
+
+.zoomValue:disabled {
+  cursor: default;
+}
+
+.zoomValue:hover:not(:disabled) {
+  background: var(--primary-soft);
+  color: var(--primary-ink);
+}
+
+.zoomValue:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* Glass chips at the bottom corners */
+.chip {
+  position: absolute;
+  bottom: var(--space-4);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--size-control-sm);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  box-shadow: none;
+  font: 600 13px/18px var(--font-sans);
+  white-space: nowrap;
+}
+
+.chipLeft {
+  left: var(--space-4);
+  font: 500 12px/18px var(--font-mono);
+}
+
+.chipRight {
+  right: var(--space-4);
+}
