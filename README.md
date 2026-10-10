@@ -86,6 +86,8 @@ npm run dev                       # SPA with HMR on http://127.0.0.1:5173, proxi
 
 `npm run build` puts the SPA into `src/server/wwwroot`, and the server then serves it on its own port.
 Design tokens come from `src/web/src/ds/tokens.json`; after changing it run `npm run gen:tokens`.
+The design system components live in `src/web/src/ds` (import them from `src/ds`); the dev server shows
+all of them in both themes and five accents at http://127.0.0.1:5173/?showcase.
 
 ## Roadmap
 

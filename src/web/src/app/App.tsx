@@ -1,5 +1,4 @@
-import { Button } from "../ds/components/Button";
-import { NavRail, type NavRailItem } from "../ds/components/NavRail";
+import { Button, NavRail, type NavRailItem } from "../ds";
 import { t, type StringKey } from "../shared/strings/ru";
 import { THEME_MODES, useApplyTheme, useTheme, type ThemeMode } from "../shared/theme/theme";
 import styles from "./App.module.css";
