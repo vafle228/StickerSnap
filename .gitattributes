@@ -1,0 +1,2 @@
+# Generated from src/contract/openapi.yaml; npm run check:api compares it byte for byte
+src/web/src/shared/api/schema.d.ts text eol=lf
