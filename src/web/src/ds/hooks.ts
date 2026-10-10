@@ -9,13 +9,14 @@ export function useLatest<T>(value: T) {
   return ref;
 }
 
-/** Controlled when `value` is given, otherwise keeps its own state; `onChange` fires either way. */
-export function useControlled<T>(
+/** Controlled when `value` is given, otherwise keeps its own state; `onChange` fires either way.
+ *  `initial` may be undefined (no items yet), then so may be the current value. */
+export function useControlled<T, I extends T | undefined = T>(
   value: T | undefined,
-  initial: T,
+  initial: I,
   onChange?: (value: T) => void,
-): [T, (value: T) => void] {
-  const [own, setOwn] = useState(initial);
+): [T | I, (value: T) => void] {
+  const [own, setOwn] = useState<T | I>(initial);
   const controlled = value !== undefined;
   const set = (next: T) => {
     if (!controlled) setOwn(next);
