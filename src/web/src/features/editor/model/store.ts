@@ -31,14 +31,16 @@ interface EditorState {
   segmentId?: string;
 
   zoom: Zoom;
-  /** «Кроп» on the glass bar: the frame on the canvas can be dragged */
+  /** «Рамка» on the glass bar: the whole source with the frame to drag; off, the sticker alone */
   cropTool: boolean;
+  /** The selected segment's frame while it is dragged on the canvas; lands as one edit on release */
+  frameDraft?: Segment["frame"];
+  /** The lock in «Растянуть»: the stretch's proportion is fixed, nothing on the canvas or in
+   *  the inspector changes it */
+  stretchLocked: boolean;
   playing: boolean;
   /** Playhead, seconds of the source */
   time: number;
-  /** A frame the canvas shows for a moment without moving the playhead: the one under a
-   *  handle or a segment being dragged */
-  peek?: number;
   /** The timeline's scale: 0 «Обзор», 1 «Кадры» at their widest */
   timelineZoom: number;
   /** Frames picked with click and Shift+click in the «Кадры» scale */
@@ -52,9 +54,10 @@ interface EditorState {
   select: (segmentId: string | undefined) => void;
   setZoom: (zoom: Zoom) => void;
   setCropTool: (on: boolean) => void;
+  setFrameDraft: (frame?: Segment["frame"]) => void;
+  setStretchLocked: (locked: boolean) => void;
   setPlaying: (playing: boolean) => void;
   setTime: (time: number) => void;
-  setPeek: (peek?: number) => void;
   setTimelineZoom: (zoom: number) => void;
   setSelection: (selection?: Selection) => void;
   setStop: (stop?: Stop) => void;
@@ -70,9 +73,10 @@ const empty = {
   segmentId: undefined,
   zoom: "fit" as Zoom,
   cropTool: false,
+  frameDraft: undefined,
+  stretchLocked: false,
   playing: false,
   time: 0,
-  peek: undefined,
   timelineZoom: 0,
   selection: undefined,
   stop: undefined,
@@ -94,12 +98,14 @@ export const useEditor = create<EditorState>()((set) => ({
     }),
   unload: () => set(empty),
   edit: (recipe) => set((s) => (s.scene ? { scene: produce(s.scene, recipe) } : {})),
-  select: (segmentId) => set({ segmentId, selection: undefined, stop: undefined }),
+  select: (segmentId) =>
+    set({ segmentId, selection: undefined, stop: undefined, frameDraft: undefined }),
   setZoom: (zoom) => set({ zoom }),
   setCropTool: (cropTool) => set({ cropTool }),
+  setFrameDraft: (frameDraft) => set({ frameDraft }),
+  setStretchLocked: (stretchLocked) => set({ stretchLocked }),
   setPlaying: (playing) => set({ playing }),
   setTime: (time) => set({ time }),
-  setPeek: (peek) => set({ peek }),
   setTimelineZoom: (timelineZoom) => set({ timelineZoom }),
   setSelection: (selection) => set({ selection }),
   setStop: (stop) => set({ stop }),

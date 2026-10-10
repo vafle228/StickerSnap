@@ -48,7 +48,10 @@ describe("outputSize", () => {
   });
 
   it("squashes to 1:1", () => {
-    expect(outputSize(squashStretch(), "sticker", sticker)).toEqual({ width: 512, height: 512 });
+    expect(outputSize(squashStretch(fullHd), "sticker", sticker)).toEqual({
+      width: 512,
+      height: 512,
+    });
   });
 
   it("makes an emoji a full square whatever the frame", () => {
@@ -60,7 +63,7 @@ describe("outputSize", () => {
 
   it("reads the input of a crop from the rect and of a stretch from the source", () => {
     expect(frameInput(squareCrop(fullHd), fullHd)).toEqual({ width: 1080, height: 1080 });
-    expect(frameInput(squashStretch(), fullHd)).toEqual(fullHd);
+    expect(frameInput(squashStretch(fullHd), fullHd)).toEqual(fullHd);
   });
 });
 

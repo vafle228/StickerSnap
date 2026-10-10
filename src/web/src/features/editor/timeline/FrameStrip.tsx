@@ -64,7 +64,8 @@ interface Draft {
 /** The frame strip of artboard 3b: the whole video at «Обзор», one cell per frame at «Кадры»,
  *  the segments over it, the I and O handles of the selected one and the playhead. A dragged
  *  handle or segment is drawn from local state and lands in the scene as one edit when
- *  released; meanwhile the canvas peeks at the frame under it and the playhead stays put. */
+ *  released; the playhead and the canvas stay on the frame they showed, the handle carries its
+ *  frame number. */
 export function FrameStrip({ info }: { info: TimelineInfo }) {
   const { projectId, source, segments, segment, fps, total, bounds, maxDuration } = info;
   const zoom = useEditor((s) => s.timelineZoom);
@@ -118,7 +119,6 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
     return track && px > 0 ? (clientX - track.getBoundingClientRect().left) / px : 0;
   };
   const frameUnder = (clientX: number) => clamp(Math.floor(framesAt(clientX)), 0, total - 1);
-  const peek = (frame: number) => useEditor.getState().setPeek(timeOf(frame, fps));
   const toFrame = (frame: number) => useEditor.getState().setTime(timeOf(frame, fps));
   const select = (from: number, to: number) =>
     useEditor.getState().setSelection(orderedSelection(from, to));
@@ -129,14 +129,12 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
     const wanted = edge === "in" ? boundary : boundary - 1;
     const moved = moveEdge(segment, edge, wanted, bounds);
     setDrag({ edge, moved, wanted });
-    peek(edge === "in" ? moved.inFrame : moved.outFrame);
   };
 
   const dragSegment = (from: number, clientX: number) => {
     if (!segment) return;
     const moved = { ...slide(segment, frameUnder(clientX) - from, total), limited: false };
     setDrag({ moved, wanted: moved.inFrame });
-    peek(moved.inFrame);
   };
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -200,7 +198,6 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
     const current = gesture.current;
     gesture.current = null;
     const state = useEditor.getState();
-    state.setPeek(undefined);
     if (!current) return;
     // A click without a drag puts the playhead on the frame; at «Кадры» it also picks the frame.
     if ((current.kind === "segment" || current.kind === "empty") && !current.moving) {
@@ -231,7 +228,6 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
     setEdges(segment, moved);
     const { setStop, setPlaying } = useEditor.getState();
     setPlaying(false);
-    peek(edge === "in" ? moved.inFrame : moved.outFrame);
     setStop(moved.limited ? { segmentId: segment.id, edge, wanted: from + step } : undefined);
   };
 
@@ -304,7 +300,6 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
       className={cx(styles.handle, styles[edge], warnEdge === edge && styles.limit)}
       style={{ left: edgeX(edge) }}
       onKeyDown={onHandleKey(edge)}
-      onBlur={() => useEditor.getState().setPeek(undefined)}
     />
   );
 

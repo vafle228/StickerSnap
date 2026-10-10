@@ -60,6 +60,12 @@
   font-family: var(--font-mono);
 }
 
+.times {
+  padding-bottom: 10px;
+  font: var(--type-timecode);
+  color: var(--ink-muted);
+}
+
 .hint {
   margin: 0;
   font: var(--type-caption);
@@ -118,6 +124,10 @@
 .longText span {
   font: 500 12px/16px var(--font-sans);
   color: var(--highlight-ink);
+}
+
+.longText .quiet {
+  color: var(--ink-muted);
 }
 
 .link {
