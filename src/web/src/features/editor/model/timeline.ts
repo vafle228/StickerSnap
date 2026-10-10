@@ -1,5 +1,5 @@
 import type { Segment } from "../../../shared/api/types";
-import { fitSpeed, SPEED_MAX } from "./frame";
+import { fitSpeed, squareCrop, SPEED_MAX, type Size } from "./frame";
 
 /* The timeline's math (artboard 3b): frames of the source, the I and O edges of a segment,
    the 3,00 s stop and the «Обзор ↔ Кадры» scale. Frames are what the scene keeps (contract,
@@ -149,18 +149,25 @@ export function nextNumber(names: readonly string[]): number {
   return Math.max(0, ...taken) + 1;
 }
 
-/** A new segment takes the frame, the preset and the loop of the one it was made next to. */
-export function newSegment(base: Segment, range: Range, id: string, name: string): Segment {
+/** A new segment takes the frame, the preset and the loop of the one it was made next to;
+ *  the first one of a project starts as a sticker cropped to a square, as the server makes it. */
+export function newSegment(
+  base: Segment | undefined,
+  source: Size,
+  range: Range,
+  id: string,
+  name: string,
+): Segment {
   return {
     id,
     name,
     inFrame: range.inFrame,
     outFrame: range.outFrame,
     excludedFrames: [],
-    frame: structuredClone(base.frame),
+    frame: base ? structuredClone(base.frame) : squareCrop(source),
     speed: 1,
-    loop: base.loop,
-    preset: base.preset,
+    loop: base?.loop ?? "normal",
+    preset: base?.preset ?? "sticker",
     longSticker: false,
   };
 }

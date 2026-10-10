@@ -171,10 +171,17 @@ describe("new segments", () => {
       preset: "emoji" as const,
       longSticker: false,
     };
-    const segment = newSegment(base, { inFrame: 10, outFrame: 20 }, "seg-2", "Стикер 2");
+    const size = { width: 640, height: 360 };
+    const segment = newSegment(base, size, { inFrame: 10, outFrame: 20 }, "seg-2", "Стикер 2");
     expect(segment).toMatchObject({ speed: 1, loop: "pingpong", preset: "emoji", inFrame: 10 });
     expect(segment.frame).toEqual(base.frame);
     expect(segment.frame).not.toBe(base.frame);
+  });
+
+  it("starts the first one as a square sticker", () => {
+    const segment = newSegment(undefined, { width: 640, height: 360 }, cut(0, 9), "s", "Стикер 1");
+    expect(segment).toMatchObject({ preset: "sticker", loop: "normal", speed: 1 });
+    expect(segment.frame).toMatchObject({ mode: "crop", preset: "square" });
   });
 });
 

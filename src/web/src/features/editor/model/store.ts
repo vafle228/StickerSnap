@@ -48,7 +48,8 @@ interface EditorState {
   load: (project: Project) => void;
   unload: () => void;
   edit: (recipe: (scene: Draft<Scene>) => void) => void;
-  select: (segmentId: string) => void;
+  /** None: a project may have no segments, then there is nothing to export */
+  select: (segmentId: string | undefined) => void;
   setZoom: (zoom: Zoom) => void;
   setCropTool: (on: boolean) => void;
   setPlaying: (playing: boolean) => void;
@@ -104,7 +105,7 @@ export const useEditor = create<EditorState>()((set) => ({
   setStop: (stop) => set({ stop }),
 }));
 
-/** The selected segment, or undefined before a project is loaded. */
+/** The selected segment; undefined before a project is loaded or when it has none. */
 export function useSegment(): Segment | undefined {
   return useEditor((s) => s.scene?.segments.find((seg) => seg.id === s.segmentId));
 }
