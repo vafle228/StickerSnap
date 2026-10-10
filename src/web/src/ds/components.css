@@ -366,4 +366,7 @@ button.ss-badge:focus-visible { outline: 2px solid var(--focus); outline-offset:
 .ss-rail-narrow { min-width: 0; width: 56px; padding: 8px; align-items: center; border-radius: var(--radius-lg); }
 .ss-rail-narrow .ss-rail-item { position: relative; justify-content: center; width: var(--size-control); padding: 0; border-radius: var(--radius-md); }
 .ss-rail-narrow .ss-rail-count { position: absolute; top: -4px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; font: 700 11px/18px var(--font-sans); box-shadow: 0 0 0 2px var(--surface); }
+/* Info dot on a rail item while a background task runs (artboard «12 · Окна и попапы», sending to a pack). Local addition. */
+.ss-rail-dot { width: 8px; height: 8px; margin-left: auto; border-radius: var(--radius-pill); background: var(--info); flex: none; }
+.ss-rail-narrow .ss-rail-dot { position: absolute; top: -3px; right: -3px; width: 12px; height: 12px; margin: 0; box-shadow: 0 0 0 2px var(--surface); }
 .ss-visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

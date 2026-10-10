@@ -7,6 +7,8 @@ export interface NavRailItem<V extends string = string> {
   label: ReactNode;
   icon?: IconName;
   count?: number;
+  /** Info dot: a background task runs here (sending stickers to a pack, artboard 12) */
+  dot?: boolean;
 }
 
 export interface NavRailProps<V extends string = string> {
@@ -54,6 +56,7 @@ export function NavRail<V extends string = string>({
         {item.icon && <Icon name={item.icon} size={20} />}
         {narrow ? <span className="ss-visually-hidden">{item.label}</span> : item.label}
         {item.count ? <span className="ss-rail-count">{item.count}</span> : null}
+        {item.dot && !item.count ? <span className="ss-rail-dot" aria-hidden /> : null}
       </button>
     );
   };
