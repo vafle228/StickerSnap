@@ -124,14 +124,48 @@
   text-overflow: ellipsis;
 }
 
+/* The selected segment: drag its middle to move it whole, its handles to trim it. */
 .trim {
   position: absolute;
+  z-index: 1;
   top: -4px;
   height: calc(var(--thumbs) + 8px);
   box-sizing: border-box;
   border: 3px solid var(--primary);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--primary) 14%, transparent);
+  cursor: grab;
+}
+
+.trim.moving {
+  cursor: grabbing;
+  background: color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+/* Frames picked by a drag over empty strip at «Обзор» (at «Кадры» the cells light up). */
+.range {
+  position: absolute;
+  top: 0;
+  height: var(--thumbs);
+  box-sizing: border-box;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--primary-soft) 70%, transparent);
+  box-shadow: inset 0 0 0 2px var(--primary);
+  pointer-events: none;
+}
+
+/* The frame under a dragged handle, in the ruler's row. */
+.tag {
+  position: absolute;
+  z-index: 4;
+  top: -22px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font: 500 11px/16px var(--font-mono);
+  white-space: nowrap;
+  transform: translateX(-50%);
   pointer-events: none;
 }
 
@@ -183,6 +217,7 @@
   box-shadow: 0 0 0 3px var(--warning-soft);
 }
 
+/* Grabbed by its dot or line (a 13px hit area), like the ruler: both scrub. */
 .playhead {
   position: absolute;
   z-index: 3;
@@ -192,7 +227,7 @@
   margin-left: -1px;
   border-radius: var(--radius-pill);
   background: var(--highlight);
-  pointer-events: none;
+  cursor: ew-resize;
 }
 
 .playhead::before {
@@ -206,28 +241,51 @@
   background: var(--highlight);
 }
 
-/* Over the strip, above the ruler: the stop hint and the selection's panel. */
+.playhead::after {
+  content: "";
+  position: absolute;
+  inset: -6px -5px 0;
+}
+
+.ruler {
+  cursor: ew-resize;
+}
+
+/* Above the whole timeline card, a caret down to the handle or the selection: the stop hint
+   and the selection's panel. Its bottom is set from where the strip sits in the card. */
 .floating {
   position: absolute;
   z-index: 20;
-  bottom: calc(100% + 4px);
   width: max-content;
 }
 
-.panelSpot {
-  bottom: calc(100% - 16px);
+.caret {
+  position: absolute;
+  top: 100%;
+  width: 14px;
+  height: 8px;
+  margin-left: -7px;
+  background: var(--surface-raised);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
 }
 
 .hint {
   align-items: center;
   width: max-content;
+  padding: 8px 8px 8px 10px;
 }
 
 .hintText {
-  flex: 1;
   font: 600 14px/20px var(--font-sans);
   color: var(--ink);
   white-space: nowrap;
+}
+
+/* The tonal button of artboard 3a: seen on the raised popup in both themes. */
+.tonal,
+.tonal:hover:not([disabled]) {
+  background: var(--primary-soft);
+  color: var(--primary-ink);
 }
 
 .panel {

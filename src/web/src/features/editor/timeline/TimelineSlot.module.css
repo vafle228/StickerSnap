@@ -1,4 +1,6 @@
+/* Positioned: the stop hint and the selection's panel float above it. */
 .timeline {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);

@@ -24,6 +24,7 @@ import {
   moveEdge,
   orderedSelection,
   pxPerFrame,
+  slide,
   tickStep,
   timeOf,
   type Edge,
@@ -41,17 +42,30 @@ const GAP = 4;
 /** Frames per sprite request in the «Кадры» scale */
 const CHUNK = 30;
 
-type Gesture = { kind: "edge"; edge: Edge } | { kind: "scrub" } | { kind: "select" };
+/** How far a press must travel before it is a drag and not a click */
+const SLOP = 3;
 
-interface EdgeDrag {
-  edge: Edge;
+/** A press on the strip: what it started on decides what a drag does.
+ *  edge: an I/O handle · segment: a segment's body, dragged whole · empty: a range of frames
+ *  for «Сделать отрезком» · playhead: the playhead, scrubbed. */
+type Gesture =
+  | { kind: "edge"; edge: Edge }
+  | { kind: "segment"; x: number; frame: number; moving: boolean }
+  | { kind: "empty"; x: number; frame: number; moving: boolean }
+  | { kind: "playhead" };
+
+/** The selected segment while it is dragged, drawn from here until the pointer lets go. */
+interface Draft {
+  /** The edge being dragged, or none when the whole segment moves */
+  edge?: Edge;
   moved: Moved;
   wanted: number;
 }
 
 /** The frame strip of artboard 3b: the whole video at «Обзор», one cell per frame at «Кадры»,
  *  the segments over it, the I and O handles of the selected one and the playhead. A dragged
- *  handle is drawn from local state and lands in the scene as one edit when released. */
+ *  handle or segment is drawn from local state and lands in the scene as one edit when
+ *  released; meanwhile the canvas peeks at the frame under it and the playhead stays put. */
 export function FrameStrip({ info }: { info: TimelineInfo }) {
   const { projectId, source, segments, segment, fps, total, bounds, maxDuration } = info;
   const zoom = useEditor((s) => s.timelineZoom);
@@ -63,7 +77,8 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
   const gesture = useRef<Gesture | null>(null);
   const anchor = useRef<number | undefined>(undefined);
   const [view, setView] = useState({ width: 0, scroll: 0 });
-  const [drag, setDrag] = useState<EdgeDrag | null>(null);
+  const [drag, setDrag] = useState<Draft | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
@@ -103,13 +118,14 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
   }, [stop]);
 
   const shown = drag ? drag.moved : segment;
-  const pushed: { edge: Edge; live: boolean } | undefined = drag?.moved.limited
-    ? { edge: drag.edge, live: true }
-    : stop &&
-        stop.segmentId === segment.id &&
-        moveEdge(segment, stop.edge, stop.wanted, bounds).limited
-      ? { edge: stop.edge, live: false }
-      : undefined;
+  const pushed: { edge: Edge; live: boolean } | undefined =
+    drag?.edge && drag.moved.limited
+      ? { edge: drag.edge, live: true }
+      : stop &&
+          stop.segmentId === segment.id &&
+          moveEdge(segment, stop.edge, stop.wanted, bounds).limited
+        ? { edge: stop.edge, live: false }
+        : undefined;
   const over = frameCount(segment) > bounds.max;
   const warnEdge = pushed?.edge ?? (over ? "out" : undefined);
 
@@ -119,53 +135,67 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
     return track && px > 0 ? (clientX - track.getBoundingClientRect().left) / px : 0;
   };
   const frameUnder = (clientX: number) => clamp(Math.floor(framesAt(clientX)), 0, total - 1);
+  const peek = (frame: number) => useEditor.getState().setPeek(timeOf(frame, fps));
+  const toFrame = (frame: number) => useEditor.getState().setTime(timeOf(frame, fps));
+  const select = (from: number, to: number) =>
+    useEditor.getState().setSelection(orderedSelection(from, to));
 
   const dragEdge = (edge: Edge, clientX: number) => {
     const boundary = Math.round(framesAt(clientX));
     const wanted = edge === "in" ? boundary : boundary - 1;
     const moved = moveEdge(segment, edge, wanted, bounds);
     setDrag({ edge, moved, wanted });
-    // The canvas shows the frame under the handle while it moves.
-    useEditor.getState().setTime(timeOf(edge === "in" ? moved.inFrame : moved.outFrame, fps));
+    peek(edge === "in" ? moved.inFrame : moved.outFrame);
   };
 
-  const pick = (clientX: number, extend: boolean) => {
-    const { setTime, setSelection } = useEditor.getState();
-    const frame = frameUnder(clientX);
-    if (!extend || anchor.current === undefined) anchor.current = frame;
-    setSelection(orderedSelection(anchor.current, frame));
-    setTime(timeOf(frame, fps));
+  const dragSegment = (from: number, clientX: number) => {
+    const moved = { ...slide(segment, frameUnder(clientX) - from, total), limited: false };
+    setDrag({ moved, wanted: moved.inFrame });
+    peek(moved.inFrame);
   };
-
-  const scrub = (clientX: number) => useEditor.getState().setTime(timeOf(frameUnder(clientX), fps));
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 || px === 0) return;
-    const { setPlaying, select, setStop } = useEditor.getState();
-    setPlaying(false);
+    const state = useEditor.getState();
+    state.setPlaying(false);
     e.currentTarget.setPointerCapture(e.pointerId);
     const target = e.target as HTMLElement;
+    const frame = frameUnder(e.clientX);
+
     const edge = target.closest<HTMLElement>("[data-edge]")?.dataset.edge as Edge | undefined;
     if (edge) {
       gesture.current = { kind: "edge", edge };
       dragEdge(edge, e.clientX);
       return;
     }
-    const other = target.closest<HTMLElement>("[data-segment]")?.dataset.segment;
-    if (other && other !== segment.id) select(other);
-    setStop(undefined);
-    if (frames) {
-      gesture.current = { kind: "select" };
-      pick(e.clientX, e.shiftKey);
-    } else {
-      gesture.current = { kind: "scrub" };
-      scrub(e.clientX);
+    state.setStop(undefined);
+    if (target.closest("[data-playhead]")) {
+      gesture.current = { kind: "playhead" };
+      toFrame(frame);
+      return;
     }
+    const other = target.closest<HTMLElement>("[data-segment]")?.dataset.segment;
+    if (other) {
+      if (other !== segment.id) state.select(other);
+      gesture.current = { kind: "segment", x: e.clientX, frame, moving: false };
+      return;
+    }
+    // Shift+click extends the selection from the last click, in both scales.
+    if (e.shiftKey && anchor.current !== undefined) {
+      select(anchor.current, frame);
+      gesture.current = { kind: "empty", x: e.clientX, frame: anchor.current, moving: true };
+      return;
+    }
+    gesture.current = { kind: "empty", x: e.clientX, frame, moving: false };
   };
 
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const current = gesture.current;
     if (!current) return;
+    if ((current.kind === "segment" || current.kind === "empty") && !current.moving) {
+      if (Math.abs(e.clientX - current.x) < SLOP) return;
+      current.moving = true;
+    }
     // Near the ends of a zoomed strip, the strip scrolls under the pointer.
     const scroller = scrollerRef.current;
     if (scroller) {
@@ -174,17 +204,33 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
       else if (e.clientX > rect.right - 24) scroller.scrollLeft += 16;
     }
     if (current.kind === "edge") dragEdge(current.edge, e.clientX);
-    else if (current.kind === "select") pick(e.clientX, true);
-    else scrub(e.clientX);
+    else if (current.kind === "segment") dragSegment(current.frame, e.clientX);
+    else if (current.kind === "empty") {
+      anchor.current = current.frame;
+      select(current.frame, frameUnder(e.clientX));
+    } else toFrame(frameUnder(e.clientX));
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
     const current = gesture.current;
     gesture.current = null;
-    if (current?.kind !== "edge" || !drag) return;
+    const state = useEditor.getState();
+    state.setPeek(undefined);
+    if (!current) return;
+    // A click without a drag puts the playhead on the frame; at «Кадры» it also picks the frame.
+    if ((current.kind === "segment" || current.kind === "empty") && !current.moving) {
+      toFrame(current.frame);
+      anchor.current = current.frame;
+      state.setSelection(frames ? { from: current.frame, to: current.frame } : undefined);
+      return;
+    }
+    if (!drag || e.type === "pointercancel") {
+      setDrag(null);
+      return;
+    }
     setEdges(segment, drag.moved);
-    if (drag.moved.limited) {
-      useEditor.getState().setStop({ segmentId: segment.id, edge: drag.edge, wanted: drag.wanted });
+    if (drag.edge && drag.moved.limited) {
+      state.setStop({ segmentId: segment.id, edge: drag.edge, wanted: drag.wanted });
     }
     setDrag(null);
   };
@@ -198,9 +244,9 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
     const from = edge === "in" ? segment.inFrame : segment.outFrame;
     const moved = moveEdge(segment, edge, from + step, bounds);
     setEdges(segment, moved);
-    const { setStop, setTime, setPlaying } = useEditor.getState();
+    const { setStop, setPlaying } = useEditor.getState();
     setPlaying(false);
-    setTime(timeOf(edge === "in" ? moved.inFrame : moved.outFrame, fps));
+    peek(edge === "in" ? moved.inFrame : moved.outFrame);
     setStop(moved.limited ? { segmentId: segment.id, edge, wanted: from + step } : undefined);
   };
 
@@ -272,14 +318,21 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
       className={cx(styles.handle, styles[edge], warnEdge === edge && styles.limit)}
       style={{ left: edgeX(edge) }}
       onKeyDown={onHandleKey(edge)}
+      onBlur={() => useEditor.getState().setPeek(undefined)}
     />
   );
 
-  const showPanel = frames && !drag && selection !== undefined && selection.to > selection.from;
+  const ranged = selection !== undefined && selection.to > selection.from;
   const toScreen = (x: number) => PAD + x - view.scroll;
+  const lift = wrapRef.current?.offsetTop ?? 0;
+  const tagEdge = drag ? (drag.edge ?? "in") : undefined;
 
   return (
-    <div className={styles.wrap} style={{ "--thumbs": `${thumbsH}px` } as CSSProperties}>
+    <div
+      ref={wrapRef}
+      className={styles.wrap}
+      style={{ "--thumbs": `${thumbsH}px` } as CSSProperties}
+    >
       <div
         ref={scrollerRef}
         className={styles.scroller}
@@ -288,7 +341,14 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
           setView((v) => ({ ...v, scroll }));
         }}
       >
-        <div className={styles.content} style={{ width: content }}>
+        <div
+          className={styles.content}
+          style={{ width: content }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+        >
           <Ruler px={px} fps={fps} total={total} first={first} last={last} />
           <div
             ref={trackRef}
@@ -296,12 +356,17 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
             aria-label={t("editor.frames")}
             className={styles.track}
             style={{ height: frames ? CELL_H + 4 + 16 : TILE_H }}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
           >
             {cells}
+            {!frames && ranged && (
+              <div
+                className={styles.range}
+                style={{
+                  left: selection.from * px,
+                  width: (selection.to - selection.from + 1) * px,
+                }}
+              />
+            )}
             {segments
               .filter((s) => s.id !== segment.id)
               .map((s) => (
@@ -316,18 +381,27 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
                 </div>
               ))}
             <div
-              className={styles.trim}
+              data-segment={segment.id}
+              className={cx(styles.trim, drag && !drag.edge && styles.moving)}
               style={{ left: shown.inFrame * px, width: (shown.outFrame - shown.inFrame + 1) * px }}
             />
             {handle("in")}
             {handle("out")}
+            {tagEdge && (
+              <span
+                className={styles.tag}
+                style={{ left: tagEdge === "in" ? shown.inFrame * px : (shown.outFrame + 1) * px }}
+              >
+                {t("editor.frameN", { n: tagEdge === "in" ? shown.inFrame : shown.outFrame })}
+              </span>
+            )}
             <Playhead px={px} fps={fps} frames={frames} scroller={scrollerRef} />
           </div>
         </div>
       </div>
 
       {pushed && maxDuration !== undefined && (
-        <Floating x={toScreen(edgeX(pushed.edge))} width={view.width + 2 * PAD}>
+        <Floating x={toScreen(edgeX(pushed.edge))} width={view.width + 2 * PAD} lift={lift}>
           <div
             ref={hintRef}
             className={`ss-toast ss-tone-warning ${styles.hint}`}
@@ -340,18 +414,24 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
             <span className={styles.hintText}>
               {t("editor.limit", { max: num(maxDuration, 2), speed: speedText(segment.speed) })}
             </span>
-            <Button size="sm" disabled={pushed.live} onClick={() => fitStop(info)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className={styles.tonal}
+              disabled={pushed.live}
+              onClick={() => fitStop(info)}
+            >
               {t("editor.limit.fit")}
             </Button>
           </div>
         </Floating>
       )}
 
-      {showPanel && !pushed && (
+      {ranged && !drag && !pushed && (
         <Floating
           x={toScreen(((selection.from + selection.to + 1) / 2) * px)}
           width={view.width + 2 * PAD}
-          className={styles.panelSpot}
+          lift={lift}
         >
           <div className={styles.panel} role="status">
             <span>
@@ -359,7 +439,13 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
                 n: selection.to - selection.from + 1,
               })}
             </span>
-            <Button size="sm" variant="ghost" icon="plus" onClick={() => addSegment(info)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              icon="plus"
+              className={styles.tonal}
+              onClick={() => addSegment(info)}
+            >
               {t("editor.selection.make")}
             </Button>
           </div>
@@ -369,16 +455,17 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
   );
 }
 
-/** A floating thing over the strip, centered on `x` but kept inside the strip's width. */
+/** Floats above the whole timeline card with a caret down to `x`, the handle or the selection;
+ *  kept inside the strip's width. `lift` is how far the strip sits below the card's top. */
 function Floating({
   x,
   width,
-  className,
+  lift,
   children,
 }: {
   x: number;
   width: number;
-  className?: string;
+  lift: number;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -391,9 +478,15 @@ function Floating({
     return () => observer.disconnect();
   }, []);
   const left = clamp(x - size / 2, 0, Math.max(0, width - size));
+  const caret = clamp(x - left, 24, Math.max(24, size - 24));
   return (
-    <div ref={ref} className={cx(styles.floating, className)} style={{ left }}>
+    <div
+      ref={ref}
+      className={styles.floating}
+      style={{ left, bottom: `calc(100% + ${lift + 14}px)` }}
+    >
       {children}
+      <span className={styles.caret} style={{ left: caret }} aria-hidden />
     </div>
   );
 }
@@ -413,6 +506,7 @@ function Ruler({
   last: number;
 }) {
   if (px === 0) return <div className={styles.ruler} />;
+  // The ruler scrubs the playhead, like the playhead itself.
   const step = tickStep(px * fps);
   const end = total * px;
   const ticks = [];
@@ -426,7 +520,7 @@ function Ruler({
     );
   }
   return (
-    <div className={styles.ruler} aria-hidden>
+    <div data-playhead className={styles.ruler} aria-hidden>
       {ticks}
       <span className={cx(styles.tick, styles.end)} style={{ left: end }}>
         {t("editor.seconds", { value: seconds(Math.round((total / fps) * 10) / 10) })}
@@ -459,5 +553,5 @@ function Playhead({
     if (x < box.scrollLeft || x > box.scrollLeft + inner) box.scrollLeft = x - inner * 0.1;
   }, [x, scroller]);
 
-  return <div className={styles.playhead} style={{ left: x }} aria-hidden />;
+  return <div data-playhead className={styles.playhead} style={{ left: x }} aria-hidden />;
 }
