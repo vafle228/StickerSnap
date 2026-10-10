@@ -34,8 +34,9 @@ export function FoldersSection() {
   );
 }
 
-/** With paths (Electron) «Изменить…» opens the system folder picker. The browser has none, so
- *  the field itself turns editable: Enter or leaving it saves, Esc cancels. */
+/** With paths (Electron) «Изменить…» opens the system folder picker and «Открыть» the file
+ *  manager. The browser has neither: the field itself turns editable (Enter or leaving it
+ *  saves, Esc cancels), and «Открыть» stays off with its reason. */
 function FolderRow({
   label,
   note,
@@ -112,8 +113,13 @@ function FolderRow({
         ) : (
           <Button onClick={() => void change()}>{t("settings.folders.change")}</Button>
         )}
-        {platform.hasPaths && !editing && (
-          <Button variant="ghost" onClick={() => platform.openFolder(path)}>
+        {!editing && (
+          <Button
+            variant="ghost"
+            disabled={!platform.hasPaths}
+            reason={t("settings.folders.openReason")}
+            onClick={() => platform.openFolder(path)}
+          >
             {t("settings.folders.open")}
           </Button>
         )}
