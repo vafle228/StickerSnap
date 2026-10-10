@@ -1,0 +1,12 @@
+/* Bottom left, clear of the toasts on the right. */
+.switch {
+  position: fixed;
+  bottom: var(--space-4);
+  left: 96px;
+  z-index: 40;
+  width: 220px;
+  padding: var(--space-3);
+  border-radius: var(--radius-float);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-float);
+}
