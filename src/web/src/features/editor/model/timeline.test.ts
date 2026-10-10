@@ -10,6 +10,7 @@ import {
   nextNumber,
   orderedSelection,
   pxPerFrame,
+  slide,
   stepTime,
   tickStep,
   zoomFor,
@@ -109,6 +110,14 @@ describe("the 3,00 s stop", () => {
 
   it("moves freely while the limits are unknown", () => {
     expect(moveEdge(cut(10, 50), "out", 200, { total: 240, max: Infinity }).outFrame).toBe(200);
+  });
+});
+
+describe("dragging the whole segment", () => {
+  it("keeps the length and stops at the ends of the video", () => {
+    expect(slide(cut(10, 50), 30, 240)).toEqual({ inFrame: 40, outFrame: 80 });
+    expect(slide(cut(10, 50), -30, 240)).toEqual({ inFrame: 0, outFrame: 40 });
+    expect(slide(cut(10, 50), 500, 240)).toEqual({ inFrame: 199, outFrame: 239 });
   });
 });
 

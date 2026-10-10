@@ -93,6 +93,13 @@ export function moveEdge(
   return { inFrame, outFrame, limited: wanted > ceiling };
 }
 
+/** The whole segment dragged by `delta` frames: the length stays, the source's ends stop it. */
+export function slide(segment: Range, delta: number, total: number): Range {
+  const length = segment.outFrame - segment.inFrame;
+  const inFrame = clamp(segment.inFrame + delta, 0, Math.max(0, total - 1 - length));
+  return { inFrame, outFrame: inFrame + length };
+}
+
 /** «Вписать целиком» from the stop hint: the edge goes where it was pushed to and the speed rises
  *  so the whole segment fits the limit. Past what even 4× can fit, the edge stops at that. */
 export function fitWhole(

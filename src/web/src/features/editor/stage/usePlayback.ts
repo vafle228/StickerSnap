@@ -75,6 +75,7 @@ export function usePlayback(
   }, [videoRef, usable, playing, inFrame, outFrame, speed, loop, fps]);
 
   // Paused, the video follows the playhead: a step or a scrub on the timeline shows that frame.
+  // A dragged handle shows its frame through `peek` and leaves the playhead where it is.
   // A store subscription, not a selector: the stage must not re-render on every frame.
   useEffect(() => {
     const video = videoRef.current;
@@ -85,9 +86,10 @@ export function usePlayback(
       const frame = frameAt(time, fps);
       if (frameAt(video.currentTime, fps) !== frame) video.currentTime = (frame + 0.5) / fps;
     };
-    if (!useEditor.getState().playing) follow(useEditor.getState().time);
+    const { playing, peek, time } = useEditor.getState();
+    if (!playing) follow(peek ?? time);
     return useEditor.subscribe((s, prev) => {
-      if (!s.playing && s.time !== prev.time) follow(s.time);
+      if (!s.playing && (s.time !== prev.time || s.peek !== prev.peek)) follow(s.peek ?? s.time);
     });
   }, [videoRef, usable, fps]);
 }
