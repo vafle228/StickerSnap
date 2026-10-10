@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { AccentName } from "../../ds/accents";
 
 export type ThemeMode = "system" | "light" | "dark";
-export type AccentName = "indigo" | "violet" | "raspberry" | "teal" | "graphite";
+export type { AccentName };
 
 export const THEME_MODES: readonly ThemeMode[] = ["system", "light", "dark"];
 
