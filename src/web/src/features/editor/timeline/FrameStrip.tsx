@@ -15,12 +15,14 @@ import { seconds, timecode } from "../format";
 import { frameCount } from "../model/frame";
 import { useEditor } from "../model/store";
 import {
+  cellWidth,
   clamp,
-  FRAME_PX,
+  fitEnd,
   frameAt,
   moveEdge,
   orderedSelection,
   pxPerFrame,
+  showsFrames,
   slide,
   tickStep,
   timeOf,
@@ -64,7 +66,7 @@ interface Draft {
  *  handle or segment is drawn from local state and lands in the scene as one edit when
  *  released; meanwhile the canvas peeks at the frame under it and the playhead stays put. */
 export function FrameStrip({ info }: { info: TimelineInfo }) {
-  const { projectId, source, segments, segment, fps, total, bounds } = info;
+  const { projectId, source, segments, segment, fps, total, bounds, maxDuration } = info;
   const zoom = useEditor((s) => s.timelineZoom);
   const selection = useEditor((s) => s.selection);
   const stop = useEditor((s) => s.stop);
@@ -86,8 +88,10 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
     return () => observer.disconnect();
   }, []);
 
-  const px = view.width > 0 ? pxPerFrame(zoom, view.width, total) : 0;
-  const frames = px >= FRAME_PX;
+  // One width for an «Обзор» tile and a «Кадры» cell, so zooming never packs frames tighter.
+  const cell = cellWidth(source, TILE_H);
+  const px = view.width > 0 ? pxPerFrame(zoom, view.width, total, cell) : 0;
+  const frames = showsFrames(px, cell);
   const content = total * px;
   const thumbsH = frames ? CELL_H : TILE_H;
 
@@ -265,7 +269,7 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
       );
     }
   } else if (px > 0) {
-    const count = Math.max(1, Math.round(content / clamp(TILE_H * aspect, 40, 140)));
+    const count = Math.max(1, Math.round(content / cell));
     const tileW = content / count;
     const from = Math.max(0, Math.floor((view.scroll - PAD) / tileW));
     const to = Math.min(count - 1, Math.ceil((view.scroll + view.width) / tileW));
@@ -305,6 +309,10 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
   );
 
   const ranged = selection !== undefined && selection.to > selection.from;
+  const reach =
+    segment && shown && Number.isFinite(bounds.max)
+      ? fitEnd({ ...shown, excludedFrames: segment.excludedFrames }, bounds.max, total)
+      : undefined;
   const tagEdge = drag ? (drag.edge ?? "in") : undefined;
 
   return (
@@ -366,6 +374,19 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
                     width: (shown.outFrame - shown.inFrame + 1) * px,
                   }}
                 />
+                {/* How far the window may grow at this speed: a slower speed pulls the mark in,
+                    and frames past it play over the limit (hatched). */}
+                {reach !== undefined && reach > shown.outFrame && reach < total - 1 && (
+                  <div className={styles.reach} style={{ left: (reach + 1) * px }}>
+                    <span>{t("editor.reach", { max: seconds(maxDuration ?? 0) })}</span>
+                  </div>
+                )}
+                {reach !== undefined && reach < shown.outFrame && (
+                  <div
+                    className={styles.overflow}
+                    style={{ left: (reach + 1) * px, width: (shown.outFrame - reach) * px }}
+                  />
+                )}
                 {handle("in")}
                 {handle("out")}
               </>

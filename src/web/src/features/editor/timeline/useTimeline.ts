@@ -5,6 +5,7 @@ import { t } from "../../../shared/strings/ru";
 import {
   fitWhole,
   frameAt,
+  shorten,
   maxFrames,
   moveEdge,
   newRange,
@@ -13,7 +14,7 @@ import {
   stepTime,
 } from "../model/timeline";
 import type { Bounds, Edge } from "../model/timeline";
-import { fpsOf } from "../model/frame";
+import { fitSpeed, fpsOf, frameCount, SPEED_MAX } from "../model/frame";
 import { editSegment, useEditor, useSegment, type Stop } from "../model/store";
 
 /** What every part of the timeline works with: the segments, the selected one and its frame
@@ -51,6 +52,17 @@ export function useTimeline(): TimelineInfo | undefined {
 export function stopShown({ segment, bounds }: TimelineInfo, stop: Stop | undefined) {
   if (!stop || !segment || stop.segmentId !== segment.id) return undefined;
   return moveEdge(segment, stop.edge, stop.wanted, bounds).limited ? stop : undefined;
+}
+
+/** The segment plays longer than the limit: its speed was lowered after the trim. What can fix
+ *  it: a faster speed (if even 4× is enough) or a shorter window. */
+export function overLimit({ segment, fps, total, maxDuration, bounds }: TimelineInfo) {
+  if (!segment || maxDuration === undefined || frameCount(segment) <= bounds.max) return undefined;
+  const fits = frameCount(segment) / fps / SPEED_MAX <= maxDuration + 1e-9;
+  return {
+    speed: fits ? fitSpeed(segment, fps, maxDuration) : undefined,
+    range: shorten(segment, bounds.max, total),
+  };
 }
 
 /* Commands of the timeline: the hotkeys of R16 and the buttons call the same ones. */
@@ -134,4 +146,9 @@ export function deleteSegment({ segments }: TimelineInfo, id: string) {
       },
     },
   });
+}
+
+/** «Ускорить до 1,25×» on the over-limit note: the whole window fits at the new speed. */
+export function speedUp(speed: number) {
+  editSegment((s) => void (s.speed = speed));
 }

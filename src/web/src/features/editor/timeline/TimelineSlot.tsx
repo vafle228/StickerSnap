@@ -13,6 +13,9 @@ import {
   addSegment,
   fitStop,
   markEdge,
+  overLimit,
+  setEdges,
+  speedUp,
   stepFrame,
   stopShown,
   useTimeline,
@@ -21,8 +24,8 @@ import {
 
 /** The sunken zone under the canvas (artboards 3a, 3b): the segments with the «Обзор ↔ Кадры»
  *  scale, the transport, the frame strip, the I/O read-outs and the stop hint under it. The
- *  scale sits up by the tabs, not in the bottom row as on 3a: so the hint fits in that row. `active` is false while another
- *  section covers the editor: its keys stay silent then. */
+ *  scale sits up by the tabs, not in the bottom row as on 3a: so the hint fits in that row.
+ *  `active` is false while another section covers the editor: its keys stay silent then. */
 export function TimelineSlot({ active }: { active: boolean }) {
   const info = useTimeline();
   const playing = useEditor((s) => s.playing);
@@ -39,6 +42,8 @@ export function TimelineSlot({ active }: { active: boolean }) {
   const { segment, fps, maxDuration, bounds } = info;
   const label = t(playing ? "editor.pause" : "editor.play");
   const over = segment !== undefined && frameCount(segment) > bounds.max;
+  // The notes say the length and more, so they take its place.
+  const noted = over || stopShown(info, stop) !== undefined;
 
   return (
     <Card variant="sunken" className={styles.timeline} aria-label={t("editor.timeline")}>
@@ -89,9 +94,8 @@ export function TimelineSlot({ active }: { active: boolean }) {
             <span className={styles.edge}>
               {t("editor.out", { time: timecode(timeOf(segment.outFrame + 1, fps)) })}
             </span>
-            {/* The stop hint says the same and more, so it takes the length's place. */}
-            {maxDuration !== undefined && !stopShown(info, stop) && (
-              <span className={over ? styles.over : styles.length}>
+            {maxDuration !== undefined && !noted && (
+              <span className={styles.length}>
                 {t("editor.length", {
                   duration: num(segmentDuration(segment, fps), 2),
                   max: num(maxDuration, 2),
@@ -108,9 +112,12 @@ export function TimelineSlot({ active }: { active: boolean }) {
   );
 }
 
-/** Under the strip, in the timeline's own row: the stop hint with «Вписать целиком»
- *  (artboard 3b, B) or the picked frames with «Сделать отрезком». A click elsewhere puts the
- *  hint away. */
+/** Under the strip, in the timeline's own row, from the state and not from what caused it:
+ *  - the segment plays longer than the limit (a slower speed did it, or anything else): it
+ *    stays until fixed, with «Ускорить до …» and «Укоротить до …», as on artboard 3c G;
+ *  - an edge was pushed against the stop (artboard 3b, B): «Вписать целиком», a click
+ *    elsewhere puts it away;
+ *  - frames are picked: «Сделать отрезком». */
 function Note({ info }: { info: TimelineInfo }) {
   const stop = stopShown(
     info,
@@ -128,6 +135,40 @@ function Note({ info }: { info: TimelineInfo }) {
     return () => document.removeEventListener("pointerdown", away);
   }, [stop]);
 
+  const over = overLimit(info);
+  if (over && info.segment && info.maxDuration !== undefined) {
+    const { segment, fps, maxDuration } = info;
+    return (
+      <div className={`${styles.note} ${styles.warn}`} role="alert">
+        <Icon name={TONE_ICON.warning} size={16} strokeWidth={2} />
+        {t("editor.over", {
+          duration: num(segmentDuration(segment, fps), 2),
+          speed: speedText(segment.speed),
+          max: num(maxDuration, 2),
+        })}
+        {over.speed !== undefined && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className={styles.noteAction}
+            onClick={() => over.speed !== undefined && speedUp(over.speed)}
+          >
+            {t("editor.over.speedUp", { speed: speedText(over.speed) })}
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className={styles.noteAction}
+          onClick={() => setEdges(segment, over.range)}
+        >
+          {t("editor.over.shorten", {
+            duration: num(segmentDuration({ ...segment, ...over.range }, fps), 2),
+          })}
+        </Button>
+      </div>
+    );
+  }
   if (stop && info.segment && info.maxDuration !== undefined) {
     return (
       <div ref={ref} className={`${styles.note} ${styles.warn}`} role="alert">

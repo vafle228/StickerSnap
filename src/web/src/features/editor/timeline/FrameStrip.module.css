@@ -250,3 +250,40 @@
 .ruler {
   cursor: ew-resize;
 }
+
+/* The 3,00 s mark: where the window may grow to at the segment's speed. */
+.reach {
+  position: absolute;
+  z-index: 1;
+  top: -4px;
+  height: calc(var(--thumbs) + 8px);
+  border-left: 2px dashed var(--primary);
+  pointer-events: none;
+}
+
+.reach span {
+  position: absolute;
+  bottom: 8px;
+  left: 4px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  font: 500 11px/16px var(--font-mono);
+  color: var(--primary-ink);
+  white-space: nowrap;
+}
+
+/* Frames past the mark: they would play over the limit, so they are hatched in warning. */
+.overflow {
+  position: absolute;
+  z-index: 1;
+  top: -1px;
+  height: calc(var(--thumbs) + 2px);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--warning) 45%, transparent) 0 6px,
+    transparent 6px 12px
+  );
+  pointer-events: none;
+}

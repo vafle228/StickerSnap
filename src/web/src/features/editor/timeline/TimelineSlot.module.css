@@ -130,10 +130,6 @@
   color: var(--ink);
 }
 
-.over {
-  color: var(--warning);
-}
-
 .none {
   font: var(--type-caption);
   color: var(--ink-muted);
