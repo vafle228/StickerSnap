@@ -38,9 +38,6 @@ interface EditorState {
   playing: boolean;
   /** Playhead, seconds of the source */
   time: number;
-  /** A frame the canvas shows for a moment without moving the playhead: the one under a
-   *  handle or a segment being dragged */
-  peek?: number;
   /** The timeline's scale: 0 «Обзор», 1 «Кадры» at their widest */
   timelineZoom: number;
   /** Frames picked with click and Shift+click in the «Кадры» scale */
@@ -57,7 +54,6 @@ interface EditorState {
   setFrameDraft: (frame?: Segment["frame"]) => void;
   setPlaying: (playing: boolean) => void;
   setTime: (time: number) => void;
-  setPeek: (peek?: number) => void;
   setTimelineZoom: (zoom: number) => void;
   setSelection: (selection?: Selection) => void;
   setStop: (stop?: Stop) => void;
@@ -76,7 +72,6 @@ const empty = {
   frameDraft: undefined,
   playing: false,
   time: 0,
-  peek: undefined,
   timelineZoom: 0,
   selection: undefined,
   stop: undefined,
@@ -105,7 +100,6 @@ export const useEditor = create<EditorState>()((set) => ({
   setFrameDraft: (frameDraft) => set({ frameDraft }),
   setPlaying: (playing) => set({ playing }),
   setTime: (time) => set({ time }),
-  setPeek: (peek) => set({ peek }),
   setTimelineZoom: (timelineZoom) => set({ timelineZoom }),
   setSelection: (selection) => set({ selection }),
   setStop: (stop) => set({ stop }),
