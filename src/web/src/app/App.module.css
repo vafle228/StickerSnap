@@ -1,7 +1,8 @@
 .shell {
   display: flex;
   gap: var(--space-4);
-  height: 100vh;
+  /* the dev bar of dev builds takes its height off the window */
+  height: calc(100vh - var(--dev-bar-height, 0px));
   padding: var(--space-4);
   background: var(--bg);
 }

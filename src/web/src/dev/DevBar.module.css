@@ -1,0 +1,34 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  /* DevBar sets the variable on <html>; App.module.css takes it off the window's height */
+  height: var(--dev-bar-height);
+  padding: 0 var(--space-4);
+  overflow-x: auto;
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-inset);
+  white-space: nowrap;
+}
+
+.label {
+  font: var(--type-eyebrow);
+  letter-spacing: var(--type-eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.switch {
+  flex: none;
+}
+
+.hint {
+  font: var(--type-caption);
+  color: var(--ink-muted);
+}
+
+.link {
+  margin-left: auto;
+  font: 600 13px/18px var(--font-sans);
+  color: var(--primary-ink);
+}
