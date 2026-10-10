@@ -3,6 +3,7 @@ import type {
   AppInfo,
   Job,
   Pack,
+  PackSticker,
   PackSummary,
   Project,
   ProjectSummary,
@@ -141,17 +142,50 @@ function shortGif(p: Project) {
   }));
 }
 
-function pack(name: string, title: string, count: number, minutesAgo: number): PackSummary {
+function pack(
+  name: string,
+  title: string,
+  count: number,
+  minutesAgo: number,
+  type: PackSummary["type"] = "regular",
+): PackSummary {
   return {
     name: `${name}_by_${BOT}`,
     title,
-    type: "regular",
+    type,
     count,
-    limit: 120,
+    limit: type === "custom_emoji" ? 200 : 120,
     status: "ok",
     checkedAt: ago(minutesAgo),
   };
 }
+
+const REACTIONS = "6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e52";
+const CAT = "6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e51";
+
+/** Stickers of a pack: emoji and the project each came from. Telegram serves the files, demo
+ *  data has none, so the tiles draw placeholders. */
+function stickers(packName: string, list: [emoji: string[], origin?: PackSticker["origin"]][]) {
+  return list.map(([emoji, origin], i): PackSticker => {
+    const id = `${packName}-${i + 1}`;
+    return {
+      id,
+      emoji,
+      mediaUrl: `/api/v1/packs/${packName}_by_${BOT}/stickers/${id}/media`,
+      origin,
+    };
+  });
+}
+
+/** «Ошибки отправки»: the publish job that Telegram asked to wait */
+export const PUBLISH_JOB = "publish-summer";
+
+const from = (projectId: string, projectName: string, segmentId: string) => ({
+  projectId,
+  projectName,
+  segmentId,
+  projectStatus: "ok" as const,
+});
 
 /** The server's state for one scenario; handlers read and change it. */
 export interface MockDb {
@@ -210,16 +244,91 @@ export function createDb(scenario: Scenario): MockDb {
   // The first launch: nothing made yet, «Проекты» shows its empty state.
   if (scenario === "no-projects") projects.length = 0;
 
+  // Artboard 7: a sticker pack open with twelve stickers, one being sent, one of emoji.
+  const reactions = from(REACTIONS, "Реакции с созвона", "seg-1");
   const packs: Pack[] = [
-    pack("reactions_call", "Реакции с созвона", 14, 2),
-    pack("kot_divan", "Кот на диване", scenario === "pack-full" ? 120 : 37, 60),
-  ].map((p) => ({ ...p, link: `https://t.me/addstickers/${p.name}`, stickers: [] }));
+    {
+      ...pack("reactions_call", "Реакции с созвона", 12, 2),
+      stickers: stickers("reactions_call", [
+        [["😂", "🤣"], reactions],
+        [["👍"], reactions],
+        [["😴", "💤"], reactions],
+        [["🙈"], reactions],
+        [["🔥", "❤️", "🎉"], reactions],
+        [["🤔"], from(CAT, "Кот и клавиатура", "seg-2")],
+        [["😮"], reactions],
+        [["👋"], reactions],
+        // Its project was deleted: the sticker stays, the link to it is gone
+        [
+          ["🙏"],
+          {
+            ...from("6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e00", "Старый созвон", "seg-1"),
+            projectStatus: "missing",
+          },
+        ],
+        [["😎"], reactions],
+        // Published from another app: no project behind it
+        [["🥲"]],
+        [["✅"], reactions],
+      ]),
+    },
+    {
+      ...pack("kot_divan", "Кот и диван", scenario === "pack-full" ? 120 : 5, 60),
+      stickers: stickers("kot_divan", [
+        [["😹", "🛋"], from(CAT, "Кот и клавиатура", "seg-1")],
+        [["🙀"], from(CAT, "Кот и клавиатура", "seg-2")],
+        [["😺"], from(CAT, "Кот и клавиатура", "seg-1")],
+        [["🐈"], from(CAT, "Кот и клавиатура", "seg-2")],
+        [["💤"], from(CAT, "Кот и клавиатура", "seg-1")],
+      ]),
+    },
+    {
+      ...pack("chat_emoji", "Эмодзи для чата", 6, 60 * 26, "custom_emoji"),
+      stickers: stickers(
+        "chat_emoji",
+        ["✨", "💯", "👀", "🫶", "🙌", "😅"].map((e, i) => [
+          [e],
+          from("6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e54", "Эмодзи для чата", `seg-${(i % 5) + 1}`),
+        ]),
+      ),
+    },
+    {
+      ...pack("summer_2026", "Лето 2026", 2, 5),
+      // «Ошибки отправки»: two stickers are in, two wait for Telegram (artboard 7-6)
+      sending:
+        scenario === "publish-errors" ? { jobId: PUBLISH_JOB, done: 2, total: 4 } : undefined,
+      stickers: stickers("summer_2026", [
+        [["☀️"], from("6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e56", "Лето на даче", "seg-1")],
+        [["🍉"], from("6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e56", "Лето на даче", "seg-2")],
+      ]),
+    },
+    {
+      ...pack("first_test", "Первый тест", 1, 60 * 24 * 20),
+      // «Пак пропал»: someone deleted it through @Stickers
+      status: scenario === "pack-missing" ? ("missing" as const) : ("ok" as const),
+      stickers: stickers("first_test", [
+        [["🐶"], from("6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e57", "Первый тест", "seg-1")],
+      ]),
+    },
+  ].map((p) => ({ ...p, link: `https://t.me/addstickers/${p.name}` }));
+  if (scenario === "no-packs") packs.length = 0;
+  // «Пак заполнен»: 120 of 120, every one of them in the grid
+  const full = packs[1];
+  if (scenario === "pack-full" && full) {
+    const first = full.stickers.slice();
+    full.stickers = Array.from({ length: 120 }, (_, i) => ({
+      ...(first[i % first.length] as PackSticker),
+      id: `kot_divan-${i + 1}`,
+    }));
+  }
 
   const user = { id: 100200300, username: "demo", firstName: "Дима" };
   const account: AccountLink =
     scenario === "offline"
       ? { state: "error", code: "network_unavailable", user }
-      : { state: "linked", user };
+      : scenario === "unlinked"
+        ? { state: "unlinked" }
+        : { state: "linked", user };
 
   return {
     scenario,
@@ -235,9 +344,33 @@ export function createDb(scenario: Scenario): MockDb {
     projects,
     forgotten: [],
     template,
-    jobs: new Map(),
+    jobs: new Map(scenario === "publish-errors" ? [[PUBLISH_JOB, waitingPublish()]] : []),
     account,
     packs,
+  };
+}
+
+/** Artboard 7-6: two of four stickers are in «Лето 2026», Telegram asked to wait with the rest. */
+function waitingPublish(): Job {
+  const sticker = (n: number) => ({ pack: `summer_2026_by_${BOT}`, stickerId: `summer_2026-${n}` });
+  return {
+    id: PUBLISH_JOB,
+    kind: "publish",
+    projectId: "6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e56",
+    state: "running",
+    createdAt: ago(1),
+    progress: {
+      fraction: 0.5,
+      stage: "wait",
+      retryAt: new Date(Date.now() + 24_000).toISOString(),
+    },
+    items: [
+      { segmentId: "seg-1", state: "done", fraction: 1, sticker: sticker(1) },
+      { segmentId: "seg-2", state: "done", fraction: 1, sticker: sticker(2) },
+      { segmentId: "seg-3", state: "queued", fraction: 0 },
+      { segmentId: "seg-4", state: "queued", fraction: 0 },
+    ],
+    pack: `summer_2026_by_${BOT}`,
   };
 }
 
