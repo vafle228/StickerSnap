@@ -11,6 +11,7 @@
     transparent 0
   );
   background-size: 16px 16px;
+  user-select: none;
 }
 
 /* Scrolls when zoomed past the window; margin: auto on the media centers it without clipping. */
@@ -37,6 +38,10 @@
   display: block;
   border-radius: var(--radius-md);
   object-fit: fill;
+}
+
+.video[hidden] {
+  display: none;
 }
 
 /* «Рамка» off: the media is the sticker itself, the rest of the source is cut away. */

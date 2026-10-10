@@ -88,7 +88,7 @@ export function CropFrame({ frame, preset, source, limits, scale }: CropFramePro
   };
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || !(scale > 0)) return;
     const target = e.target as HTMLElement;
     const corner = target.closest<HTMLElement>("[data-corner]")?.dataset.corner as
       Corner | undefined;
@@ -99,6 +99,9 @@ export function CropFrame({ frame, preset, source, limits, scale }: CropFramePro
     else if (crop) what = { kind: "move", start: frame };
     else return;
     gesture.current = { what, x: e.clientX, y: e.clientY };
+    // No text selection and no native drag: a Shift+click would select text, and pressing on a
+    // selection starts dragging it, which cancels the pointer and the frame never moves.
+    e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
