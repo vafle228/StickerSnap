@@ -6,6 +6,8 @@ import { Kbd } from "./Kbd";
 export interface MenuItem<V extends string = string> {
   value: V;
   label: ReactNode;
+  /** A second, quieter line: what the item leaves untouched («Файл останется на диске») */
+  description?: ReactNode;
   icon?: IconName;
   /** «F2» or ["Ctrl", "D"] */
   shortcut?: string | string[];
@@ -85,11 +87,23 @@ export function Menu<V extends string = string>({
             role={selectable ? "menuitemradio" : "menuitem"}
             aria-checked={selectable ? chosen : undefined}
             disabled={it.disabled}
-            className={cx("ss-menu-item", it.danger && "is-danger", chosen && "is-selected")}
+            className={cx(
+              "ss-menu-item",
+              it.danger && "is-danger",
+              chosen && "is-selected",
+              it.description !== undefined && "has-desc",
+            )}
             onClick={() => onSelect?.(it.value, it)}
           >
             {it.icon && <Icon name={it.icon} size={18} />}
-            <span className="ss-menu-label">{it.label}</span>
+            {it.description !== undefined ? (
+              <span className="ss-menu-label ss-menu-text">
+                <span>{it.label}</span>
+                <span className="ss-menu-desc">{it.description}</span>
+              </span>
+            ) : (
+              <span className="ss-menu-label">{it.label}</span>
+            )}
             {it.shortcut && <Kbd keys={[it.shortcut].flat()} />}
             {chosen && <Icon name="check" size={16} />}
           </button>
