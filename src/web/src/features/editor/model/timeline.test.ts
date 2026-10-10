@@ -13,7 +13,10 @@ import {
   slide,
   stepTime,
   tickStep,
-  zoomFor,
+  cellWidth,
+  fitEnd,
+  shorten,
+  showsFrames,
 } from "./timeline";
 
 const cut = (inFrame: number, outFrame: number, excludedFrames: number[] = []) => ({
@@ -113,6 +116,20 @@ describe("the 3,00 s stop", () => {
   });
 });
 
+describe("speed and the window", () => {
+  it("lets the window grow to 3,00 s of playback from I", () => {
+    expect(fitEnd(cut(10, 50), maxFrames(3, 30, 1), 240)).toBe(99);
+    expect(fitEnd(cut(10, 50), maxFrames(3, 30, 2), 240)).toBe(189);
+    expect(fitEnd(cut(200, 210), maxFrames(3, 30, 1), 240)).toBe(239);
+  });
+
+  it("shortens a window the slower speed made too long", () => {
+    // 90 frames at 0,8×: 3,75 s; at 0,8× the limit holds 72 frames
+    expect(shorten(cut(0, 89), maxFrames(3, 30, 0.8), 240)).toEqual({ inFrame: 0, outFrame: 71 });
+    expect(shorten(cut(0, 50), maxFrames(3, 30, 0.8), 240)).toEqual({ inFrame: 0, outFrame: 50 });
+  });
+});
+
 describe("dragging the whole segment", () => {
   it("keeps the length and stops at the ends of the video", () => {
     expect(slide(cut(10, 50), 30, 240)).toEqual({ inFrame: 40, outFrame: 80 });
@@ -186,19 +203,22 @@ describe("new segments", () => {
 });
 
 describe("the scale", () => {
-  it("fits the whole video at «Обзор» and reaches whole frames at «Кадры»", () => {
-    expect(pxPerFrame(0, 960, 240)).toBe(4);
-    expect(pxPerFrame(1, 960, 240)).toBeCloseTo(48);
+  it("fits the whole video at «Обзор» and ends at one frame per tile", () => {
+    expect(pxPerFrame(0, 960, 240, 92)).toBe(4);
+    expect(pxPerFrame(1, 960, 240, 92)).toBeCloseTo(92);
+    expect(showsFrames(pxPerFrame(0.99, 960, 240, 92), 92)).toBe(false);
+    expect(showsFrames(pxPerFrame(1, 960, 240, 92), 92)).toBe(true);
   });
 
   it("keeps a short GIF in frames at any zoom", () => {
-    expect(pxPerFrame(0, 960, 18)).toBeCloseTo(960 / 18);
-    expect(pxPerFrame(1, 960, 18)).toBeCloseTo(960 / 18);
-    expect(zoomFor(30, 960, 18)).toBe(0);
+    expect(pxPerFrame(0, 960, 18, 52)).toBeCloseTo(960 / 18);
+    expect(showsFrames(pxPerFrame(0, 960, 18, 52), 52)).toBe(true);
   });
 
-  it("finds the zoom for a cell width", () => {
-    expect(pxPerFrame(zoomFor(24, 960, 240), 960, 240)).toBeCloseTo(24);
+  it("makes a cell as wide as the frame's proportion, within 40–96 px", () => {
+    expect(cellWidth({ width: 640, height: 360 }, 52)).toBe(92);
+    expect(cellWidth({ width: 1080, height: 1920 }, 52)).toBe(40);
+    expect(cellWidth({ width: 480, height: 480 }, 52)).toBe(52);
   });
 
   it("spaces the ruler labels", () => {

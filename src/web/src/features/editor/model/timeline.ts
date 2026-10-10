@@ -93,6 +93,21 @@ export function moveEdge(
   return { inFrame, outFrame, limited: wanted > ceiling };
 }
 
+/** Where the window may grow to: the last frame that still fits the limit counting from I, at
+ *  the segment's speed. A slower speed brings it closer, a faster one pushes it out. */
+export function fitEnd(segment: Cut, max: number, total: number): number {
+  if (!Number.isFinite(max)) return total - 1;
+  return Math.min(total - 1, reach(segment.inFrame, 1, max, segment.excludedFrames));
+}
+
+/** «Укоротить»: O comes back to the last frame that fits. */
+export function shorten(segment: Cut, max: number, total: number): Range {
+  return {
+    inFrame: segment.inFrame,
+    outFrame: Math.max(segment.inFrame, Math.min(segment.outFrame, fitEnd(segment, max, total))),
+  };
+}
+
 /** The whole segment dragged by `delta` frames: the length stays, the source's ends stop it. */
 export function slide(segment: Range, delta: number, total: number): Range {
   const length = segment.outFrame - segment.inFrame;
@@ -172,26 +187,25 @@ export function newSegment(
   };
 }
 
-/* The scale: 0 is «Обзор», the whole video in the strip's width; 1 is «Кадры» at its widest.
-   The slider runs on a log scale, so each step zooms by the same factor. */
+/* The scale: 0 is «Обзор», the whole video in the strip's width; 1 is «Кадры», one frame per
+   cell. A cell is as wide as an «Обзор» tile, so the strip never gets denser on the way: tiles
+   just show more and more of the frames until each tile is one frame. The slider runs on a log
+   scale, so each step zooms by the same factor. */
 
-/** «Кадры» begins here: every frame gets its own cell with a number under it (artboard 3b, C). */
-export const FRAME_PX = 24;
-/** The right end of the scale */
-export const FRAME_PX_MAX = 48;
+/** A frame's cell at «Кадры» and a tile at «Обзор»: the frame's proportion at `height`. */
+export function cellWidth(source: Size, height: number): number {
+  return clamp(Math.round((height * source.width) / Math.max(1, source.height)), 40, 96);
+}
 
-export function pxPerFrame(zoom: number, width: number, total: number): number {
+export function pxPerFrame(zoom: number, width: number, total: number, cell: number): number {
   const fit = width / Math.max(1, total);
-  const top = Math.max(fit, FRAME_PX_MAX);
+  const top = Math.max(fit, cell);
   return fit * (top / fit) ** clamp(zoom, 0, 1);
 }
 
-/** The zoom that gives `px` per frame: the scale snaps to «Кадры» with it. */
-export function zoomFor(px: number, width: number, total: number): number {
-  const fit = width / Math.max(1, total);
-  const top = Math.max(fit, FRAME_PX_MAX);
-  if (top <= fit) return 0;
-  return clamp(Math.log(px / fit) / Math.log(top / fit), 0, 1);
+/** «Кадры»: every frame has its cell with a number under it (artboard 3b, C). */
+export function showsFrames(px: number, cell: number): boolean {
+  return px >= cell - 0.5;
 }
 
 const TICKS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
