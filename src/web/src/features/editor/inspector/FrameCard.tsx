@@ -16,16 +16,19 @@ import styles from "./Inspector.module.css";
 
 type Mode = Segment["frame"]["mode"];
 
-/** «Кадр» (R3): crop or stretch, the presets and the output size. */
+/** «Кадр» (R3): crop or stretch, the presets and the output size. A preset is a proportion the
+ *  crop frame holds while its corners are dragged; a free resize (Shift) leaves both unchecked. */
 export function FrameCard() {
   const segment = useSegment();
   const source = useEditor((s) => s.source);
+  const draft = useEditor((s) => s.frameDraft);
   const limits = useAppInfo().data?.limits;
   if (!segment || !source) return null;
 
   const { frame } = segment;
   const side = limits?.[segment.preset].side;
-  const output = limits && outputSize(frame, segment.preset, limits[segment.preset]);
+  // While the frame is dragged on the canvas, the sizes follow it.
+  const output = limits && outputSize(draft ?? frame, segment.preset, limits[segment.preset]);
   const setFrame = (next: Segment["frame"]) => editSegment((s) => void (s.frame = next));
 
   return (
@@ -61,6 +64,7 @@ export function FrameCard() {
             <span>{t("inspector.output")}</span>
             <b>{output ? `${output.width} × ${output.height}` : "…"}</b>
           </div>
+          <p className={styles.hint}>{t("inspector.cropHint")}</p>
         </>
       ) : (
         <>

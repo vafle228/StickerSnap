@@ -103,6 +103,8 @@ export const ru = {
   "inspector.preset.source": "Как в источнике",
   "inspector.preset.squash": "Сплющить в 1:1",
   "inspector.output": "Выход",
+  "inspector.cropHint":
+    "С включённым «Кроп» рамку двигают на холсте и тянут за углы; с Shift пропорции свободные.",
   "inspector.width": "Ширина",
   "inspector.height": "Высота",
   "inspector.keepAspect.on": "Сохранять пропорции: включено",
