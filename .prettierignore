@@ -1,0 +1,7 @@
+node_modules/
+dist/
+src/web/src/shared/api/schema.d.ts
+src/web/src/ds/tokens.css
+src/web/src/ds/tokens.json
+src/web/src/ds/components.css
+src/web/public/fonts/

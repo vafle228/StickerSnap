@@ -27,3 +27,38 @@ jobs:
 
       # generated types compile under TypeScript strict
       - run: npm run typecheck:api
+
+  web:
+    name: SPA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # tokens.css was regenerated after the last change of tokens.json
+      - run: npm run check:tokens
+
+      - run: npm run format:check
+
+      - run: npm run lint
+
+      # tsc -b (strict) + vite build into src/server/wwwroot
+      - run: npm run build
+
+  server:
+    name: Server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - run: dotnet build StickerSnap.slnx -c Release

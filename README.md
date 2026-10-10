@@ -74,6 +74,19 @@ Electron + React UI  ──HTTP──▶  ASP.NET Core local server  ──▶  
 
 The project (clips, trims, scene layout) is a JSON file. The local server turns it into an FFmpeg command, renders the sticker, checks it against Telegram's limits and uploads it to your pack.
 
+## Development
+
+Requires Node.js 20 and the .NET 10 SDK.
+
+```sh
+npm install
+dotnet run --project src/server   # API on http://127.0.0.1:5180
+npm run dev                       # SPA with HMR on http://127.0.0.1:5173, proxies /api and /hubs
+```
+
+`npm run build` puts the SPA into `src/server/wwwroot`, and the server then serves it on its own port.
+Design tokens come from `src/web/src/ds/tokens.json`; after changing it run `npm run gen:tokens`.
+
 ## Roadmap
 
 - [ ] Stage 0: proof of concept (render pipeline, Bot API upload)
