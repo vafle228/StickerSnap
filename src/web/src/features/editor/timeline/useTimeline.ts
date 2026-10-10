@@ -14,18 +14,19 @@ import {
 } from "../model/timeline";
 import type { Bounds, Edge } from "../model/timeline";
 import { fpsOf } from "../model/frame";
-import { editSegment, useEditor, useSegment } from "../model/store";
+import { editSegment, useEditor, useSegment, type Stop } from "../model/store";
 
-/** What every part of the timeline works with: the selected segment and its frame bounds. */
+/** What every part of the timeline works with: the segments, the selected one and its frame
+ *  bounds. A project may have no segments: then there is no selected one and nothing to trim. */
 export interface TimelineInfo {
   projectId: string;
   source: SourceInfo;
   segments: Segment[];
-  segment: Segment;
+  segment?: Segment;
   fps: number;
   /** Frames in the source */
   total: number;
-  /** The preset's limit, seconds; unknown until GET /api/v1/app answers */
+  /** The selected segment's preset limit, seconds; unknown until GET /api/v1/app answers */
   maxDuration?: number;
   bounds: Bounds;
 }
@@ -36,13 +37,20 @@ export function useTimeline(): TimelineInfo | undefined {
   const segments = useEditor((s) => s.scene?.segments);
   const segment = useSegment();
   const limits = useAppInfo().data?.limits;
-  if (!projectId || !source || !segments || !segment) return undefined;
+  if (!projectId || !source || !segments) return undefined;
 
   const fps = fpsOf(source);
   const total = Math.max(1, source.frameCount);
-  const maxDuration = limits?.[segment.preset].maxDurationSec;
-  const max = maxDuration === undefined ? Infinity : maxFrames(maxDuration, fps, segment.speed);
+  const maxDuration = limits?.[segment?.preset ?? "sticker"].maxDurationSec;
+  const speed = segment?.speed ?? 1;
+  const max = maxDuration === undefined ? Infinity : maxFrames(maxDuration, fps, speed);
   return { projectId, source, segments, segment, fps, total, maxDuration, bounds: { total, max } };
+}
+
+/** The stop hint shows while its edge still sits at the limit (a faster speed lets it go). */
+export function stopShown({ segment, bounds }: TimelineInfo, stop: Stop | undefined) {
+  if (!stop || !segment || stop.segmentId !== segment.id) return undefined;
+  return moveEdge(segment, stop.edge, stop.wanted, bounds).limited ? stop : undefined;
 }
 
 /* Commands of the timeline: the hotkeys of R16 and the buttons call the same ones. */
@@ -56,6 +64,7 @@ export function stepFrame({ fps, total }: TimelineInfo, delta: number) {
 
 /** I and O: the edge goes to the playhead's frame, or stops at the limit with the hint. */
 export function markEdge({ segment, fps, bounds }: TimelineInfo, edge: Edge) {
+  if (!segment) return;
   const { time, setStop } = useEditor.getState();
   const wanted = frameAt(time, fps);
   const moved = moveEdge(segment, edge, wanted, bounds, true);
@@ -75,7 +84,7 @@ export function setEdges(segment: Segment, edges: Pick<Segment, "inFrame" | "out
 /** «Вписать целиком» on the hint: the edge where it was pushed, the speed raised to fit. */
 export function fitStop({ segment, fps, total, maxDuration }: TimelineInfo) {
   const { stop, setStop } = useEditor.getState();
-  if (!stop || maxDuration === undefined) return;
+  if (!segment || !stop || maxDuration === undefined) return;
   const fit = fitWhole(segment, stop.edge, stop.wanted, fps, maxDuration, total);
   editSegment((s) => {
     s.inFrame = fit.inFrame;
@@ -86,28 +95,28 @@ export function fitStop({ segment, fps, total, maxDuration }: TimelineInfo) {
 }
 
 /** «+ Отрезок» and «Сделать отрезком»: a new segment from the selection or the playhead. */
-export function addSegment({ segments, segment, fps, total, maxDuration }: TimelineInfo) {
+export function addSegment({ source, segments, segment, fps, total, maxDuration }: TimelineInfo) {
   const { time, selection, edit, select, setTime, setSelection } = useEditor.getState();
   const max = maxDuration === undefined ? Infinity : maxFrames(maxDuration, fps, 1);
   const range = newRange(frameAt(time, fps), selection, { total, max });
   const name = t("editor.segment.name", { n: nextNumber(segments.map((s) => s.name)) });
-  const created = newSegment(segment, range, crypto.randomUUID(), name);
+  const created = newSegment(segment, source, range, crypto.randomUUID(), name);
   edit((scene) => void scene.segments.push(created));
   select(created.id);
   setSelection(undefined);
   setTime(range.inFrame / fps);
 }
 
-/** «Удалить отрезок»: gone at once, with «Вернуть» in the popup (artboard 8: what can be undone
- *  is done without asking). The last segment stays: a project always has one. */
+/** The cross on a segment's tab: gone at once, with «Вернуть» in the popup (artboard 8: what
+ *  can be undone is done without asking). The last one may go too; export then waits. */
 export function deleteSegment({ segments }: TimelineInfo, id: string) {
   const index = segments.findIndex((s) => s.id === id);
   const removed = segments[index];
-  if (!removed || segments.length < 2) return;
+  if (!removed) return;
   const { segmentId, edit, select, setTime } = useEditor.getState();
   const next = segments[index + 1] ?? segments[index - 1];
   edit((scene) => void scene.segments.splice(index, 1));
-  if (segmentId === id && next) select(next.id);
+  if (segmentId === id) select(next?.id);
 
   notify.toast({
     tone: "info",

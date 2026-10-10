@@ -175,6 +175,8 @@ export function createDb(scenario: Scenario): MockDb {
   }
   if (scenario === "long-video" && projects[0]) longVideo(projects[0]);
   if (scenario === "short-gif" && projects[0]) shortGif(projects[0]);
+  // Every segment deleted: the editor still opens, export waits for a new one.
+  if (scenario === "no-segments" && projects[0]) projects[0].scene.segments = [];
 
   const packs: Pack[] = [
     pack("reactions_call", "Реакции с созвона", 14, 2),

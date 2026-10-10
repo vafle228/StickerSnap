@@ -53,8 +53,8 @@ export const ru = {
   "editor.segment.name": "Стикер {n}",
   "editor.segment.add": "Отрезок",
   "editor.segment.addHint": "Новый отрезок: из выделения или от плейхеда",
-  "editor.segment.menu": "Действия с отрезком «{name}»",
-  "editor.segment.delete": "Удалить отрезок",
+  "editor.segment.delete": "Удалить «{name}»",
+  "editor.segment.none": "Отрезков нет: протяните по полосе или нажмите «+ Отрезок»",
   "editor.segment.deleted": "«{name}» удалён",
   "editor.segment.restore": "Вернуть",
   "editor.prevFrame": "Предыдущий кадр (←)",
@@ -113,6 +113,9 @@ export const ru = {
   "inspector.longSticker": "Длинный стикер",
   "inspector.longStickerHint": "Эксперимент · больше {max} с",
   "inspector.exportWebm": "Экспорт WEBM",
+  "inspector.noSegments":
+    "Отрезков нет. Протяните по полосе кадров или нажмите «+ Отрезок», чтобы выбрать стикер.",
+  "inspector.noSegmentsReason": "Нет отрезка",
   "inspector.exportAll": "Экспортировать все отрезки ({count})",
 
   "hotkey.playPause": "Пуск и пауза",

@@ -6,15 +6,12 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
-  type ReactNode,
   type RefObject,
 } from "react";
-import { Button, Icon } from "../../../ds";
 import { cx } from "../../../ds/cx";
-import { TONE_ICON } from "../../../ds/types";
 import { mediaSrc } from "../../../shared/api/client";
-import { plural, t } from "../../../shared/strings/ru";
-import { num, seconds, speed as speedText, timecode } from "../format";
+import { t } from "../../../shared/strings/ru";
+import { seconds, timecode } from "../format";
 import { frameCount } from "../model/frame";
 import { useEditor } from "../model/store";
 import {
@@ -31,7 +28,7 @@ import {
   type Moved,
 } from "../model/timeline";
 import styles from "./FrameStrip.module.css";
-import { addSegment, fitStop, setEdges, type TimelineInfo } from "./useTimeline";
+import { setEdges, stopShown, type TimelineInfo } from "./useTimeline";
 
 /** Room at both ends of the strip for the handles and the playhead's dot */
 const PAD = 8;
@@ -67,7 +64,7 @@ interface Draft {
  *  handle or segment is drawn from local state and lands in the scene as one edit when
  *  released; meanwhile the canvas peeks at the frame under it and the playhead stays put. */
 export function FrameStrip({ info }: { info: TimelineInfo }) {
-  const { projectId, source, segments, segment, fps, total, bounds, maxDuration } = info;
+  const { projectId, source, segments, segment, fps, total, bounds } = info;
   const zoom = useEditor((s) => s.timelineZoom);
   const selection = useEditor((s) => s.selection);
   const stop = useEditor((s) => s.stop);
@@ -78,7 +75,6 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
   const anchor = useRef<number | undefined>(undefined);
   const [view, setView] = useState({ width: 0, scroll: 0 });
   const [drag, setDrag] = useState<Draft | null>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
@@ -106,28 +102,11 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
     scroller.scrollLeft = at * px - (at * before - scroller.scrollLeft);
   }, [px, fps]);
 
-  // The pushed edge's hint goes when a click lands anywhere else.
-  const hintRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!stop) return undefined;
-    const away = (e: globalThis.PointerEvent) => {
-      if (!hintRef.current?.contains(e.target as Node)) useEditor.getState().setStop(undefined);
-    };
-    document.addEventListener("pointerdown", away);
-    return () => document.removeEventListener("pointerdown", away);
-  }, [stop]);
-
+  // The stop hint itself lives under the strip (TimelineSlot); here the pushed handle turns yellow.
   const shown = drag ? drag.moved : segment;
-  const pushed: { edge: Edge; live: boolean } | undefined =
-    drag?.edge && drag.moved.limited
-      ? { edge: drag.edge, live: true }
-      : stop &&
-          stop.segmentId === segment.id &&
-          moveEdge(segment, stop.edge, stop.wanted, bounds).limited
-        ? { edge: stop.edge, live: false }
-        : undefined;
-  const over = frameCount(segment) > bounds.max;
-  const warnEdge = pushed?.edge ?? (over ? "out" : undefined);
+  const pushedEdge = drag?.edge && drag.moved.limited ? drag.edge : stopShown(info, stop)?.edge;
+  const over = segment !== undefined && frameCount(segment) > bounds.max;
+  const warnEdge = pushedEdge ?? (over ? "out" : undefined);
 
   /** Frames from the strip's start to the pointer, fractional. */
   const framesAt = (clientX: number) => {
@@ -141,6 +120,7 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
     useEditor.getState().setSelection(orderedSelection(from, to));
 
   const dragEdge = (edge: Edge, clientX: number) => {
+    if (!segment) return;
     const boundary = Math.round(framesAt(clientX));
     const wanted = edge === "in" ? boundary : boundary - 1;
     const moved = moveEdge(segment, edge, wanted, bounds);
@@ -149,6 +129,7 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
   };
 
   const dragSegment = (from: number, clientX: number) => {
+    if (!segment) return;
     const moved = { ...slide(segment, frameUnder(clientX) - from, total), limited: false };
     setDrag({ moved, wanted: moved.inFrame });
     peek(moved.inFrame);
@@ -176,7 +157,7 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
     }
     const other = target.closest<HTMLElement>("[data-segment]")?.dataset.segment;
     if (other) {
-      if (other !== segment.id) state.select(other);
+      if (other !== segment?.id) state.select(other);
       gesture.current = { kind: "segment", x: e.clientX, frame, moving: false };
       return;
     }
@@ -224,7 +205,7 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
       state.setSelection(frames ? { from: current.frame, to: current.frame } : undefined);
       return;
     }
-    if (!drag || e.type === "pointercancel") {
+    if (!drag || !segment || e.type === "pointercancel") {
       setDrag(null);
       return;
     }
@@ -237,7 +218,7 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
 
   // ← → on a focused handle move that edge (Shift: ten frames); the playhead keys stay global.
   const onHandleKey = (edge: Edge) => (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    if (!segment || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
     e.preventDefault();
     e.stopPropagation();
     const step = (e.key === "ArrowLeft" ? -1 : 1) * (e.shiftKey ? 10 : 1);
@@ -304,7 +285,8 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
     }
   }
 
-  const edgeX = (edge: Edge) => (edge === "in" ? shown.inFrame : shown.outFrame + 1) * px;
+  const edgeX = (edge: Edge) =>
+    shown ? (edge === "in" ? shown.inFrame : shown.outFrame + 1) * px : 0;
   const handle = (edge: Edge) => (
     <div
       data-edge={edge}
@@ -313,7 +295,7 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
       aria-label={t(edge === "in" ? "editor.handle.in" : "editor.handle.out")}
       aria-valuemin={0}
       aria-valuemax={total - 1}
-      aria-valuenow={edge === "in" ? shown.inFrame : shown.outFrame}
+      aria-valuenow={edge === "in" ? shown?.inFrame : shown?.outFrame}
       aria-valuetext={timecode(edgeX(edge) / px / fps)}
       className={cx(styles.handle, styles[edge], warnEdge === edge && styles.limit)}
       style={{ left: edgeX(edge) }}
@@ -323,16 +305,10 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
   );
 
   const ranged = selection !== undefined && selection.to > selection.from;
-  const toScreen = (x: number) => PAD + x - view.scroll;
-  const lift = wrapRef.current?.offsetTop ?? 0;
   const tagEdge = drag ? (drag.edge ?? "in") : undefined;
 
   return (
-    <div
-      ref={wrapRef}
-      className={styles.wrap}
-      style={{ "--thumbs": `${thumbsH}px` } as CSSProperties}
-    >
+    <div className={styles.wrap} style={{ "--thumbs": `${thumbsH}px` } as CSSProperties}>
       <div
         ref={scrollerRef}
         className={styles.scroller}
@@ -368,7 +344,7 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
               />
             )}
             {segments
-              .filter((s) => s.id !== segment.id)
+              .filter((s) => s.id !== segment?.id)
               .map((s) => (
                 <div
                   key={s.id}
@@ -380,18 +356,22 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
                   <span className={styles.chip}>{s.name}</span>
                 </div>
               ))}
-            <div
-              data-segment={segment.id}
-              className={cx(styles.trim, drag && !drag.edge && styles.moving)}
-              style={{ left: shown.inFrame * px, width: (shown.outFrame - shown.inFrame + 1) * px }}
-            />
-            {handle("in")}
-            {handle("out")}
-            {tagEdge && (
-              <span
-                className={styles.tag}
-                style={{ left: tagEdge === "in" ? shown.inFrame * px : (shown.outFrame + 1) * px }}
-              >
+            {segment && shown && (
+              <>
+                <div
+                  data-segment={segment.id}
+                  className={cx(styles.trim, drag && !drag.edge && styles.moving)}
+                  style={{
+                    left: shown.inFrame * px,
+                    width: (shown.outFrame - shown.inFrame + 1) * px,
+                  }}
+                />
+                {handle("in")}
+                {handle("out")}
+              </>
+            )}
+            {tagEdge && shown && (
+              <span className={styles.tag} style={{ left: edgeX(tagEdge) }}>
                 {t("editor.frameN", { n: tagEdge === "in" ? shown.inFrame : shown.outFrame })}
               </span>
             )}
@@ -399,94 +379,6 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
           </div>
         </div>
       </div>
-
-      {pushed && maxDuration !== undefined && (
-        <Floating x={toScreen(edgeX(pushed.edge))} width={view.width + 2 * PAD} lift={lift}>
-          <div
-            ref={hintRef}
-            className={`ss-toast ss-tone-warning ${styles.hint}`}
-            role="alert"
-            aria-live="assertive"
-          >
-            <span className="ss-tone-icon" aria-hidden>
-              <Icon name={TONE_ICON.warning} size={18} strokeWidth={2} />
-            </span>
-            <span className={styles.hintText}>
-              {t("editor.limit", { max: num(maxDuration, 2), speed: speedText(segment.speed) })}
-            </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              className={styles.tonal}
-              disabled={pushed.live}
-              onClick={() => fitStop(info)}
-            >
-              {t("editor.limit.fit")}
-            </Button>
-          </div>
-        </Floating>
-      )}
-
-      {ranged && !drag && !pushed && (
-        <Floating
-          x={toScreen(((selection.from + selection.to + 1) / 2) * px)}
-          width={view.width + 2 * PAD}
-          lift={lift}
-        >
-          <div className={styles.panel} role="status">
-            <span>
-              {t(`editor.selection.${plural(selection.to - selection.from + 1)}`, {
-                n: selection.to - selection.from + 1,
-              })}
-            </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              icon="plus"
-              className={styles.tonal}
-              onClick={() => addSegment(info)}
-            >
-              {t("editor.selection.make")}
-            </Button>
-          </div>
-        </Floating>
-      )}
-    </div>
-  );
-}
-
-/** Floats above the whole timeline card with a caret down to `x`, the handle or the selection;
- *  kept inside the strip's width. `lift` is how far the strip sits below the card's top. */
-function Floating({
-  x,
-  width,
-  lift,
-  children,
-}: {
-  x: number;
-  width: number;
-  lift: number;
-  children: ReactNode;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState(0);
-  useLayoutEffect(() => {
-    const box = ref.current;
-    if (!box) return undefined;
-    const observer = new ResizeObserver(() => setSize(box.offsetWidth));
-    observer.observe(box);
-    return () => observer.disconnect();
-  }, []);
-  const left = clamp(x - size / 2, 0, Math.max(0, width - size));
-  const caret = clamp(x - left, 24, Math.max(24, size - 24));
-  return (
-    <div
-      ref={ref}
-      className={styles.floating}
-      style={{ left, bottom: `calc(100% + ${lift + 14}px)` }}
-    >
-      {children}
-      <span className={styles.caret} style={{ left: caret }} aria-hidden />
     </div>
   );
 }

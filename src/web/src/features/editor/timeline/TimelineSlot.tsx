@@ -1,23 +1,33 @@
-import type { CSSProperties } from "react";
-import { Card, Icon, IconButton } from "../../../ds";
+import { useEffect, useRef, type CSSProperties } from "react";
+import { Button, Card, Icon, IconButton, TONE_ICON } from "../../../ds";
 import { useHotkey } from "../../../shared/hotkeys";
-import { t } from "../../../shared/strings/ru";
-import { num, timecode } from "../format";
+import { plural, t } from "../../../shared/strings/ru";
+import { num, speed as speedText, timecode } from "../format";
 import { frameCount, segmentDuration } from "../model/frame";
 import { useEditor } from "../model/store";
 import { frameAt, timeOf } from "../model/timeline";
 import { FrameStrip } from "./FrameStrip";
 import { SegmentTabs } from "./SegmentTabs";
 import styles from "./TimelineSlot.module.css";
-import { markEdge, stepFrame, useTimeline, type TimelineInfo } from "./useTimeline";
+import {
+  addSegment,
+  fitStop,
+  markEdge,
+  stepFrame,
+  stopShown,
+  useTimeline,
+  type TimelineInfo,
+} from "./useTimeline";
 
-/** The sunken zone under the canvas (artboards 3a, 3b): the segments, the transport, the frame
- *  strip, the I/O read-outs and the «Обзор ↔ Кадры» scale. `active` is false while another
+/** The sunken zone under the canvas (artboards 3a, 3b): the segments with the «Обзор ↔ Кадры»
+ *  scale, the transport, the frame strip, the I/O read-outs and the stop hint under it. The
+ *  scale sits up by the tabs, not in the bottom row as on 3a: so the hint fits in that row. `active` is false while another
  *  section covers the editor: its keys stay silent then. */
 export function TimelineSlot({ active }: { active: boolean }) {
   const info = useTimeline();
   const playing = useEditor((s) => s.playing);
   const setPlaying = useEditor((s) => s.setPlaying);
+  const stop = useEditor((s) => s.stop);
 
   const on = active && info !== undefined;
   useHotkey("prevFrame", () => info && stepFrame(info, -1), on);
@@ -28,12 +38,13 @@ export function TimelineSlot({ active }: { active: boolean }) {
   if (!info) return null;
   const { segment, fps, maxDuration, bounds } = info;
   const label = t(playing ? "editor.pause" : "editor.play");
-  const over = frameCount(segment) > bounds.max;
+  const over = segment !== undefined && frameCount(segment) > bounds.max;
 
   return (
     <Card variant="sunken" className={styles.timeline} aria-label={t("editor.timeline")}>
       <div className={styles.head}>
         <SegmentTabs info={info} />
+        <Scale info={info} />
         <Timecode fps={fps} />
       </div>
 
@@ -70,25 +81,90 @@ export function TimelineSlot({ active }: { active: boolean }) {
       </div>
 
       <div className={styles.foot}>
-        <span className={styles.edge}>
-          {t("editor.in", { time: timecode(timeOf(segment.inFrame, fps)) })}
-        </span>
-        <span className={styles.edge}>
-          {t("editor.out", { time: timecode(timeOf(segment.outFrame + 1, fps)) })}
-        </span>
-        {maxDuration !== undefined && (
-          <span className={over ? styles.over : styles.length}>
-            {t("editor.length", {
-              duration: num(segmentDuration(segment, fps), 2),
-              max: num(maxDuration, 2),
-            })}
-          </span>
+        {segment ? (
+          <>
+            <span className={styles.edge}>
+              {t("editor.in", { time: timecode(timeOf(segment.inFrame, fps)) })}
+            </span>
+            <span className={styles.edge}>
+              {t("editor.out", { time: timecode(timeOf(segment.outFrame + 1, fps)) })}
+            </span>
+            {/* The stop hint says the same and more, so it takes the length's place. */}
+            {maxDuration !== undefined && !stopShown(info, stop) && (
+              <span className={over ? styles.over : styles.length}>
+                {t("editor.length", {
+                  duration: num(segmentDuration(segment, fps), 2),
+                  max: num(maxDuration, 2),
+                })}
+              </span>
+            )}
+          </>
+        ) : (
+          <span className={styles.none}>{t("editor.segment.none")}</span>
         )}
-        <span className={styles.spacer} />
-        <Scale info={info} />
+        <Note info={info} />
       </div>
     </Card>
   );
+}
+
+/** Under the strip, in the timeline's own row: the stop hint with «Вписать целиком»
+ *  (artboard 3b, B) or the picked frames with «Сделать отрезком». A click elsewhere puts the
+ *  hint away. */
+function Note({ info }: { info: TimelineInfo }) {
+  const stop = stopShown(
+    info,
+    useEditor((s) => s.stop),
+  );
+  const selection = useEditor((s) => s.selection);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!stop) return undefined;
+    const away = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) useEditor.getState().setStop(undefined);
+    };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [stop]);
+
+  if (stop && info.segment && info.maxDuration !== undefined) {
+    return (
+      <div ref={ref} className={`${styles.note} ${styles.warn}`} role="alert">
+        <Icon name={TONE_ICON.warning} size={16} strokeWidth={2} />
+        {t("editor.limit", {
+          max: num(info.maxDuration, 2),
+          speed: speedText(info.segment.speed),
+        })}
+        <Button
+          size="sm"
+          variant="ghost"
+          className={styles.noteAction}
+          onClick={() => fitStop(info)}
+        >
+          {t("editor.limit.fit")}
+        </Button>
+      </div>
+    );
+  }
+  if (selection && selection.to > selection.from) {
+    const n = selection.to - selection.from + 1;
+    return (
+      <div className={styles.note} role="status">
+        {t(`editor.selection.${plural(n)}`, { n })}
+        <Button
+          size="sm"
+          variant="ghost"
+          icon="plus"
+          className={styles.noteAction}
+          onClick={() => addSegment(info)}
+        >
+          {t("editor.selection.make")}
+        </Button>
+      </div>
+    );
+  }
+  return null;
 }
 
 /** «00:02.640 · кадр 79»: its own subscription to the clock. */

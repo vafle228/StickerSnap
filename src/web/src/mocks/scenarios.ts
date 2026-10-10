@@ -6,6 +6,7 @@ export const SCENARIOS = {
   offline: "Нет сети",
   "long-video": "Длинное видео",
   "short-gif": "Короткий GIF",
+  "no-segments": "Без отрезков",
 } as const;
 
 export type Scenario = keyof typeof SCENARIOS;

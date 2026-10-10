@@ -1,6 +1,4 @@
-/* Positioned: the stop hint and the selection's panel float above it. */
 .timeline {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -24,11 +22,60 @@
   min-width: 0;
 }
 
-/* The chosen segment: the tonal look of artboard 3a (no such variant in the DS). */
-.tab[aria-pressed="true"] {
+/* A segment's tab: its name to choose it and a cross to delete it, one pill (artboard 3a's
+   secondary and, when chosen, tonal buttons). */
+.tab {
+  display: inline-flex;
+  align-items: center;
+  height: var(--size-control-sm);
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-raised);
+  color: var(--ink);
+}
+
+.tab.chosen {
   background: var(--primary-soft);
-  color: var(--primary-ink);
   box-shadow: none;
+  color: var(--primary-ink);
+}
+
+.tabName,
+.tabDelete {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tabName {
+  height: 100%;
+  padding: 0 4px 0 12px;
+  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+  font: 600 13px/18px var(--font-sans);
+  white-space: nowrap;
+}
+
+.tabDelete {
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 4px;
+  border-radius: var(--radius-pill);
+  opacity: 0.6;
+}
+
+.tabDelete:hover {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  opacity: 1;
+}
+
+.tabName:focus-visible,
+.tabDelete:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .time {
@@ -69,7 +116,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
+  min-height: var(--size-control-sm);
   padding-left: 124px;
   font: var(--type-timecode);
 }
@@ -86,12 +134,40 @@
   color: var(--warning);
 }
 
-.spacer {
-  flex: 1;
+.none {
+  font: var(--type-caption);
+  color: var(--ink-muted);
+}
+
+/* The note under the strip: a soft pill in the timeline's row, never over the canvas. */
+.note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--size-control-sm);
+  padding: 0 4px 0 12px;
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary-ink);
+  font: 600 13px/18px var(--font-sans);
+  white-space: nowrap;
+}
+
+.note.warn {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.noteAction {
+  height: 24px;
+  padding: 0 10px;
+  background: var(--surface-raised);
+  color: var(--ink);
 }
 
 .scale {
   display: inline-flex;
+  margin-right: var(--space-3);
   align-items: center;
   gap: var(--space-2);
   font: var(--type-caption);
