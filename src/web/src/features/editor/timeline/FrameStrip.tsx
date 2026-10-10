@@ -418,7 +418,7 @@ function Ruler({
   const ticks = [];
   for (let i = Math.ceil(first / fps / step); i * step * fps <= last + 1; i++) {
     const x = i * step * fps * px;
-    if (i > 0 && x > end - 48) break;
+    if (i > 0 && x > end - 72) break;
     ticks.push(
       <span key={i} className={cx(styles.tick, i === 0 && styles.start)} style={{ left: x }}>
         {i === 0 ? t("editor.seconds", { value: 0 }) : seconds(i * step)}
@@ -429,7 +429,7 @@ function Ruler({
     <div className={styles.ruler} aria-hidden>
       {ticks}
       <span className={cx(styles.tick, styles.end)} style={{ left: end }}>
-        {t("editor.seconds", { value: seconds(total / fps) })}
+        {t("editor.seconds", { value: seconds(Math.round((total / fps) * 10) / 10) })}
       </span>
     </div>
   );
