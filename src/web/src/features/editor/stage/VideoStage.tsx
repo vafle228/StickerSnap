@@ -47,14 +47,20 @@ export function VideoStage({ className }: { className?: string }) {
   useEffect(() => setUsable(false), [mediaUrl]);
 
   const fps = source ? fpsOf(source) : 30;
+  // Without segments the quick preview loops the whole video.
   usePlayback(
     videoRef,
     usable,
-    segment ?? { inFrame: 0, outFrame: 0, speed: 1, loop: "normal" },
+    segment ?? {
+      inFrame: 0,
+      outFrame: Math.max(0, (source?.frameCount ?? 1) - 1),
+      speed: 1,
+      loop: "normal",
+    },
     fps,
   );
 
-  if (!source || !segment) return null;
+  if (!source) return null;
 
   const fit = fitScale(source, box);
   const scale = zoom === "fit" ? fit : zoom;
@@ -88,14 +94,16 @@ export function VideoStage({ className }: { className?: string }) {
               onError={() => setUsable(false)}
             />
           )}
-          <OutputFrame
-            frame={segment.frame}
-            preset={segment.preset}
-            source={source}
-            limits={limits?.[segment.preset]}
-            scale={scale}
-            labelled={cropTool}
-          />
+          {segment && (
+            <OutputFrame
+              frame={segment.frame}
+              preset={segment.preset}
+              source={source}
+              limits={limits?.[segment.preset]}
+              scale={scale}
+              labelled={cropTool}
+            />
+          )}
         </div>
       </div>
 
@@ -112,7 +120,7 @@ export function VideoStage({ className }: { className?: string }) {
       <span className={`ss-card-glass ${styles.chip} ${styles.chipRight}`}>
         <Icon name="repeat" size={16} />
         {t("editor.preview.quick", {
-          loop: t(segment.loop === "pingpong" ? "editor.loop.pingpong" : "editor.loop.normal"),
+          loop: t(segment?.loop === "pingpong" ? "editor.loop.pingpong" : "editor.loop.normal"),
         })}
       </span>
     </section>

@@ -91,6 +91,50 @@ export function summaryOf(p: Project): ProjectSummary {
   };
 }
 
+/* Timeline scenarios change the first project, the one the editor reopens after F5. */
+
+/** Two minutes of Full HD at 29,97 fps: the scale and the scroll, overlapping segments. */
+function longVideo(p: Project) {
+  p.source = {
+    ...p.source,
+    width: 1920,
+    height: 1080,
+    fps: { num: 30000, den: 1001 },
+    frameCount: 3596,
+    durationSec: 119.99,
+    sizeBytes: 48_200_000,
+  };
+  const square = { x: 420, y: 0, width: 1080, height: 1080 };
+  p.scene.segments = [
+    segment("seg-1", "Стикер 1", 300, 388),
+    segment("seg-2", "Стикер 2", 1200, 1259),
+    segment("seg-3", "Стикер 3", 1230, 1318),
+    segment("seg-4", "Стикер 4", 3507, 3595),
+  ].map((s) => ({ ...s, frame: { mode: "crop", preset: "square", rect: square } }));
+}
+
+/** A 1,5 s GIF at 12 fps: few enough frames that «Обзор» already shows each one. */
+function shortGif(p: Project) {
+  p.source = {
+    ...p.source,
+    fileName: "Кот и клавиатура.gif",
+    format: "gif",
+    codec: "gif",
+    width: 480,
+    height: 480,
+    fps: { num: 12, den: 1 },
+    frameCount: 18,
+    durationSec: 1.5,
+    hasAlpha: true,
+    sizeBytes: 640_000,
+  };
+  const whole = { x: 0, y: 0, width: 480, height: 480 };
+  p.scene.segments = [segment("seg-1", "Стикер 1", 0, 17)].map((s) => ({
+    ...s,
+    frame: { mode: "crop", preset: "square", rect: whole },
+  }));
+}
+
 function pack(name: string, title: string, count: number, minutesAgo: number): PackSummary {
   return {
     name: `${name}_by_${BOT}`,
@@ -129,6 +173,10 @@ export function createDb(scenario: Scenario): MockDb {
   if (scenario === "source-missing" && projects[0]) {
     projects[0].source = { ...projects[0].source, status: "missing" };
   }
+  if (scenario === "long-video" && projects[0]) longVideo(projects[0]);
+  if (scenario === "short-gif" && projects[0]) shortGif(projects[0]);
+  // Every segment deleted: the editor still opens, export waits for a new one.
+  if (scenario === "no-segments" && projects[0]) projects[0].scene.segments = [];
 
   const packs: Pack[] = [
     pack("reactions_call", "Реакции с созвона", 14, 2),

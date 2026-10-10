@@ -53,7 +53,7 @@ export function EditorScreen({ hidden }: { hidden: boolean }) {
           {ready ? (
             <>
               <VideoStage className={styles.stage} />
-              <TimelineSlot />
+              <TimelineSlot active={!hidden} />
             </>
           ) : projectId ? (
             <p className={styles.loading} role="status">

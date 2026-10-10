@@ -1,6 +1,7 @@
 import type { Estimate, PackNameCheck, Settings, ValidationReport } from "../shared/api/types";
 import { app, packSummary, summaryOf, type MockDb } from "./data";
 import { fakeHub } from "./fakeHub";
+import { frameSprite } from "./frames";
 import { cancelJob, startJob } from "./jobs";
 import { noContent, problem, route, webp } from "./route";
 
@@ -111,7 +112,18 @@ export function handlers(db: MockDb) {
 
     // ----------------------------------------------------------- Медиа проекта
     route("get", "/api/v1/projects/{id}/cover", () => webp()),
-    route("get", "/api/v1/projects/{id}/frames", () => webp()),
+    route("get", "/api/v1/projects/{id}/frames", ({ params, url }) => {
+      const project = findProject(params.id);
+      if (!project) return problem("project_not_found");
+      if (project.source.status === "missing") return problem("source_not_found");
+      const query = (name: string) => Number(url.searchParams.get(name) ?? NaN);
+      const from = query("from");
+      const count = query("count");
+      const height = query("height");
+      const fits = from >= 0 && count >= 1 && from + count <= project.source.frameCount;
+      if (!fits || !(height >= 1)) return problem("bad_request");
+      return frameSprite(project.source, from, count, height);
+    }),
     route("get", "/api/v1/projects/{id}/media", ({ params }) =>
       findProject(params.id)?.source.status === "missing"
         ? problem("source_not_found")
