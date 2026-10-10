@@ -30,7 +30,13 @@ export const app: AppInfo = {
   },
 };
 
-function segment(id: string, name: string, inFrame: number, outFrame: number): Segment {
+function segment(
+  id: string,
+  name: string,
+  inFrame: number,
+  outFrame: number,
+  preset: Segment["preset"] = "sticker",
+): Segment {
   return {
     id,
     name,
@@ -40,7 +46,7 @@ function segment(id: string, name: string, inFrame: number, outFrame: number): S
     frame: { mode: "crop", preset: "square", rect: { x: 140, y: 0, width: 360, height: 360 } },
     speed: 1,
     loop: "normal",
-    preset: "sticker",
+    preset,
     longSticker: false,
   };
 }
@@ -151,7 +157,12 @@ function pack(name: string, title: string, count: number, minutesAgo: number): P
 export interface MockDb {
   scenario: Scenario;
   settings: Settings;
+  /** «Недавние»; the server answers them newest first */
   projects: Project[];
+  /** Taken off the list with «Убрать из списка»: the file is still there to open by path */
+  forgotten: Project[];
+  /** What a new project is made of: demo data has no video to read */
+  template: Project;
   jobs: Map<string, Job>;
   account: AccountLink;
   packs: Pack[];
@@ -169,7 +180,26 @@ export function createDb(scenario: Scenario): MockDb {
     project("6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e53", "Пёс на диване", 60 * 26, [
       segment("seg-1", "Стикер 1", 0, 59),
     ]),
+    project(
+      "6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e54",
+      "Эмодзи для чата",
+      60 * 30,
+      [1, 2, 3, 4, 5].map((n) => segment(`seg-${n}`, `Эмодзи ${n}`, n * 30, n * 30 + 44, "emoji")),
+    ),
+    project("6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e55", "Танец под припев", 60 * 24 * 8, [
+      segment("seg-1", "Стикер 1", 10, 84),
+    ]),
+    project(
+      "6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e56",
+      "Лето на даче",
+      60 * 24 * 13,
+      [1, 2, 3, 4].map((n) => segment(`seg-${n}`, `Стикер ${n}`, n * 40, n * 40 + 35)),
+    ),
+    project("6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e57", "Первый тест", 60 * 24 * 27, [
+      segment("seg-1", "Стикер 1", 0, 35),
+    ]),
   ];
+  const template = structuredClone(projects[0] as Project);
   if (scenario === "source-missing" && projects[0]) {
     projects[0].source = { ...projects[0].source, status: "missing" };
   }
@@ -177,6 +207,8 @@ export function createDb(scenario: Scenario): MockDb {
   if (scenario === "short-gif" && projects[0]) shortGif(projects[0]);
   // Every segment deleted: the editor still opens, export waits for a new one.
   if (scenario === "no-segments" && projects[0]) projects[0].scene.segments = [];
+  // The first launch: nothing made yet, «Проекты» shows its empty state.
+  if (scenario === "no-projects") projects.length = 0;
 
   const packs: Pack[] = [
     pack("reactions_call", "Реакции с созвона", 14, 2),
@@ -201,6 +233,8 @@ export function createDb(scenario: Scenario): MockDb {
       recentEmoji: ["😂", "🔥", "👍", "😺"],
     },
     projects,
+    forgotten: [],
+    template,
     jobs: new Map(),
     account,
     packs,

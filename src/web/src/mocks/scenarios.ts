@@ -1,6 +1,8 @@
 /** The dev switch of the demo data (contract, «Как контракт попадает в код»). */
 export const SCENARIOS = {
   ok: "Всё в порядке",
+  "no-projects": "Без проектов",
+  "project-errors": "Ошибки проекта",
   "source-missing": "Исходник не найден",
   "pack-full": "Пак заполнен",
   offline: "Нет сети",
