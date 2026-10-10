@@ -21,6 +21,11 @@
   height: 64px;
 }
 
+.zone :global(.ss-drop-icon svg) {
+  width: 32px;
+  height: 32px;
+}
+
 .zone :global(.ss-drop-title) {
   font: var(--type-title-2);
   letter-spacing: var(--type-title-2-tracking);

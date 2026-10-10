@@ -70,7 +70,8 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  /* Four columns as on artboard 6; fewer only when the window is too narrow for them */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-5);
   margin: 0;
   /* room for the cards' raised shadows */
@@ -83,10 +84,41 @@
   min-width: 0;
 }
 
+@media (max-width: 1180px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Artboard 6: the cover 8px inside the card and 192px tall, the name row under it */
 .card {
   flex: 1;
+  gap: 0;
   width: auto;
   min-width: 0;
+  padding: 8px 0 0;
+}
+
+.card :global(.ss-checker) {
+  height: 192px;
+  margin: 0 8px;
+  aspect-ratio: auto;
+}
+
+/* Without a real cover the placeholder sits small in the middle, as the artboard's covers do */
+.card :global(.ss-checker > svg) {
+  width: 112px;
+  height: 112px;
+}
+
+.card :global(.ss-project-foot) {
+  padding: 12px 8px 12px 16px;
 }
 
 /* The tile is as tall as a card next to it, its text centred */
@@ -94,7 +126,7 @@
   flex: 1;
   height: auto;
   aspect-ratio: auto;
-  min-height: 200px;
+  min-height: 264px;
   padding: var(--space-5);
 }
 
@@ -147,4 +179,9 @@
   justify-content: center;
   gap: var(--space-2);
   margin-top: var(--space-3);
+}
+
+/* The card menu of artboard 6 is 248px wide: «Опубликовать в Telegram…» fits on one line */
+.menu {
+  width: 248px;
 }

@@ -13,7 +13,7 @@ import { durationChip, projectMeta } from "./format";
 import styles from "./ProjectsScreen.module.css";
 import { RenameField } from "./RenameField";
 
-type Action = "rename" | "reveal" | "forget" | "trash";
+type Action = "publish" | "rename" | "reveal" | "forget" | "trash";
 
 /** Artboard 6: recent projects newest first, a new one from a video, a .ssproj from disk.
  *  Projects save themselves, so there is no «Сохранить». A click on a card opens it in the
@@ -49,6 +49,8 @@ export function ProjectsScreen() {
   const menuProject = list.find((p) => p.id === menu?.id);
 
   const items: (MenuItem<Action> | "-")[] = [
+    // Publishing is stage 1c: off here, as the rainbow button in the editor's header is
+    { value: "publish", label: t("projects.publish"), icon: "send", disabled: true },
     { value: "rename", label: t("projects.rename"), icon: "pencil", shortcut: "F2" },
     ...(desktop
       ? [{ value: "reveal" as const, label: t("projects.reveal"), icon: "folder" as const }]
@@ -191,6 +193,7 @@ export function ProjectsScreen() {
         open={menuProject !== undefined}
         onClose={() => setMenu(null)}
         label={t("projects.menu")}
+        menuClassName={styles.menu}
         items={items}
         onSelect={(action) => menuProject && act(action, menuProject)}
       />

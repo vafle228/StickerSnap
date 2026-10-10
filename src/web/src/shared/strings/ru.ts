@@ -101,6 +101,7 @@ export const ru = {
   "projects.list": "Недавние проекты",
   "projects.open": "Открыть проект «{name}»",
   "projects.menu": "Действия с проектом",
+  "projects.publish": "Опубликовать в Telegram…",
   "projects.rename": "Переименовать",
   "projects.renameField": "Название проекта",
   "projects.renameFailed": "Нет места или доступа к папке. Осталось прежнее название.",

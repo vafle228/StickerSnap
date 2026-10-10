@@ -48,7 +48,8 @@ export function EditorScreen({ hidden }: { hidden: boolean }) {
 
   return (
     <div className={styles.editor} hidden={hidden}>
-      <EditorHeader ready={ready} />
+      {/* The start screen has the window to itself (artboard 6): no name, no import, no publish */}
+      {projectId && <EditorHeader ready={ready} />}
       <div className={styles.body}>
         <div className={styles.work}>
           {ready ? (
