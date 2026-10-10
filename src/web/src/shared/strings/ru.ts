@@ -48,6 +48,37 @@ export const ru = {
   "editor.timecode": "{time} · кадр {frame}",
   "editor.length": "{duration} с из {max}",
   "editor.loading": "Открываю проект…",
+  "editor.segments": "Отрезки",
+  "editor.segment.tab": "{name} · {duration} с",
+  "editor.segment.name": "Стикер {n}",
+  "editor.segment.add": "Отрезок",
+  "editor.segment.addHint": "Новый отрезок: из выделения или от плейхеда",
+  "editor.segment.delete": "Удалить «{name}»",
+  "editor.segment.none": "Отрезков нет: протяните по полосе или нажмите «+ Отрезок»",
+  "editor.segment.deleted": "«{name}» удалён",
+  "editor.segment.restore": "Вернуть",
+  "editor.prevFrame": "Предыдущий кадр (←)",
+  "editor.nextFrame": "Следующий кадр (→)",
+  "editor.in": "I {time}",
+  "editor.out": "O {time}",
+  "editor.handle.in": "Начало отрезка (I)",
+  "editor.handle.out": "Конец отрезка (O)",
+  "editor.frames": "Кадры источника",
+  "editor.frameN": "Кадр {n}",
+  "editor.seconds": "{value} с",
+  "editor.scale": "Масштаб таймлайна",
+  "editor.scale.overview": "Обзор",
+  "editor.scale.frames": "Кадры",
+  "editor.limit": "Максимум {max} с при скорости {speed}",
+  "editor.limit.fit": "Вписать целиком",
+  "editor.over": "{duration} с при {speed}, лимит {max} с",
+  "editor.over.speedUp": "Ускорить до {speed}",
+  "editor.over.shorten": "Укоротить до {duration} с",
+  "editor.reach": "до {max} с",
+  "editor.selection.one": "Выделен {n} кадр",
+  "editor.selection.few": "Выделено {n} кадра",
+  "editor.selection.many": "Выделено {n} кадров",
+  "editor.selection.make": "Сделать отрезком",
   "editor.start.title": "Проект не открыт",
   "editor.start.text": "Продолжите недавний проект или начните новый в «Проектах».",
   "editor.start.projects": "Открыть «Проекты»",
@@ -86,6 +117,9 @@ export const ru = {
   "inspector.longSticker": "Длинный стикер",
   "inspector.longStickerHint": "Эксперимент · больше {max} с",
   "inspector.exportWebm": "Экспорт WEBM",
+  "inspector.noSegments":
+    "Отрезков нет. Протяните по полосе кадров или нажмите «+ Отрезок», чтобы выбрать стикер.",
+  "inspector.noSegmentsReason": "Нет отрезка",
   "inspector.exportAll": "Экспортировать все отрезки ({count})",
 
   "hotkey.playPause": "Пуск и пауза",
@@ -167,4 +201,14 @@ export function t(key: StringKey, params?: StringParams): string {
   return text.replace(/\{(\w+)\}/g, (match, name: string) =>
     params[name] === undefined ? match : String(params[name]),
   );
+}
+
+/** The Russian plural form of a count, for keys ending in .one, .few and .many:
+ *  1 кадр, 3 кадра, 5 кадров, 11 кадров, 21 кадр. */
+export function plural(n: number): "one" | "few" | "many" {
+  const tens = n % 100;
+  const ones = n % 10;
+  if (ones === 1 && tens !== 11) return "one";
+  if (ones >= 2 && ones <= 4 && (tens < 12 || tens > 14)) return "few";
+  return "many";
 }

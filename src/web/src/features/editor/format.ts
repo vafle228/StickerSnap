@@ -20,6 +20,11 @@ export function fps(value: number): string {
   return Number.isInteger(value) ? String(value) : num(value, 2);
 }
 
+/** 12.4 → «12,4», 8 → «8»: seconds on the ruler, at most two decimals. */
+export function seconds(value: number): string {
+  return num(value, 2).replace(/,?0+$/, "");
+}
+
 /** 1.25 → «1,25×». */
 export function speed(value: number): string {
   return `${num(value, Number.isInteger(value) ? 0 : 2).replace(/,?0$/, "")}×`;
