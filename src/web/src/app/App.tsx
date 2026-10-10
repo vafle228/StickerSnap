@@ -1,5 +1,7 @@
 import { Button, NavRail, type NavRailItem } from "../ds";
+import { useEffect } from "react";
 import { EditorScreen } from "../features/editor/EditorScreen";
+import { ProjectsScreen } from "../features/projects/ProjectsScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { t, type StringKey } from "../shared/strings/ru";
 import { useLiveUpdates } from "../shared/api/live";
@@ -23,12 +25,6 @@ const MAIN: NavRailItem<Section>[] = [
 const BOTTOM: NavRailItem<Section>[] = [
   { value: "settings", label: t("nav.settings"), icon: "settings" },
 ];
-const TITLES: Record<Section, StringKey> = {
-  editor: "nav.editor",
-  projects: "nav.projects",
-  packs: "nav.packs",
-  settings: "nav.settings",
-};
 const MODE_LABELS: Record<ThemeMode, StringKey> = {
   system: "theme.system",
   light: "theme.light",
@@ -42,6 +38,7 @@ export function App() {
   const setSection = useApp((s) => s.setSection);
   const mode = useTheme((s) => s.mode);
   const setTheme = useSetTheme();
+  useNoStrayDrops();
 
   return (
     <div className={`ss-root ${styles.shell}`}>
@@ -58,10 +55,11 @@ export function App() {
         {/* The editor is never unmounted: switching sections keeps its scene and playhead. */}
         <EditorScreen hidden={section !== "editor"} />
         {section === "settings" && <SettingsScreen />}
-        {section !== "editor" && section !== "settings" && (
+        {section === "projects" && <ProjectsScreen />}
+        {section === "packs" && (
           <>
             <header className={styles.header}>
-              <h1 className={styles.title}>{t(TITLES[section])}</h1>
+              <h1 className={styles.title}>{t("nav.packs")}</h1>
               <div className={styles.themes} role="group" aria-label={t("theme.label")}>
                 {THEME_MODES.map((m) => (
                   <Button
@@ -84,4 +82,17 @@ export function App() {
       <NotifyHost />
     </div>
   );
+}
+
+/** A file dropped beside a drop zone must not make the browser leave the app to show it. */
+function useNoStrayDrops() {
+  useEffect(() => {
+    const stop = (e: DragEvent) => e.preventDefault();
+    window.addEventListener("dragover", stop);
+    window.addEventListener("drop", stop);
+    return () => {
+      window.removeEventListener("dragover", stop);
+      window.removeEventListener("drop", stop);
+    };
+  }, []);
 }
