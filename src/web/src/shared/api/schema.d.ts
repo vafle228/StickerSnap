@@ -272,7 +272,7 @@ export interface paths {
         };
         /**
          * Полоса кадров для таймлайна, одна картинка-спрайт
-         * @description Артборд 3b «Кадры». Этап 1a.
+         * @description Артборд 3b «Кадры». Этап 1a. В спрайте count кадров подряд начиная с from, в один ряд слева направо; каждый кадр высотой height и шириной по пропорции источника.
          */
         get: operations["getProjectFrames"];
         put?: never;
