@@ -1,0 +1,185 @@
+/* The insides of the Settings sections (artboard 5). */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-5) var(--space-6);
+}
+
+.label {
+  font: 600 14px/20px var(--font-sans);
+  color: var(--ink);
+}
+
+.eyebrow {
+  margin: 0;
+  font: var(--type-eyebrow);
+  letter-spacing: var(--type-eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.muted {
+  font: 500 13px/18px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.note {
+  composes: muted;
+  margin: 0;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* Telegram: the account card, sunken */
+.account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-inset);
+}
+
+.accountIcon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary-ink);
+}
+
+.accountBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.accountLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.accountName {
+  font: 600 17px/24px var(--font-sans);
+  color: var(--ink);
+}
+
+/* Folders: the path in a mono field, the buttons beside it */
+.folderLine {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.path {
+  flex: 1;
+  min-width: 0;
+}
+
+.path input {
+  font: 500 13px/18px var(--font-mono);
+  text-overflow: ellipsis;
+}
+
+/* Hotkeys: two columns of rows with a line under each */
+.keys {
+  display: grid;
+  /* two columns as on artboard 5, one in a narrow window */
+  grid-template-columns: repeat(auto-fit, minmax(max(260px, 40%), 1fr));
+  column-gap: var(--space-6);
+  margin: 0;
+}
+
+.key {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: var(--size-row);
+  border-bottom: 1px solid var(--border);
+  font: 500 14px/20px var(--font-sans);
+}
+
+.key dd {
+  margin: 0;
+}
+
+/* About */
+.about {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.tile {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-inset);
+  color: var(--ink-muted);
+}
+
+.aboutBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 200px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.licenses {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.license {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: var(--size-row);
+  border-top: 1px solid var(--border);
+  font: 500 14px/20px var(--font-sans);
+}
+
+.license:first-child {
+  border-top: 0;
+}
+
+.license a {
+  color: var(--primary-ink);
+}
