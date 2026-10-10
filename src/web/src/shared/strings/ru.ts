@@ -1,4 +1,7 @@
+import type { ErrorCode } from "../api/types";
+
 // All interface strings. Tone follows the design system README: «вы», «пак», Russian numbers.
+// {name} in a string is filled from params: t("error.format_unsupported.text", { ext: "avi" }).
 export const ru = {
   "nav.label": "Разделы приложения",
   "nav.editor": "Редактор",
@@ -10,10 +13,90 @@ export const ru = {
   "theme.light": "Светлая",
   "theme.dark": "Тёмная",
   "shell.empty": "Раздел появится на следующих этапах.",
+
+  "common.close": "Закрыть",
+  "common.cancel": "Отмена",
+  "common.retry": "Повторить",
+  "common.details": "Подробности",
+  "common.traceId": "Номер ошибки: {traceId}",
+
+  "hotkey.playPause": "Пуск и пауза",
+  "hotkey.prevFrame": "Кадр назад",
+  "hotkey.nextFrame": "Кадр вперёд",
+  "hotkey.markIn": "Начало отрезка",
+  "hotkey.markOut": "Конец отрезка",
+  "hotkey.undo": "Отменить",
+  "hotkey.redo": "Повторить",
+  "hotkey.rename": "Переименовать",
+  "hotkey.delete": "Удалить",
+  "hotkey.scope.editor": "Редактор",
+  "hotkey.scope.projects": "Проекты",
+
+  // Error codes of the API contract (section «Ошибки»): a title says what happened, a text what to do.
+  "error.source_unreadable.title": "Не получается прочитать видео",
+  "error.source_unreadable.text":
+    "Файл повреждён или в нём нет целых кадров. Попробуйте другой файл.",
+  "error.format_unsupported.title": "Этот формат не поддерживается",
+  "error.format_unsupported.text":
+    "Файлы .{ext} пока не открываются. Подойдут MP4, MOV, WEBM, GIF и WEBP.",
+  "error.source_not_found.title": "Видео не найдено",
+  "error.source_not_found.text": "Файла больше нет по прежнему пути. Укажите, где он теперь.",
+  "error.project_not_found.title": "Проект не найден",
+  "error.project_not_found.text": "Файл проекта переместили или удалили.",
+  "error.project_invalid.title": "Это не проект StickerSnap",
+  "error.project_invalid.text": "Файл повреждён или сделан другой программой.",
+  "error.project_too_new.title": "Проект из более новой версии",
+  "error.project_too_new.text": "Обновите StickerSnap, чтобы открыть его.",
+  "error.save_failed.title": "Не получается сохранить проект",
+  "error.save_failed.text": "Нет места или доступа к папке. Попробуем ещё раз через 30 секунд.",
+  "error.revision_conflict.title": "Проект изменили в другой вкладке",
+  "error.revision_conflict.text": "Обновите страницу, чтобы увидеть последнюю версию.",
+  "error.disk_full.title": "Не хватает места на диске",
+  "error.disk_full.text": "Освободите место и повторите экспорт.",
+  "error.render_failed.title": "Не получилось сделать стикер",
+  "error.render_failed.text": "FFmpeg остановился с ошибкой. Подробности помогут разобраться.",
+  "error.cannot_fit.title": "Стикер не влезает в лимит",
+  "error.cannot_fit.text":
+    "Даже с самым сильным сжатием файл больше лимита. Укоротите или ускорьте отрезок.",
+  "error.validation_failed.title": "Не проходит проверку Telegram",
+  "error.validation_failed.text": "Откройте проверку, чтобы увидеть, какое правило нарушено.",
+  "error.account_not_linked.title": "Telegram не привязан",
+  "error.account_not_linked.text": "Привяжите аккаунт в настройках, чтобы публиковать стикеры.",
+  "error.bot_blocked.title": "Бот остановлен",
+  "error.bot_blocked.text": "Откройте бота в Telegram и нажмите «Перезапустить».",
+  "error.network_unavailable.title": "Нет связи с Telegram",
+  "error.network_unavailable.text": "Проверьте интернет и повторите.",
+  "error.pack_name_invalid.title": "Такая ссылка не подойдёт",
+  "error.pack_name_invalid.text": "Латинские буквы, цифры и подчёркивание, начинается с буквы.",
+  "error.pack_name_taken.title": "Ссылка уже занята",
+  "error.pack_name_taken.text": "Возьмите {suggestion} или придумайте другую.",
+  "error.pack_full.title": "Пак заполнен",
+  "error.pack_full.text": "В паке уже максимум стикеров. Выберите другой или создайте новый.",
+  "error.pack_not_found.title": "Пак не найден в Telegram",
+  "error.pack_not_found.text": "Его удалили. Уберите пак из списка или создайте новый.",
+  "error.not_our_pack.title": "Это не пак StickerSnap",
+  "error.not_our_pack.text": "Добавить можно только паки, созданные в StickerSnap.",
+  "error.rate_limited.title": "Telegram просит подождать",
+  "error.rate_limited.text": "Продолжим сами через {retryAfterSec} с.",
+  "error.telegram_error.title": "Telegram не принял запрос",
+  "error.telegram_error.text": "Повторите позже. Подробности помогут разобраться.",
+  "error.bad_request.title": "Что-то пошло не так",
+  "error.bad_request.text": "Повторите действие. Если не поможет, перезапустите приложение.",
+  "error.internal.title": "Что-то пошло не так",
+  "error.internal.text": "Повторите действие. Если не поможет, перезапустите приложение.",
 } as const;
 
 export type StringKey = keyof typeof ru;
 
-export function t(key: StringKey): string {
-  return ru[key];
+// The build fails here when a contract error code has no text (contract, section «Ошибки»).
+ru satisfies Record<`error.${ErrorCode}.${"title" | "text"}`, string>;
+
+export type StringParams = Readonly<Record<string, string | number>>;
+
+export function t(key: StringKey, params?: StringParams): string {
+  const text: string = ru[key];
+  if (!params) return text;
+  return text.replace(/\{(\w+)\}/g, (match, name: string) =>
+    params[name] === undefined ? match : String(params[name]),
+  );
 }
