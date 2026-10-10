@@ -1,0 +1,2213 @@
+openapi: 3.1.0
+info:
+  title: StickerSnap API
+  version: 1.0.0
+  summary: Контракт между SPA и локальным ASP.NET-сервером StickerSnap.
+  description: |
+    Машиночитаемая копия документа «StickerSnap — API-контракт»
+    (https://claude.ai/code/artifact/27a215ce-d7a8-4824-a719-5c52df747dd6).
+    Документ — единственный источник правды: любое изменение сначала закрепляется в нём,
+    затем здесь, затем перегенерируются типы (`npm run gen:api`).
+
+    Транспорт: REST поверх HTTP на 127.0.0.1, все пути под `/api/v1`.
+    Ломающее изменение — новый `/api/v2` рядом со старым.
+
+    Доступ: Electron передаёт в SPA порт и одноразовый токен; каждый запрос несёт
+    `Authorization: Bearer <token>`. Без токена — 401.
+
+    Формат: JSON, поля в camelCase, перечисления — строки, даты — ISO 8601 в UTC,
+    размеры — в байтах, необязательное поле отсутствует, а не `null`.
+    Границы отрезков — номера кадров источника, а не секунды.
+    Сервер не присылает текст для человека: только коды и параметры, фразы лежат в `strings/ru.ts`.
+
+    Ошибки: RFC 9457 Problem Details (`application/problem+json`) с полями `code` и `params`,
+    см. схему `Problem` и перечисление `ErrorCode`.
+
+    SignalR: хаб `/hubs/events` (токен — `access_token` в строке запроса) только сообщает о том,
+    что случилось позже ответа: прогресс фоновых задач и привязка аккаунта, плюс снимки изменённых
+    объектов. OpenAPI хабы не описывает, поэтому список событий лежит в расширении `x-events`,
+    а их данные — в `components/schemas`. Вызовов с клиента на сервер через хаб нет.
+
+servers:
+  - url: /
+
+security:
+  - bearerToken: []
+
+tags:
+  - name: app
+    description: Приложение
+  - name: sources
+    description: Источники и проверка
+  - name: projects
+    description: Проекты
+  - name: media
+    description: Медиа проекта
+  - name: jobs
+    description: Фоновые задачи
+  - name: account
+    description: Telegram-аккаунт
+  - name: packs
+    description: Паки
+  - name: publish
+    description: Публикация
+
+x-events:
+  hub: /hubs/events
+  description: |
+    Сервер шлёт целый снимок объекта, а не разницу: SPA кладёт его в кеш TanStack Query
+    через `setQueryData`, и потерянное событие ничего не ломает. При переподключении SPA
+    один раз перечитывает `GET /api/v1/jobs`, `GET /api/v1/projects` и `GET /api/v1/account`;
+    пока хаб лежит, идущие задачи опрашиваются раз в секунду.
+  events:
+    jobUpdated:
+      payload:
+        $ref: '#/components/schemas/Job'
+      when: смена состояния и прогресс не чаще 10 раз в секунду
+      updates: поп-апы, карточка экспорта, плашка черновика, точка на NavRail
+    projectChanged:
+      payload:
+        $ref: '#/components/schemas/ProjectSummary'
+      when: сохранение, новая обложка, исчез или нашёлся исходник
+      updates: сетка «Проектов», недавние на стартовом экране
+    projectRemoved:
+      payload:
+        $ref: '#/components/schemas/ProjectRemovedEvent'
+      when: убран из списка или удалён
+      updates: сетка «Проектов», недавние на стартовом экране
+    accountChanged:
+      payload:
+        $ref: '#/components/schemas/AccountLink'
+      when: бот получил Start, код истёк, бот заблокирован
+      updates: раздел «Публикация в Telegram», плашка 7-2, окно публикации
+    packChanged:
+      payload:
+        $ref: '#/components/schemas/PackSummary'
+      when: отправлен стикер, сверка, удаление
+      updates: список «Моих паков»; открытый пак перечитывается
+    settingsChanged:
+      payload:
+        $ref: '#/components/schemas/Settings'
+      when: после PATCH и после публикации (недавние эмодзи)
+      updates: тема, акцент, «Недавние» в выборе эмодзи
+
+paths:
+  # ---------------------------------------------------------------- Приложение
+  /api/v1/app:
+    get:
+      tags: [app]
+      operationId: getApp
+      summary: Версии, режим, имя бота, лимиты Telegram
+      description: Артборд 5 «О программе», старт SPA. Этап 0.
+      responses:
+        '200':
+          description: Сведения о приложении
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppInfo'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/settings:
+    get:
+      tags: [app]
+      operationId: getSettings
+      summary: Тема, акцент, две папки, недавние эмодзи
+      description: Артборд 5, тема до первой отрисовки. Этап 1a.
+      responses:
+        '200':
+          description: Настройки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+        default:
+          $ref: '#/components/responses/Problem'
+    patch:
+      tags: [app]
+      operationId: patchSettings
+      summary: Меняет одно или несколько полей, сразу без «Сохранить»
+      description: Артборд 5. Этап 1a. Шлёт событие `settingsChanged`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettingsPatch'
+      responses:
+        '200':
+          description: Настройки после изменения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '507':
+          $ref: '#/components/responses/InsufficientStorage'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  # ------------------------------------------------------ Источники и проверка
+  /api/v1/uploads:
+    post:
+      tags: [sources]
+      operationId: createUpload
+      summary: Загрузка файла, только в браузере
+      description: |
+        Артборд 3c-0. Этап 1a. Только веб-режим: десктоп передаёт путь к файлу,
+        браузер сначала загружает файл и дальше ссылается на него через `SourceRef` с `kind: "upload"`.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Файл принят
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Upload'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '507':
+          $ref: '#/components/responses/InsufficientStorage'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/validate:
+    post:
+      tags: [sources]
+      operationId: validateWebm
+      summary: Проверка любого .webm (R8) → чек-лист
+      description: Артборды 3c, 6 (.webm на окно). Этап 1a. Быстрая, синхронная.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourceRequest'
+      responses:
+        '200':
+          description: Чек-лист проверки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  # ------------------------------------------------------------------ Проекты
+  /api/v1/projects:
+    get:
+      tags: [projects]
+      operationId: listProjects
+      summary: Список недавних, новые сверху
+      description: Артборд 6; стартовый экран берёт первые три. Этап 1a.
+      responses:
+        '200':
+          description: Проекты, новые сверху
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectSummary'
+        default:
+          $ref: '#/components/responses/Problem'
+    post:
+      tags: [projects]
+      operationId: createProject
+      summary: Новый проект из видео
+      description: |
+        Артборды 3c A–C, 6. Этап 1a. Читает источник, создаёт .ssproj с одним отрезком.
+        Отмена «Читаю файл» — обрыв запроса.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourceRequest'
+      responses:
+        '201':
+          description: Проект создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '507':
+          $ref: '#/components/responses/InsufficientStorage'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/projects/open:
+    post:
+      tags: [projects]
+      operationId: openProject
+      summary: Открыть .ssproj по пути
+      description: Артборд 6. Этап 1a. Тем же запросом «Вернуть» после «Убрать из списка».
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenProjectRequest'
+      responses:
+        '200':
+          description: Проект открыт
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/projects/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [projects]
+      operationId: getProject
+      summary: Проект целиком
+      description: Артборд 3a. Этап 1a. Источник, сцена, итоги последнего экспорта отрезков.
+      responses:
+        '200':
+          description: Проект
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        default:
+          $ref: '#/components/responses/Problem'
+    patch:
+      tags: [projects]
+      operationId: renameProject
+      summary: Переименовать (F2)
+      description: Артборд 6. Этап 1a.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenameProjectRequest'
+      responses:
+        '200':
+          description: Проект после переименования
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '507':
+          $ref: '#/components/responses/InsufficientStorage'
+        default:
+          $ref: '#/components/responses/Problem'
+    delete:
+      tags: [projects]
+      operationId: deleteProject
+      summary: Убрать из списка или отправить .ssproj в корзину
+      description: |
+        Артборд 6-3. Этап 1a.
+        `mode=forget` — убрать из списка, файл остаётся.
+        `mode=trash` — .ssproj в корзину; исходник и .webm не трогаем.
+      parameters:
+        - name: mode
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [forget, trash]
+      responses:
+        '204':
+          description: Готово
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/projects/{id}/scene:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    put:
+      tags: [projects]
+      operationId: saveScene
+      summary: Автосохранение сцены целиком с ревизией
+      description: Артборды 3a SaveStatus, 6-4. Этап 1a. Чужая ревизия — 409 `revision_conflict`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveSceneRequest'
+      responses:
+        '200':
+          description: Сцена сохранена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveSceneResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '507':
+          $ref: '#/components/responses/InsufficientStorage'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/projects/{id}/source:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    put:
+      tags: [projects]
+      operationId: replaceProjectSource
+      summary: Указать новое видео для «Источник не найден»
+      description: Артборд 6-2. Этап 1a. В ответе предупреждение, если отрезки вышли за конец.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourceRequest'
+      responses:
+        '200':
+          description: Источник заменён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplaceSourceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '507':
+          $ref: '#/components/responses/InsufficientStorage'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  # ------------------------------------------------------------ Медиа проекта
+  /api/v1/projects/{id}/cover:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [media]
+      operationId: getProjectCover
+      summary: Обложка карточки, WebP
+      description: Артборд 6. Этап 1a.
+      responses:
+        '200':
+          description: Обложка
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/projects/{id}/media:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [media]
+      operationId: getProjectMedia
+      summary: Видео для <video> с поддержкой Range
+      description: |
+        Артборд 3a VideoStage. Этап 1a. Исходник как есть или прокси-WEBM,
+        если браузер его не играет (GIF, WEBP, MOV).
+      parameters:
+        - name: Range
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Видео целиком
+          content:
+            video/*:
+              schema:
+                type: string
+                format: binary
+        '206':
+          description: Запрошенный диапазон
+          content:
+            video/*:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/projects/{id}/frames:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [media]
+      operationId: getProjectFrames
+      summary: Полоса кадров для таймлайна, одна картинка-спрайт
+      description: Артборд 3b «Кадры». Этап 1a.
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Номер первого кадра источника
+          schema:
+            type: integer
+            minimum: 0
+        - name: count
+          in: query
+          required: true
+          description: Сколько кадров в полосе
+          schema:
+            type: integer
+            minimum: 1
+        - name: height
+          in: query
+          required: true
+          description: Высота кадра в полосе, px
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Спрайт с кадрами
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/projects/{id}/estimate:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      tags: [media]
+      operationId: estimateSegment
+      summary: Прогноз размера отрезка
+      description: |
+        Артборды 3a Экспорт, 3c G. Этап 1a. Отрезок берётся из тела запроса (ещё не сохранённый):
+        байты, выходной размер, вероятные уступки, подсказки «Укоротить / Ускорить».
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EstimateRequest'
+      responses:
+        '200':
+          description: Прогноз
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Estimate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/files/{fileId}:
+    parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [media]
+      operationId: getFile
+      summary: Файл чернового рендера или готовый .webm
+      description: Артборды 3c D, H. Этап 1a. В веб-режиме — скачивание (R9).
+      responses:
+        '200':
+          description: Файл
+          content:
+            video/webm:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  # ---------------------------------------------------------- Фоновые задачи
+  /api/v1/jobs:
+    post:
+      tags: [jobs]
+      operationId: createJob
+      summary: Запуск preview, export или publish
+      description: |
+        Артборды 3c D–F, 7. Этапы 1a, 1c. Отвечает 202 и `Job`.
+        Прогресс и итог — событие SignalR `jobUpdated`.
+
+        - Новое `preview` по тому же проекту само отменяет предыдущее.
+        - `export` и `publish` идут по сохранённой ревизии: SPA сначала дожидается автосохранения.
+        - Вторая `publish`, пока идёт первая, становится в `queued`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobRequest'
+      responses:
+        '202':
+          description: Задача принята
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+    get:
+      tags: [jobs]
+      operationId: listJobs
+      summary: Идущие и недавно завершённые задачи
+      description: |
+        Артборды 8, 12. Этап 1a. Чтобы после F5 вернуть поп-апы и точку на NavRail.
+        Задачи живут в памяти сервера; завершённые хранятся 10 минут.
+      responses:
+        '200':
+          description: Задачи
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/jobs/{jobId}:
+    parameters:
+      - $ref: '#/components/parameters/JobId'
+    get:
+      tags: [jobs]
+      operationId: getJob
+      summary: Снимок задачи
+      description: Этап 1a. Запасной опрос, если SignalR отвалился.
+      responses:
+        '200':
+          description: Задача
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/jobs/{jobId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/JobId'
+    post:
+      tags: [jobs]
+      operationId: cancelJob
+      summary: Отменить задачу
+      description: Артборды 3c E, F. Этап 1a. Для публикации уже отправленные стикеры остаются в паке.
+      responses:
+        '200':
+          description: Задача после отмены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/jobs/{jobId}/retry:
+    parameters:
+      - $ref: '#/components/parameters/JobId'
+    post:
+      tags: [jobs]
+      operationId: retryJob
+      summary: «Повторить сейчас»
+      description: Артборды 3c F, 7-6. Этап 1c. Для неушедших стикеров или неудавшегося экспорта.
+      responses:
+        '202':
+          description: Задача снова в работе
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  # -------------------------------------------------------- Telegram-аккаунт
+  /api/v1/account:
+    get:
+      tags: [account]
+      operationId: getAccount
+      summary: Состояние привязки
+      description: Артборды 5, 7-2. Этап 1c. Не привязан / ждём Start / привязан / ошибка.
+      responses:
+        '200':
+          description: Состояние привязки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountLink'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/account/link:
+    post:
+      tags: [account]
+      operationId: startAccountLink
+      summary: Одноразовый код и ссылка на бота
+      description: |
+        Артборды 5-1, 5-2. Этап 1c. Ссылка вида `t.me/StickerSnapAppBot?start=<код>`;
+        дальше сервер ждёт Start. Итог — событие SignalR `accountChanged` (Start нажат, код истёк).
+      responses:
+        '200':
+          description: Привязка в состоянии `pending`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountLink'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/Problem'
+    delete:
+      tags: [account]
+      operationId: deleteAccountLink
+      summary: «Отмена» ожидания или «Отвязать»
+      description: Артборд 5. Этап 1c.
+      responses:
+        '200':
+          description: Привязка в состоянии `unlinked`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountLink'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/account/check:
+    post:
+      tags: [account]
+      operationId: checkAccount
+      summary: «Проверить связь»
+      description: Артборды 5-3, 5-4. Этап 1c.
+      responses:
+        '200':
+          description: Состояние привязки после проверки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountLink'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  # --------------------------------------------------------------------- Паки
+  /api/v1/packs:
+    get:
+      tags: [packs]
+      operationId: listPacks
+      summary: Список паков из данных приложения
+      description: Артборд 7. Этап 1c. Без запроса в Telegram.
+      responses:
+        '200':
+          description: Паки
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PackSummary'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/packs/import:
+    post:
+      tags: [packs]
+      operationId: importPack
+      summary: «Добавить по ссылке»
+      description: Артборды 7, 12. Этап 1c. Принимает только наши паки, чужой — 422 `not_our_pack`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportPackRequest'
+      responses:
+        '200':
+          description: Пак добавлен в список
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pack'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/packs/name-check:
+    post:
+      tags: [packs]
+      operationId: checkPackName
+      summary: Транслитерация названия в ссылку и проверка имени
+      description: |
+        Артборды 7 «Новый пак», 7-4. Этап 1c. Правила имени и занятость в Telegram,
+        вариант «Взять kot_divan_2».
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PackNameCheckRequest'
+      responses:
+        '200':
+          description: Результат проверки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackNameCheck'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/packs/{pack}:
+    parameters:
+      - $ref: '#/components/parameters/PackName'
+    get:
+      tags: [packs]
+      operationId: getPack
+      summary: Пак со стикерами, эмодзи и проектом-источником
+      description: Артборд 7. Этап 1c.
+      responses:
+        '200':
+          description: Пак
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pack'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+    delete:
+      tags: [packs]
+      operationId: deletePack
+      summary: Убрать пак из списка
+      description: Артборд 7-8. Этап 1c. В Telegram ничего не удаляет.
+      responses:
+        '204':
+          description: Готово
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/packs/{pack}/sync:
+    parameters:
+      - $ref: '#/components/parameters/PackName'
+    post:
+      tags: [packs]
+      operationId: syncPack
+      summary: Сверка с Telegram (getStickerSet)
+      description: Артборды 7, 7-8. Этап 1c. При открытии пака и по «обновить».
+      responses:
+        '200':
+          description: Пак после сверки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pack'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/packs/{pack}/stickers/{stickerId}:
+    parameters:
+      - $ref: '#/components/parameters/PackName'
+      - $ref: '#/components/parameters/StickerId'
+    delete:
+      tags: [packs]
+      operationId: deletePackSticker
+      summary: Удалить стикер из пака в Telegram
+      description: Артборд 7-7. Этап 1c. Подтверждение на клиенте.
+      responses:
+        '204':
+          description: Стикер удалён
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/packs/{pack}/stickers/{stickerId}/media:
+    parameters:
+      - $ref: '#/components/parameters/PackName'
+      - $ref: '#/components/parameters/StickerId'
+    get:
+      tags: [packs]
+      operationId: getPackStickerMedia
+      summary: Файл стикера для плитки
+      description: Артборд 7. Этап 1c. Сервер кеширует его из Telegram.
+      responses:
+        '200':
+          description: Файл стикера
+          content:
+            video/webm:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  # --------------------------------------------------------------- Публикация
+  /api/v1/projects/{id}/publish-draft:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [publish]
+      operationId: getPublishDraft
+      summary: Всё, что нужно окну публикации
+      description: |
+        Артборд 7, шесть входов. Этап 1c. Отрезки с размером и проверкой, где уже опубликованы
+        (для замены), пак последней публикации, подходящие паки.
+        Сама отправка — задача `publish` через `POST /api/v1/jobs`.
+      responses:
+        '200':
+          description: Черновик публикации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishDraft'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+
+components:
+  securitySchemes:
+    bearerToken:
+      type: http
+      scheme: bearer
+      description: |
+        Одноразовый токен, который Electron передаёт в SPA вместе с портом.
+        SignalR-хаб `/hubs/events` принимает его как `access_token` в строке запроса.
+
+  parameters:
+    ProjectId:
+      name: id
+      in: path
+      required: true
+      description: id проекта — GUID из реестра проектов сервера
+      schema:
+        type: string
+        format: uuid
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+    PackName:
+      name: pack
+      in: path
+      required: true
+      description: Имя пака в Telegram целиком, с хвостом `_by_StickerSnapAppBot`
+      schema:
+        type: string
+    StickerId:
+      name: stickerId
+      in: path
+      required: true
+      description: file_unique_id стикера из Telegram
+      schema:
+        type: string
+
+  responses:
+    Problem:
+      description: Ошибка (`bad_request`, `internal` и прочие коды из `ErrorCode`)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    BadRequest:
+      description: '`bad_request` — кривой запрос, детали в `fields`'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: '`bot_blocked`'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: '`source_not_found`, `project_not_found`, `pack_not_found`'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: '`revision_conflict`, `account_not_linked`, `pack_name_taken`, `pack_full`'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnsupportedMediaType:
+      description: '`format_unsupported`, `params.ext`'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnprocessableContent:
+      description: >-
+        `source_unreadable`, `project_invalid`, `project_too_new`, `cannot_fit`,
+        `validation_failed`, `pack_name_invalid`, `not_our_pack`
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TooManyRequests:
+      description: '`rate_limited`, `params.retryAfterSec`'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    BadGateway:
+      description: '`telegram_error`, текст Bot API в `log`'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ServiceUnavailable:
+      description: '`network_unavailable`'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InsufficientStorage:
+      description: '`save_failed` (`params.reason`), `disk_full`'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  schemas:
+    # ------------------------------------------------------------ Приложение
+    AppInfo:
+      type: object
+      description: 'GET /api/v1/app: версии приложения и FFmpeg, apiVersion, режим, имя бота, лимиты Telegram'
+      required: [appVersion, ffmpegVersion, apiVersion, mode, botUsername, limits]
+      properties:
+        appVersion:
+          type: string
+          examples: ['0.1.0']
+        ffmpegVersion:
+          type: string
+          examples: ['7.1']
+        apiVersion:
+          type: string
+          examples: ['1.0.0']
+        mode:
+          type: string
+          enum: [desktop, web]
+        botUsername:
+          type: string
+          examples: [StickerSnapAppBot]
+        limits:
+          $ref: '#/components/schemas/TelegramLimits'
+
+    TelegramLimits:
+      type: object
+      required: [sticker, emoji, packCapacity]
+      properties:
+        sticker:
+          $ref: '#/components/schemas/PresetLimits'
+        emoji:
+          $ref: '#/components/schemas/PresetLimits'
+        packCapacity:
+          type: object
+          description: Сколько стикеров влезает в пак, 120 или 200
+          required: [regular, custom_emoji]
+          properties:
+            regular:
+              type: integer
+            custom_emoji:
+              type: integer
+
+    PresetLimits:
+      type: object
+      required: [maxBytes, side, maxDurationSec, maxFps]
+      properties:
+        maxBytes:
+          type: integer
+          description: Для стикера 262144
+        side:
+          type: integer
+          description: Сторона в px, 512 для стикера и 100 для эмодзи
+        maxDurationSec:
+          type: number
+        maxFps:
+          type: integer
+
+    Settings:
+      type: object
+      required: [theme, accent, folders, recentEmoji]
+      properties:
+        theme:
+          $ref: '#/components/schemas/Theme'
+        accent:
+          $ref: '#/components/schemas/Accent'
+        folders:
+          $ref: '#/components/schemas/Folders'
+        recentEmoji:
+          type: array
+          description: Сервер дописывает после публикации
+          items:
+            type: string
+
+    SettingsPatch:
+      type: object
+      description: Любое подмножество изменяемых полей `Settings`
+      minProperties: 1
+      properties:
+        theme:
+          $ref: '#/components/schemas/Theme'
+        accent:
+          $ref: '#/components/schemas/Accent'
+        folders:
+          type: object
+          minProperties: 1
+          properties:
+            projects:
+              type: string
+            stickers:
+              type: string
+
+    Theme:
+      type: string
+      enum: [light, dark, system]
+
+    Accent:
+      type: string
+      enum: [indigo, violet, raspberry, teal, graphite]
+
+    Folders:
+      type: object
+      required: [projects, stickers]
+      properties:
+        projects:
+          type: string
+        stickers:
+          type: string
+
+    # ------------------------------------------------- Источники и проверка
+    SourceRef:
+      description: Десктоп передаёт путь к файлу, браузер сначала загружает файл через POST /api/v1/uploads
+      oneOf:
+        - type: object
+          description: 'Electron: путь на диске'
+          required: [kind, path]
+          properties:
+            kind:
+              type: string
+              const: path
+            path:
+              type: string
+        - type: object
+          description: 'Браузер: после POST /api/v1/uploads'
+          required: [kind, uploadId]
+          properties:
+            kind:
+              type: string
+              const: upload
+            uploadId:
+              type: string
+
+    SourceRequest:
+      type: object
+      required: [source]
+      properties:
+        source:
+          $ref: '#/components/schemas/SourceRef'
+
+    Upload:
+      type: object
+      required: [uploadId]
+      properties:
+        uploadId:
+          type: string
+
+    Rational:
+      type: object
+      description: fps 30000/1001 без ошибки округления
+      required: [num, den]
+      properties:
+        num:
+          type: integer
+        den:
+          type: integer
+
+    SourceInfo:
+      type: object
+      required: [fileName, status, format, codec, width, height, fps, frameCount, durationSec, hasAlpha, sizeBytes]
+      properties:
+        fileName:
+          type: string
+          examples: [cat-keyboard.gif]
+        path:
+          type: string
+          description: В веб-режиме нет
+        status:
+          $ref: '#/components/schemas/PresenceStatus'
+        format:
+          type: string
+          enum: [mp4, mov, webm, gif, webp]
+        codec:
+          type: string
+          examples: [h264, vp9, gif]
+        width:
+          type: integer
+        height:
+          type: integer
+        fps:
+          $ref: '#/components/schemas/Rational'
+        frameCount:
+          type: integer
+        durationSec:
+          type: number
+        hasAlpha:
+          type: boolean
+        sizeBytes:
+          type: integer
+
+    PresenceStatus:
+      type: string
+      description: '`missing` — «Исходник не найден», «Проект не найден», пак не найден в Telegram'
+      enum: [ok, missing]
+
+    # -------------------------------------------------------- Сцена и проект
+    Scene:
+      type: object
+      description: То, что лежит в .ssproj и что редактор правит через Immer
+      required: [schemaVersion, layers, segments]
+      properties:
+        schemaVersion:
+          type: integer
+          const: 1
+        layers:
+          type: array
+          description: В MVP ровно один
+          items:
+            $ref: '#/components/schemas/VideoLayer'
+        segments:
+          type: array
+          description: 'R18: несколько стикеров из одного источника'
+          items:
+            $ref: '#/components/schemas/Segment'
+
+    VideoLayer:
+      type: object
+      required: [id, kind]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          const: video
+
+    Segment:
+      type: object
+      required: [id, name, inFrame, outFrame, excludedFrames, frame, speed, loop, preset, longSticker]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          examples: [Стикер 1]
+        inFrame:
+          type: integer
+          minimum: 0
+          description: Первый кадр отрезка, включительно
+        outFrame:
+          type: integer
+          minimum: 0
+          description: Последний кадр, включительно
+        excludedFrames:
+          type: array
+          description: Задел под удаление кадров (P1), в MVP пустой
+          items:
+            type: integer
+        frame:
+          description: R3
+          oneOf:
+            - $ref: '#/components/schemas/Crop'
+            - $ref: '#/components/schemas/Stretch'
+        speed:
+          type: number
+          minimum: 0.25
+          maximum: 4
+        loop:
+          type: string
+          description: R5
+          enum: [normal, pingpong]
+        preset:
+          $ref: '#/components/schemas/SegmentPreset'
+        longSticker:
+          type: boolean
+          description: R19, только если спайк подтвердил
+
+    SegmentPreset:
+      type: string
+      description: 512 px или 100×100 (R17)
+      enum: [sticker, emoji]
+
+    Crop:
+      type: object
+      required: [mode, preset, rect]
+      properties:
+        mode:
+          type: string
+          const: crop
+        preset:
+          type: string
+          enum: [square, source, free]
+        rect:
+          type: object
+          description: В пикселях источника
+          required: [x, y, width, height]
+          properties:
+            x:
+              type: number
+            y:
+              type: number
+            width:
+              type: number
+            height:
+              type: number
+
+    Stretch:
+      type: object
+      required: [mode, preset, aspect]
+      properties:
+        mode:
+          type: string
+          const: stretch
+        preset:
+          type: string
+          description: '«Как в источнике», «Сплющить в 1:1», свободно'
+          enum: [source, squash, free]
+        aspect:
+          type: object
+          description: Доли; большая сторона станет 512
+          required: [width, height]
+          properties:
+            width:
+              type: number
+            height:
+              type: number
+
+    Project:
+      type: object
+      required: [id, name, revision, savedAt, source, mediaUrl, scene, exports]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        path:
+          type: string
+          description: Путь к .ssproj
+        revision:
+          type: integer
+          description: Растёт на каждом сохранении
+        savedAt:
+          type: string
+          format: date-time
+        source:
+          $ref: '#/components/schemas/SourceInfo'
+        mediaUrl:
+          type: string
+          description: Для <video>
+        scene:
+          $ref: '#/components/schemas/Scene'
+        exports:
+          type: object
+          description: Последний экспорт по id отрезка
+          additionalProperties:
+            $ref: '#/components/schemas/ExportResult'
+
+    ProjectSummary:
+      type: object
+      required: [id, name, updatedAt, segmentCount, preset, durationSec, coverUrl, sourceStatus]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        path:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+          description: «12 минут назад» считает SPA
+        segmentCount:
+          type: integer
+        preset:
+          type: string
+          description: «3 стикера» или «5 эмодзи»
+          enum: [sticker, emoji, mixed]
+        durationSec:
+          type: number
+          description: 'Чип на обложке: самый длинный отрезок'
+        coverUrl:
+          type: string
+        sourceStatus:
+          $ref: '#/components/schemas/PresenceStatus'
+
+    ProjectRemovedEvent:
+      type: object
+      description: Данные события SignalR `projectRemoved`
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+
+    OpenProjectRequest:
+      type: object
+      required: [path]
+      properties:
+        path:
+          type: string
+          description: Путь к .ssproj
+
+    RenameProjectRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+
+    SaveSceneRequest:
+      type: object
+      required: [revision, scene]
+      properties:
+        revision:
+          type: integer
+        scene:
+          $ref: '#/components/schemas/Scene'
+
+    SaveSceneResponse:
+      type: object
+      required: [revision, savedAt]
+      properties:
+        revision:
+          type: integer
+        savedAt:
+          type: string
+          format: date-time
+
+    ReplaceSourceResponse:
+      type: object
+      required: [project, segmentsOutOfRange]
+      properties:
+        project:
+          $ref: '#/components/schemas/Project'
+        segmentsOutOfRange:
+          type: array
+          description: id отрезков, вышедших за конец нового видео; пусто — предупреждения нет
+          items:
+            type: string
+
+    # -------------------------------------------- Рендер, прогноз и проверка
+    OutputSpec:
+      type: object
+      required: [width, height, fps, durationSec]
+      properties:
+        width:
+          type: integer
+        height:
+          type: integer
+        fps:
+          type: number
+        durationSec:
+          type: number
+
+    Concession:
+      description: «Чем пожертвовали»
+      oneOf:
+        - type: object
+          required: [kind, from, to]
+          properties:
+            kind:
+              type: string
+              const: fps
+            from:
+              type: number
+            to:
+              type: number
+        - type: object
+          required: [kind, from, to]
+          properties:
+            kind:
+              type: string
+              const: crf
+            from:
+              type: number
+            to:
+              type: number
+        - type: object
+          required: [kind, from, to]
+          properties:
+            kind:
+              type: string
+              const: scale
+            from:
+              type: number
+            to:
+              type: number
+
+    LadderStep:
+      type: object
+      description: «Как подбирали»
+      required: [label, bytes]
+      properties:
+        label:
+          type: array
+          items:
+            $ref: '#/components/schemas/Concession'
+        bytes:
+          type: integer
+
+    EstimateRequest:
+      type: object
+      required: [segment]
+      properties:
+        segment:
+          $ref: '#/components/schemas/Segment'
+
+    Estimate:
+      type: object
+      required: [bytes, limitBytes, fits, output, likelyConcessions, suggestions]
+      properties:
+        bytes:
+          type: integer
+        limitBytes:
+          type: integer
+          description: Лимит пресета из GET /api/v1/app, для стикера 262144
+        fits:
+          type: boolean
+        output:
+          $ref: '#/components/schemas/OutputSpec'
+        likelyConcessions:
+          type: array
+          description: «Скорее всего, снизим fps до 24»
+          items:
+            $ref: '#/components/schemas/Concession'
+        suggestions:
+          type: array
+          description: Подсказки одним кликом, 3c G
+          items:
+            oneOf:
+              - type: object
+                required: [kind, outFrame, durationSec]
+                properties:
+                  kind:
+                    type: string
+                    const: trim
+                  outFrame:
+                    type: integer
+                  durationSec:
+                    type: number
+              - type: object
+                required: [kind, speed]
+                properties:
+                  kind:
+                    type: string
+                    const: speed
+                  speed:
+                    type: number
+
+    ValidationReport:
+      type: object
+      description: R8, артборд 3c
+      required: [fileName, bytes, verdict, checks]
+      properties:
+        fileName:
+          type: string
+        bytes:
+          type: integer
+        verdict:
+          $ref: '#/components/schemas/ValidationVerdict'
+        checks:
+          type: array
+          items:
+            type: object
+            required: [rule, status, expected, actual]
+            properties:
+              rule:
+                type: string
+                enum: [container, codec, size, dimensions, duration, fps, audio, alpha]
+              status:
+                type: string
+                enum: [pass, fail, warn]
+              expected:
+                type: string
+                examples: ['≤ 262144']
+              actual:
+                type: string
+                examples: ['277504']
+
+    ValidationVerdict:
+      type: string
+      description: '`experimental` — длинный стикер R19'
+      enum: [pass, fail, experimental]
+
+    ExportResult:
+      type: object
+      required: [segmentId, sceneRevision, stale, fileUrl, bytes, output, crf, concessions, ladder, validation]
+      properties:
+        segmentId:
+          type: string
+        sceneRevision:
+          type: integer
+          description: Снимок, по которому шёл экспорт
+        stale:
+          type: boolean
+          description: Отрезок правили после экспорта
+        path:
+          type: string
+          description: 'Десктоп: «Показать в папке»'
+        fileUrl:
+          type: string
+          description: GET /api/v1/files/{fileId}
+        bytes:
+          type: integer
+        output:
+          $ref: '#/components/schemas/OutputSpec'
+        crf:
+          type: integer
+        concessions:
+          type: array
+          description: Пусто — без уступок
+          items:
+            $ref: '#/components/schemas/Concession'
+        ladder:
+          type: array
+          items:
+            $ref: '#/components/schemas/LadderStep'
+        validation:
+          $ref: '#/components/schemas/ValidationReport'
+
+    # --------------------------------------------- Аккаунт, паки и публикация
+    AccountLink:
+      description: Четыре состояния артборда 5
+      oneOf:
+        - type: object
+          required: [state]
+          properties:
+            state:
+              type: string
+              const: unlinked
+        - type: object
+          required: [state, deepLink, expiresAt]
+          properties:
+            state:
+              type: string
+              const: pending
+            deepLink:
+              type: string
+            expiresAt:
+              type: string
+              format: date-time
+        - type: object
+          required: [state, user]
+          properties:
+            state:
+              type: string
+              const: linked
+            user:
+              $ref: '#/components/schemas/TelegramUser'
+        - type: object
+          required: [state, code]
+          properties:
+            state:
+              type: string
+              const: error
+            code:
+              type: string
+              enum: [bot_blocked, network_unavailable]
+            user:
+              $ref: '#/components/schemas/TelegramUser'
+
+    TelegramUser:
+      type: object
+      required: [id, firstName]
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        firstName:
+          type: string
+
+    PackType:
+      type: string
+      enum: [regular, custom_emoji]
+
+    PackSummary:
+      type: object
+      required: [name, title, type, count, limit, status]
+      properties:
+        name:
+          type: string
+          examples: [reactions_call_by_StickerSnapAppBot]
+        title:
+          type: string
+          examples: [Реакции с созвона]
+        type:
+          $ref: '#/components/schemas/PackType'
+        count:
+          type: integer
+        limit:
+          type: integer
+          description: 120 или 200
+        coverUrl:
+          type: string
+        status:
+          $ref: '#/components/schemas/PresenceStatus'
+        checkedAt:
+          type: string
+          format: date-time
+          description: «Сверено с Telegram 2 минуты назад»
+        sending:
+          type: object
+          description: «Отправляем… 2 из 4»
+          required: [jobId, done, total]
+          properties:
+            jobId:
+              type: string
+            done:
+              type: integer
+            total:
+              type: integer
+
+    Pack:
+      allOf:
+        - $ref: '#/components/schemas/PackSummary'
+        - type: object
+          required: [link, stickers]
+          properties:
+            link:
+              type: string
+              description: https://t.me/addstickers/<name>
+            stickers:
+              type: array
+              items:
+                $ref: '#/components/schemas/PackSticker'
+
+    PackSticker:
+      type: object
+      required: [id, emoji, mediaUrl]
+      properties:
+        id:
+          type: string
+          description: file_unique_id из Telegram
+        emoji:
+          type: array
+          items:
+            type: string
+        mediaUrl:
+          type: string
+        origin:
+          type: object
+          description: Пусто для стикеров, опубликованных не отсюда
+          required: [projectId, projectName, segmentId, projectStatus]
+          properties:
+            projectId:
+              type: string
+              format: uuid
+            projectName:
+              type: string
+            segmentId:
+              type: string
+            projectStatus:
+              $ref: '#/components/schemas/PresenceStatus'
+
+    ImportPackRequest:
+      type: object
+      required: [link]
+      properties:
+        link:
+          type: string
+          description: Ссылка на пак, https://t.me/addstickers/<name>
+
+    PackNameCheckRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        name:
+          type: string
+
+    PackNameCheck:
+      type: object
+      required: [name, fullName, problems]
+      properties:
+        name:
+          type: string
+          maxLength: 43
+          description: Собственная часть имени
+        fullName:
+          type: string
+          description: С хвостом _by_StickerSnapAppBot
+        problems:
+          type: array
+          items:
+            type: string
+            enum: [empty, too_long, bad_chars, bad_start, taken]
+        suggestion:
+          type: string
+          examples: [kot_divan_2]
+
+    StickerRef:
+      type: object
+      required: [pack, stickerId]
+      properties:
+        pack:
+          type: string
+        stickerId:
+          type: string
+
+    PublishDraft:
+      type: object
+      required: [account, segments, packs, recentEmoji]
+      properties:
+        account:
+          $ref: '#/components/schemas/AccountLink'
+        segments:
+          type: array
+          items:
+            type: object
+            required: [segmentId, name, durationSec, preset, publishedIn]
+            properties:
+              segmentId:
+                type: string
+              name:
+                type: string
+              durationSec:
+                type: number
+              preset:
+                $ref: '#/components/schemas/SegmentPreset'
+              export:
+                type: object
+                required: [bytes, verdict, stale]
+                properties:
+                  bytes:
+                    type: integer
+                  verdict:
+                    $ref: '#/components/schemas/ValidationVerdict'
+                  stale:
+                    type: boolean
+              publishedIn:
+                type: array
+                description: Для «Заменит старую версию»
+                items:
+                  $ref: '#/components/schemas/StickerRef'
+        lastPack:
+          type: string
+          description: Пак прошлой публикации из этого проекта
+        packs:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/PackSummary'
+              - type: object
+                required: [selectable]
+                properties:
+                  selectable:
+                    type: boolean
+                  reason:
+                    type: string
+                    enum: [full, wrong_type, missing]
+        recentEmoji:
+          type: array
+          items:
+            type: string
+
+    # ------------------------------------------------------ Фоновые задачи
+    JobKind:
+      type: string
+      enum: [preview, export, publish]
+
+    JobRequest:
+      oneOf:
+        - type: object
+          description: '3c D: черновик по текущей правке'
+          required: [kind, projectId, segment]
+          properties:
+            kind:
+              type: string
+              const: preview
+            projectId:
+              type: string
+              format: uuid
+            segment:
+              $ref: '#/components/schemas/Segment'
+        - type: object
+          description: По снимку сохранённой ревизии
+          required: [kind, projectId, revision, segmentIds]
+          properties:
+            kind:
+              type: string
+              const: export
+            projectId:
+              type: string
+              format: uuid
+            revision:
+              type: integer
+            segmentIds:
+              type: array
+              items:
+                type: string
+        - type: object
+          required: [kind, projectId, revision, items, target]
+          properties:
+            kind:
+              type: string
+              const: publish
+            projectId:
+              type: string
+              format: uuid
+            revision:
+              type: integer
+            items:
+              type: array
+              items:
+                type: object
+                required: [segmentId, emoji]
+                properties:
+                  segmentId:
+                    type: string
+                  emoji:
+                    type: array
+                    items:
+                      type: string
+                  replace:
+                    $ref: '#/components/schemas/StickerRef'
+            target:
+              oneOf:
+                - type: object
+                  required: [kind, pack]
+                  properties:
+                    kind:
+                      type: string
+                      const: existing
+                    pack:
+                      type: string
+                - type: object
+                  required: [kind, title, name, type]
+                  properties:
+                    kind:
+                      type: string
+                      const: new
+                    title:
+                      type: string
+                    name:
+                      type: string
+                    type:
+                      $ref: '#/components/schemas/PackType'
+
+    Job:
+      type: object
+      required: [id, kind, projectId, state, createdAt, progress, items]
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/JobKind'
+        projectId:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [queued, running, succeeded, partial, failed, canceled]
+        createdAt:
+          type: string
+          format: date-time
+        progress:
+          type: object
+          required: [fraction, stage]
+          properties:
+            fraction:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: 0..1 на всю задачу
+            stage:
+              type: string
+              enum: [probe, pass1, pass2, validate, send, wait]
+            attempt:
+              type: object
+              description: «попытка 2, 24 fps»
+              required: [n, concessions]
+              properties:
+                n:
+                  type: integer
+                concessions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Concession'
+            retryAt:
+              type: string
+              format: date-time
+              description: '429 от Telegram: «повторим сами через 0:24»'
+        items:
+          type: array
+          description: По одному на отрезок, «Экспорт 2 из 3», «Отправляем 2 из 3»
+          items:
+            $ref: '#/components/schemas/JobItem'
+        pack:
+          type: string
+          description: 'Для publish: куда уходит'
+        error:
+          $ref: '#/components/schemas/Problem'
+
+    JobItem:
+      type: object
+      required: [segmentId, state, fraction]
+      properties:
+        segmentId:
+          type: string
+        state:
+          type: string
+          enum: [queued, exporting, validating, sending, done, failed, skipped]
+        fraction:
+          type: number
+          minimum: 0
+          maximum: 1
+        preview:
+          type: object
+          description: 'preview: «Точное · 186 КБ»'
+          required: [fileUrl, bytes]
+          properties:
+            fileUrl:
+              type: string
+            bytes:
+              type: integer
+        export:
+          $ref: '#/components/schemas/ExportResult'
+        sticker:
+          $ref: '#/components/schemas/StickerRef'
+        error:
+          $ref: '#/components/schemas/Problem'
+
+    # --------------------------------------------------------------- Ошибки
+    Problem:
+      type: object
+      description: |
+        RFC 9457 Problem Details. `title` и `detail` — английский для журнала, в интерфейс не попадают;
+        `log` — то, что раскрывает «Подробности».
+      required: [type, status, title, code, traceId]
+      properties:
+        type:
+          type: string
+          examples: ['https://stickersnap.app/problems/source_unreadable']
+        status:
+          type: integer
+          description: HTTP-статус
+        title:
+          type: string
+        detail:
+          type: string
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        params:
+          type: object
+          description: '{ ext: "avi" }, { retryAfterSec: 24 }'
+          additionalProperties:
+            type: [string, number]
+        fields:
+          type: object
+          description: Ошибки полей для подсказки у поля
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        log:
+          type: string
+          description: Строка ffprobe или хвост журнала FFmpeg
+        traceId:
+          type: string
+
+    ErrorCode:
+      type: string
+      description: |
+        Замкнутое множество кодов. Новый код — правка контракта и строка в карте состояний артборда 8.
+
+        | code | HTTP |
+        | --- | --- |
+        | source_unreadable | 422 |
+        | format_unsupported | 415 |
+        | source_not_found | 404 |
+        | project_not_found | 404 |
+        | project_invalid | 422 |
+        | project_too_new | 422 |
+        | save_failed | 507 |
+        | revision_conflict | 409 |
+        | disk_full | 507 |
+        | render_failed | 500 |
+        | cannot_fit | 422 |
+        | validation_failed | 422 |
+        | account_not_linked | 409 |
+        | bot_blocked | 403 |
+        | network_unavailable | 503 |
+        | pack_name_invalid | 422 |
+        | pack_name_taken | 409 |
+        | pack_full | 409 |
+        | pack_not_found | 404 |
+        | not_our_pack | 422 |
+        | rate_limited | 429 |
+        | telegram_error | 502 |
+        | bad_request | 400 |
+        | internal | 500 |
+      enum:
+        - source_unreadable
+        - format_unsupported
+        - source_not_found
+        - project_not_found
+        - project_invalid
+        - project_too_new
+        - save_failed
+        - revision_conflict
+        - disk_full
+        - render_failed
+        - cannot_fit
+        - validation_failed
+        - account_not_linked
+        - bot_blocked
+        - network_unavailable
+        - pack_name_invalid
+        - pack_name_taken
+        - pack_full
+        - pack_not_found
+        - not_our_pack
+        - rate_limited
+        - telegram_error
+        - bad_request
+        - internal
