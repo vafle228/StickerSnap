@@ -3,9 +3,10 @@ import { cx } from "../../../ds/cx";
 import type { PresetLimits, Segment } from "../../../shared/api/types";
 import { t } from "../../../shared/strings/ru";
 import {
+  cropAspect,
   cropPreset,
+  frameBox,
   moveCrop,
-  presetAspect,
   resizeCrop,
   resizeStretch,
   stretchBox,
@@ -41,21 +42,20 @@ interface CropFrameProps {
   limits?: Pick<PresetLimits, "side">;
   /** Display px per source px */
   scale: number;
-  /** «Кроп» is on: the frame has handles, can be dragged and shows its sizes */
-  editable: boolean;
 }
 
-/** What goes into the sticker, drawn over the source (artboard 3a): the crop with the rest
- *  dimmed, or the box a stretch squeezes the source into. With «Кроп» on, the crop moves by its
- *  body and resizes by its corners holding the preset's proportion (Shift frees it); a stretch
- *  changes its width or height by the side handles. A drag is drawn from frameDraft and lands
- *  in the scene as one edit on release; the playhead stays where it is. */
-export function CropFrame({ frame, preset, source, limits, scale, editable }: CropFrameProps) {
+/** The frame being edited with «Рамка» on (artboard 3a), over the whole source: the crop with
+ *  the rest dimmed moves by its body and resizes by its corners, holding its proportion (the
+ *  preset's, or its own when free) unless Shift is down; a stretch box changes its width or
+ *  height by the side handles and may grow past the source. A drag is drawn from frameDraft and
+ *  lands in the scene as one edit on release; the playhead stays where it is. Enter or Escape
+ *  on the frame finish editing, like «Готово». */
+export function CropFrame({ frame, preset, source, limits, scale }: CropFrameProps) {
   const gesture = useRef<{ what: Gesture; x: number; y: number } | null>(null);
   const min = Math.min(source.width, source.height, Math.max(MIN_SOURCE, MIN_SCREEN / scale));
 
   const crop = frame.mode === "crop";
-  const box = crop ? frame.rect : stretchBox(frame.aspect, source);
+  const box = frameBox(frame, source);
   const style: CSSProperties = {
     left: box.x * scale,
     top: box.y * scale,
@@ -77,7 +77,7 @@ export function CropFrame({ frame, preset, source, limits, scale, editable }: Cr
     }
     if (what.kind === "move") return { ...start, rect: moveCrop(start.rect, dx, dy, source) };
     if (what.kind !== "corner") return start;
-    const aspect = free ? undefined : presetAspect(start.preset, source);
+    const aspect = free ? undefined : cropAspect(start, source);
     const rect = resizeCrop(start.rect, what.corner, dx, dy, source, aspect, min);
     const next = aspect === undefined ? cropPreset(rect, source) : start.preset;
     return { mode: "crop", preset: next, rect };
@@ -88,7 +88,7 @@ export function CropFrame({ frame, preset, source, limits, scale, editable }: Cr
   };
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
-    if (!editable || e.button !== 0) return;
+    if (e.button !== 0) return;
     const target = e.target as HTMLElement;
     const corner = target.closest<HTMLElement>("[data-corner]")?.dataset.corner as
       Corner | undefined;
@@ -121,9 +121,14 @@ export function CropFrame({ frame, preset, source, limits, scale, editable }: Cr
   // Arrows on the focused frame or handle nudge it by a source pixel (Shift: ten); everywhere
   // else they stay the playhead's.
   const onKeyDown = (what: Gesture) => (e: KeyboardEvent<HTMLElement>) => {
+    if (e.key === "Enter" || e.key === "Escape") {
+      e.preventDefault();
+      useEditor.getState().setCropTool(false);
+      return;
+    }
     const step = e.shiftKey ? 10 : 1;
     const delta = ARROWS[e.key];
-    if (!editable || !delta) return;
+    if (!delta) return;
     e.preventDefault();
     e.stopPropagation();
     commit(dragged(what, delta[0] * step, delta[1] * step, false), frame);
@@ -137,20 +142,19 @@ export function CropFrame({ frame, preset, source, limits, scale, editable }: Cr
         </div>
       )}
       <div
-        className={cx(crop ? styles.crop : styles.stretch, editable && styles.editable)}
+        className={cx(crop ? styles.crop : styles.stretch, styles.editable)}
         style={style}
-        role={editable && crop ? "group" : undefined}
-        tabIndex={editable && crop ? 0 : undefined}
-        aria-label={editable ? t(crop ? "editor.cropFrame" : "editor.stretchFrame") : undefined}
+        role="group"
+        tabIndex={crop ? 0 : undefined}
+        aria-label={t(crop ? "editor.cropFrame" : "editor.stretchFrame")}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onKeyDown={crop ? onKeyDown({ kind: "move", start: frame }) : undefined}
       >
-        {editable && crop && <span className={styles.thirds} aria-hidden />}
-        {editable &&
-          crop &&
+        {crop && <span className={styles.thirds} aria-hidden />}
+        {crop &&
           CORNERS.map((corner) => (
             <span
               key={corner}
@@ -162,8 +166,7 @@ export function CropFrame({ frame, preset, source, limits, scale, editable }: Cr
               onKeyDown={onKeyDown({ kind: "corner", corner, start: frame })}
             />
           ))}
-        {editable &&
-          !crop &&
+        {!crop &&
           SIDES.map((side) => (
             <span
               key={side}
@@ -175,7 +178,7 @@ export function CropFrame({ frame, preset, source, limits, scale, editable }: Cr
               onKeyDown={onKeyDown({ kind: "side", side, start: frame })}
             />
           ))}
-        {editable && output && (
+        {output && (
           <span className={styles.frameLabel}>
             {t(crop ? "editor.frame.crop" : "editor.frame.stretch", {
               inW: input.width,
@@ -183,6 +186,12 @@ export function CropFrame({ frame, preset, source, limits, scale, editable }: Cr
               outW: output.width,
               outH: output.height,
             })}
+            {crop && (
+              <span className={styles.labelHint}>
+                <kbd>Shift</kbd>
+                {t("editor.cropFree")}
+              </span>
+            )}
           </span>
         )}
       </div>

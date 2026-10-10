@@ -31,7 +31,7 @@ interface EditorState {
   segmentId?: string;
 
   zoom: Zoom;
-  /** «Кроп» on the glass bar: the frame on the canvas can be dragged */
+  /** «Рамка» on the glass bar: the whole source with the frame to drag; off, the sticker alone */
   cropTool: boolean;
   /** The selected segment's frame while it is dragged on the canvas; lands as one edit on release */
   frameDraft?: Segment["frame"];

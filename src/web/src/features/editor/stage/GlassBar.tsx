@@ -5,7 +5,9 @@ import { useEditor } from "../model/store";
 import { ZOOM_MAX, ZOOM_MIN, zoomIn, zoomOut } from "../model/zoom";
 import styles from "./VideoStage.module.css";
 
-/** The glass bar over the video (artboard 3a): the crop tool, zoom and the exact preview.
+/** The glass bar over the video (artboard 3a): the frame tool, zoom and the exact preview.
+ *  «Рамка» opens the whole source with the frame's handles; «Готово» goes back to the sticker
+ *  as it comes out (the edits themselves land as they are made).
  *  «Точное превью» is a draft render, part of the import/export task; its place is kept. */
 export function GlassBar({ scale }: { scale: number }) {
   const zoom = useEditor((s) => s.zoom);
@@ -23,12 +25,12 @@ export function GlassBar({ scale }: { scale: number }) {
       <Button
         size="sm"
         variant="ghost"
-        icon="crop"
+        icon={cropTool ? "check" : "crop"}
         className={styles.toggle}
         aria-pressed={cropTool}
         onClick={() => setCropTool(!cropTool)}
       >
-        {t("editor.crop")}
+        {t(cropTool ? "editor.cropDone" : "editor.crop")}
       </Button>
       <span className={styles.divider} aria-hidden />
       <IconButton

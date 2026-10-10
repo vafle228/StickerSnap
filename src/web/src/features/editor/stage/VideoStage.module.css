@@ -31,12 +31,21 @@
   background: color-mix(in srgb, var(--border-strong) 30%, var(--surface-sunken));
 }
 
+/* Placed by the stage: the whole source, or squeezed into a stretch box. */
 .video {
+  position: absolute;
   display: block;
-  width: 100%;
-  height: 100%;
   border-radius: var(--radius-md);
   object-fit: fill;
+}
+
+/* «Рамка» off: the media is the sticker itself, the rest of the source is cut away. */
+.result {
+  overflow: hidden;
+}
+
+.result .video {
+  border-radius: 0;
 }
 
 .placeholder {
@@ -86,7 +95,7 @@
   border-radius: var(--radius-md);
 }
 
-/* «Кроп» on: the crop moves by its body, both modes resize by their handles. */
+/* «Рамка» on: the crop moves by its body, both modes resize by their handles. */
 .editable {
   pointer-events: auto;
   touch-action: none;
@@ -318,4 +327,24 @@
 
 .chipRight {
   right: var(--space-4);
+}
+
+/* The Shift hint rides on the size label, so it shows only while the frame is edited. */
+.labelHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: var(--space-2);
+  padding-left: var(--space-2);
+  border-left: 1px solid color-mix(in srgb, var(--on-primary) 40%, transparent);
+  font-family: var(--font-sans);
+  opacity: 0.85;
+}
+
+.labelHint kbd {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--on-primary) 20%, transparent);
+  font: inherit;
+  font-weight: 600;
 }
