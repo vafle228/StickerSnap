@@ -1,6 +1,8 @@
 /* The publish window of artboard 7: 740px, two numbered questions, the send at the bottom. */
 .dialog {
-  max-width: 740px;
+  min-width: 0;
+  width: min(740px, calc(100vw - 48px));
+  max-width: none;
   max-height: calc(100vh - 48px);
   overflow-y: auto;
   gap: var(--space-1);
@@ -90,6 +92,7 @@
 
 .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
   padding: 8px 12px;
@@ -134,7 +137,8 @@
 
 .rowText {
   display: flex;
-  flex: 0 0 210px;
+  flex: 1 1 210px;
+  max-width: 210px;
   flex-direction: column;
   gap: 2px;
   min-width: 0;

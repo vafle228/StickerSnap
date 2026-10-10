@@ -17,7 +17,7 @@ import { useAccount, useAppInfo, useProjects, usePublishDraft } from "../../shar
 import type { AccountLink, PublishDraft } from "../../shared/api/types";
 import { Popover } from "../../shared/overlays";
 import { t } from "../../shared/strings/ru";
-import { kilobytes, seconds } from "../editor/format";
+import { kilobytes, num } from "../editor/format";
 import { useDebounced } from "../editor/useDebounced";
 import { EmojiPicker, MAX_EMOJI } from "./EmojiPicker";
 import { packMeta, placeholder, sendLabel } from "./format";
@@ -397,7 +397,10 @@ function SegmentRow({
       </span>
       <span className={styles.rowText}>
         <span className={styles.rowName}>
-          {t("publish.rowName", { name: s.name, duration: seconds(s.durationSec) })}
+          {t("publish.rowName", {
+            name: s.name,
+            duration: t("editor.seconds", { value: num(s.durationSec, 2) }),
+          })}
           {failed && (
             <Badge tone="danger" icon="error-circle">
               {t("publish.failed")}

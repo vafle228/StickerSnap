@@ -2,10 +2,12 @@ import { NavRail, type NavRailItem } from "../ds";
 import { useEffect } from "react";
 import { EditorScreen } from "../features/editor/EditorScreen";
 import { PacksScreen } from "../features/packs/PacksScreen";
+import { PublishWatch } from "../features/packs/PublishWatch";
 import { ProjectsScreen } from "../features/projects/ProjectsScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { t } from "../shared/strings/ru";
 import { useLiveUpdates } from "../shared/api/live";
+import { useJobs } from "../shared/api/queries";
 import { NotifyHost } from "../shared/notify";
 import { OverlayHost } from "../shared/overlays";
 import { useApplyTheme } from "../shared/theme/theme";
@@ -27,6 +29,10 @@ export function App() {
   const section = useApp((s) => s.section);
   const setSection = useApp((s) => s.setSection);
   useNoStrayDrops();
+  // A send to a pack runs: a dot on «Мои паки» until it ends (artboard 12)
+  const sending = (useJobs().data ?? []).some(
+    (j) => j.kind === "publish" && (j.state === "running" || j.state === "queued"),
+  );
 
   return (
     <div className={`ss-root ${styles.shell}`}>
@@ -34,7 +40,7 @@ export function App() {
         className={styles.rail}
         narrow
         label={t("nav.label")}
-        items={MAIN}
+        items={MAIN.map((item) => (item.value === "packs" ? { ...item, dot: sending } : item))}
         bottomItems={BOTTOM}
         value={section}
         onChange={setSection}
@@ -46,6 +52,7 @@ export function App() {
         {section === "projects" && <ProjectsScreen />}
         {section === "packs" && <PacksScreen />}
       </main>
+      <PublishWatch />
       <OverlayHost />
       <NotifyHost />
     </div>
