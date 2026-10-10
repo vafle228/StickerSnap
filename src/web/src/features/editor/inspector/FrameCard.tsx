@@ -11,17 +11,20 @@ import {
   squareCrop,
   squashStretch,
 } from "../model/frame";
+import { stretchLike } from "../model/crop";
 import { editSegment, useEditor, useSegment } from "../model/store";
 import styles from "./Inspector.module.css";
 
 type Mode = Segment["frame"]["mode"];
 
-/** «Кадр» (R3): crop or stretch, the presets and the output size. A preset is a proportion the
- *  crop frame holds while its corners are dragged; a free resize (Shift) leaves both unchecked. */
+/** «Кадр» (R3) of the selected sticker: crop or stretch, the presets and the output size. A
+ *  preset is a proportion the crop frame holds while its corners are dragged; a free resize
+ *  (Shift) leaves both unchecked. «Ко всем стикерам» copies the frame to the other segments. */
 export function FrameCard() {
   const segment = useSegment();
   const source = useEditor((s) => s.source);
   const draft = useEditor((s) => s.frameDraft);
+  const segments = useEditor((s) => s.scene?.segments);
   const limits = useAppInfo().data?.limits;
   if (!segment || !source) return null;
 
@@ -30,9 +33,15 @@ export function FrameCard() {
   // While the frame is dragged on the canvas, the sizes follow it.
   const output = limits && outputSize(draft ?? frame, segment.preset, limits[segment.preset]);
   const setFrame = (next: Segment["frame"]) => editSegment((s) => void (s.frame = next));
+  // The frame belongs to one sticker; another one is set the same way only when asked to.
+  const differs = segments?.some((seg) => JSON.stringify(seg.frame) !== JSON.stringify(frame));
+  const toAll = () =>
+    useEditor.getState().edit((scene) => {
+      for (const seg of scene.segments) seg.frame = structuredClone(frame);
+    });
 
   return (
-    <Card eyebrow={t("inspector.frame")} className={styles.card}>
+    <Card eyebrow={t("inspector.frameOf", { name: segment.name })} className={styles.card}>
       <Segmented<Mode>
         label={t("inspector.frameMode")}
         className={styles.wide}
@@ -64,7 +73,6 @@ export function FrameCard() {
             <span>{t("inspector.output")}</span>
             <b>{output ? `${output.width} × ${output.height}` : "…"}</b>
           </div>
-          <p className={styles.hint}>{t("inspector.cropHint")}</p>
         </>
       ) : (
         <>
@@ -75,7 +83,13 @@ export function FrameCard() {
               height={output.height}
               side={side}
               disabled={segment.preset === "emoji"}
-              onChange={(aspect) => setFrame({ mode: "stretch", preset: "free", aspect })}
+              onChange={(size) =>
+                setFrame({
+                  mode: "stretch",
+                  preset: "free",
+                  aspect: stretchLike(size, frame.aspect, source),
+                })
+              }
             />
           )}
           <div role="radiogroup" aria-label={t("inspector.stretchPreset")} className={styles.pair}>
@@ -87,7 +101,7 @@ export function FrameCard() {
             </PresetButton>
             <PresetButton
               checked={frame.preset === "squash"}
-              onClick={() => setFrame(squashStretch())}
+              onClick={() => setFrame(squashStretch(source))}
             >
               {t("inspector.preset.squash")}
             </PresetButton>
@@ -96,6 +110,12 @@ export function FrameCard() {
             <p className={styles.hint}>{t("inspector.stretchHint", { side })}</p>
           )}
         </>
+      )}
+
+      {differs && (
+        <Button size="sm" variant="ghost" icon="layers" className={styles.wide} onClick={toAll}>
+          {t("inspector.frameToAll")}
+        </Button>
       )}
     </Card>
   );
