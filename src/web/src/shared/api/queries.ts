@@ -58,6 +58,15 @@ export function useUpdateSettings() {
   });
 }
 
+/** The Telegram account link (artboard 5); accountChanged keeps it fresh. */
+export function useAccount() {
+  return useQuery({
+    queryKey: keys.account,
+    queryFn: () => call(api.GET("/api/v1/account")),
+    staleTime: Infinity,
+  });
+}
+
 export function useProjects() {
   return useQuery({
     queryKey: keys.projects,

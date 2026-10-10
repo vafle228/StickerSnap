@@ -32,7 +32,11 @@ export function handlers(db: MockDb) {
 
   return [
     // ---------------------------------------------------------------- Приложение
-    route("get", "/api/v1/app", () => ({ status: 200, body: app })),
+    route("get", "/api/v1/app", () => ({
+      status: 200,
+      // «Десктоп»: the server says it runs as the desktop app (folder buttons in Settings)
+      body: db.scenario === "desktop" ? { ...app, mode: "desktop" as const } : app,
+    })),
     route("get", "/api/v1/settings", () => ({ status: 200, body: db.settings })),
     route("patch", "/api/v1/settings", ({ body }) => {
       const settings: Settings = {

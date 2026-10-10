@@ -134,6 +134,54 @@ export const ru = {
   "hotkey.scope.editor": "Редактор",
   "hotkey.scope.projects": "Проекты",
 
+  "settings.toc": "Разделы настроек",
+  "settings.telegram": "Telegram",
+  "settings.look": "Оформление",
+  "settings.folders": "Папки",
+  "settings.keys": "Горячие клавиши",
+  "settings.about": "О программе",
+  "settings.bot.title": "Публикация в Telegram",
+  "settings.bot.text":
+    "Стикеры публикует бот StickerSnap. Привяжите к нему свой аккаунт Telegram один раз, и паки будут создаваться на вас.",
+  "settings.bot.via": "Через @{bot} · имена паков заканчиваются на",
+  "settings.bot.linked": "Привязан",
+  "settings.bot.linkedDot": "Аккаунт привязан",
+  "settings.bot.unlinked": "Аккаунт не привязан",
+  "settings.bot.unlinkedText":
+    "Без привязки стикеры можно экспортировать в .webm, но не публиковать.",
+  "settings.bot.pending": "Ждём ответа от бота…",
+  "settings.bot.bot_blocked": "Бот остановлен в Telegram",
+  "settings.bot.network_unavailable": "Нет связи с Telegram",
+  "settings.bot.loading": "Проверяю привязку…",
+  "settings.bot.after":
+    "Опубликованные паки остаются в Telegram и после отвязки. Привязать можно другой аккаунт: старые паки останутся на прежнем.",
+  "settings.theme": "Тема",
+  "settings.theme.nowLight": "Сейчас в системе светлая тема",
+  "settings.theme.nowDark": "Сейчас в системе тёмная тема",
+  "settings.accent": "Акцент",
+  "settings.accent.default": "{name} · по умолчанию",
+  "settings.folders.text":
+    "Новая папка действует для новых файлов. Уже сохранённые проекты и стикеры остаются на своих местах.",
+  "settings.folders.projects": "Проекты",
+  "settings.folders.projectsNote":
+    "Сюда автосохраняются новые проекты. В Linux по умолчанию ~/StickerSnap/Проекты.",
+  "settings.folders.stickers": "Готовые стикеры .webm",
+  "settings.folders.stickersNote":
+    "Сюда кладётся результат экспорта. В Linux по умолчанию ~/StickerSnap/Стикеры.",
+  "settings.folders.change": "Изменить…",
+  "settings.folders.open": "Открыть",
+  "settings.keys.text": "Только для справки. Назначать свои клавиши можно будет позже.",
+  "settings.about.versions": "Версия {app} · FFmpeg {ffmpeg} · Windows и Linux",
+  "settings.about.copy": "Скопировать версии",
+  "settings.about.copied": "Версии скопированы",
+  "settings.about.copiedText": "Приложите их к сообщению об ошибке.",
+  "settings.about.copyFailed": "Не получилось скопировать",
+  "settings.about.licenses": "Лицензии…",
+  "settings.about.licensesTitle": "Лицензии",
+  "settings.about.licensesText": "StickerSnap собран из открытых компонентов. Спасибо их авторам.",
+  "settings.about.text":
+    "«Лицензии…» открывает список открытых компонентов с их лицензиями. «Скопировать версии» кладёт строку версий в буфер, чтобы приложить её к сообщению об ошибке.",
+
   // Error codes of the API contract (section «Ошибки»): a title says what happened, a text what to do.
   "error.source_unreadable.title": "Не получается прочитать видео",
   "error.source_unreadable.text":

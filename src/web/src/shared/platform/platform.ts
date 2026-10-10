@@ -20,6 +20,11 @@ export interface Platform {
   saveFile(fileUrl: string, fileName: string): Promise<void>;
   /** A t.me link or another external page */
   openExternal(url: string): void;
+  /** «Изменить…» of a folder in Settings: the system folder picker, null on cancel.
+   *  Only with paths; the browser has none, so Settings lets the user type the path. */
+  pickFolder(current: string): Promise<string | null>;
+  /** «Открыть» of a folder in Settings, in the system file manager. Only with paths. */
+  openFolder(path: string): void;
 }
 
 const VIDEO_TYPES = ".mp4,.mov,.webm,.gif,.webp,video/*,image/gif,image/webp";
@@ -83,6 +88,8 @@ export const browserPlatform: Platform = {
   openExternal(url) {
     window.open(url, "_blank", "noopener,noreferrer");
   },
+  pickFolder: () => Promise.resolve(null),
+  openFolder: () => {},
 };
 
 /** The platform this SPA runs on. Stage 1a has only the browser. */

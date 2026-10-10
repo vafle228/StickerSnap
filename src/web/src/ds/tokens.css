@@ -46,6 +46,7 @@
   --surface-sunken: #e9e5dd;
   --surface-glass: rgba(255, 255, 255, 0.58);
   --surface-inverse: #1f2024;
+  --scrim: rgba(31, 32, 36, 0.32);
   --on-inverse: #f2f1f6;
   --ink: #1f2024;
   --ink-muted: #5b5c66;
@@ -118,6 +119,7 @@
   --surface-sunken: #121318;
   --surface-glass: rgba(39, 41, 50, 0.62);
   --surface-inverse: #f2f1f6;
+  --scrim: rgba(0, 0, 0, 0.5);
   --on-inverse: #1f2024;
   --ink: #f2f1f6;
   --ink-muted: #a6a7b5;

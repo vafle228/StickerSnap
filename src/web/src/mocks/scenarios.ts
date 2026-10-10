@@ -7,6 +7,7 @@ export const SCENARIOS = {
   "long-video": "Длинное видео",
   "short-gif": "Короткий GIF",
   "no-segments": "Без отрезков",
+  desktop: "Десктоп",
 } as const;
 
 export type Scenario = keyof typeof SCENARIOS;
