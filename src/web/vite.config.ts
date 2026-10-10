@@ -41,7 +41,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   test: {
-    environment: "jsdom",
+    // Unit tests cover logic without a DOM: stores, key matching, event wiring.
     include: ["src/**/*.test.{ts,tsx}"],
   },
 });
