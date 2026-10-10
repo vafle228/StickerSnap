@@ -4,11 +4,12 @@ import { mediaSrc } from "../../../shared/api/client";
 import { useAppInfo } from "../../../shared/api/queries";
 import { t } from "../../../shared/strings/ru";
 import { fps as fpsText, num } from "../format";
+import { stretchBox } from "../model/crop";
 import { fpsOf } from "../model/frame";
 import { useEditor, useSegment } from "../model/store";
 import { fitScale } from "../model/zoom";
+import { CropFrame } from "./CropFrame";
 import { GlassBar } from "./GlassBar";
-import { OutputFrame } from "./OutputFrame";
 import { usePlayback } from "./usePlayback";
 import styles from "./VideoStage.module.css";
 
@@ -16,13 +17,13 @@ import styles from "./VideoStage.module.css";
 const INSET = { top: 72, bottom: 64, side: 24 };
 
 /** The canvas on a checkerboard (artboard 3a): the source in a <video>, the output frame over it,
- *  the glass bar and two glass chips. Crop handles (CropFrame) and the exact preview layer go
- *  on top of this. */
+ *  the glass bar and two glass chips. The exact preview layer goes on top of this. */
 export function VideoStage({ className }: { className?: string }) {
   const source = useEditor((s) => s.source);
   const mediaUrl = useEditor((s) => s.mediaUrl);
   const zoom = useEditor((s) => s.zoom);
   const cropTool = useEditor((s) => s.cropTool);
+  const draft = useEditor((s) => s.frameDraft);
   const segment = useSegment();
   const limits = useAppInfo().data?.limits;
 
@@ -67,6 +68,9 @@ export function VideoStage({ className }: { className?: string }) {
   const width = source.width * scale;
   const height = source.height * scale;
   const present = source.status === "ok" && mediaUrl !== undefined;
+  const frame = segment && (draft ?? segment.frame);
+  // A stretch squeezes the source into its box, so the canvas shows the sticker's proportions.
+  const squeezed = frame?.mode === "stretch" ? stretchBox(frame.aspect, source) : undefined;
 
   return (
     <section className={`${styles.stage} ${className ?? ""}`} aria-label={t("editor.canvas")}>
@@ -85,6 +89,15 @@ export function VideoStage({ className }: { className?: string }) {
             <video
               ref={videoRef}
               className={styles.video}
+              style={
+                squeezed && {
+                  position: "absolute",
+                  left: squeezed.x * scale,
+                  top: squeezed.y * scale,
+                  width: squeezed.width * scale,
+                  height: squeezed.height * scale,
+                }
+              }
               src={mediaSrc(mediaUrl)}
               hidden={!usable}
               muted
@@ -94,14 +107,14 @@ export function VideoStage({ className }: { className?: string }) {
               onError={() => setUsable(false)}
             />
           )}
-          {segment && (
-            <OutputFrame
-              frame={segment.frame}
+          {segment && frame && (
+            <CropFrame
+              frame={frame}
               preset={segment.preset}
               source={source}
               limits={limits?.[segment.preset]}
               scale={scale}
-              labelled={cropTool}
+              editable={cropTool}
             />
           )}
         </div>

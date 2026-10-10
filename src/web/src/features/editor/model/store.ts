@@ -33,6 +33,8 @@ interface EditorState {
   zoom: Zoom;
   /** «Кроп» on the glass bar: the frame on the canvas can be dragged */
   cropTool: boolean;
+  /** The selected segment's frame while it is dragged on the canvas; lands as one edit on release */
+  frameDraft?: Segment["frame"];
   playing: boolean;
   /** Playhead, seconds of the source */
   time: number;
@@ -52,6 +54,7 @@ interface EditorState {
   select: (segmentId: string | undefined) => void;
   setZoom: (zoom: Zoom) => void;
   setCropTool: (on: boolean) => void;
+  setFrameDraft: (frame?: Segment["frame"]) => void;
   setPlaying: (playing: boolean) => void;
   setTime: (time: number) => void;
   setPeek: (peek?: number) => void;
@@ -70,6 +73,7 @@ const empty = {
   segmentId: undefined,
   zoom: "fit" as Zoom,
   cropTool: false,
+  frameDraft: undefined,
   playing: false,
   time: 0,
   peek: undefined,
@@ -94,9 +98,11 @@ export const useEditor = create<EditorState>()((set) => ({
     }),
   unload: () => set(empty),
   edit: (recipe) => set((s) => (s.scene ? { scene: produce(s.scene, recipe) } : {})),
-  select: (segmentId) => set({ segmentId, selection: undefined, stop: undefined }),
+  select: (segmentId) =>
+    set({ segmentId, selection: undefined, stop: undefined, frameDraft: undefined }),
   setZoom: (zoom) => set({ zoom }),
   setCropTool: (cropTool) => set({ cropTool }),
+  setFrameDraft: (frameDraft) => set({ frameDraft }),
   setPlaying: (playing) => set({ playing }),
   setTime: (time) => set({ time }),
   setPeek: (peek) => set({ peek }),
