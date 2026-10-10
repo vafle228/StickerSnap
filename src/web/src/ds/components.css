@@ -361,3 +361,9 @@ button.ss-badge:focus-visible { outline: 2px solid var(--focus); outline-offset:
 .ss-rail-item:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .ss-rail-item.is-active { background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow-primary); }
 .ss-rail-count { margin-left: auto; min-width: 22px; height: 22px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--highlight); color: var(--on-highlight); font: 700 12px/22px var(--font-sans); text-align: center; }
+/* Narrow rail, icons only, 56px: the canvas look since 9 Oct (all v6 artboards).
+   Local addition until the design system artifact ships it. */
+.ss-rail-narrow { min-width: 0; width: 56px; padding: 8px; align-items: center; border-radius: var(--radius-lg); }
+.ss-rail-narrow .ss-rail-item { position: relative; justify-content: center; width: var(--size-control); padding: 0; border-radius: var(--radius-md); }
+.ss-rail-narrow .ss-rail-count { position: absolute; top: -4px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; font: 700 11px/18px var(--font-sans); box-shadow: 0 0 0 2px var(--surface); }
+.ss-visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

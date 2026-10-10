@@ -18,6 +18,8 @@ export interface NavRailProps<V extends string = string> {
   onChange?: (value: V) => void;
   label?: string;
   height?: number | string;
+  /** Icons only, 56px wide: the app window look. Labels stay for screen readers and tooltips. */
+  narrow?: boolean;
   className?: string;
 }
 
@@ -29,6 +31,7 @@ export function NavRail<V extends string = string>({
   onChange,
   label = "Разделы приложения",
   height,
+  narrow = false,
   className,
 }: NavRailProps<V>) {
   const [own, setOwn] = useState(defaultValue ?? items[0]?.value ?? bottomItems[0]?.value);
@@ -42,13 +45,14 @@ export function NavRail<V extends string = string>({
         type="button"
         aria-current={active ? "page" : undefined}
         className={cx("ss-rail-item", active && "is-active")}
+        title={narrow && typeof item.label === "string" ? item.label : undefined}
         onClick={() => {
           if (value === undefined) setOwn(item.value);
           onChange?.(item.value);
         }}
       >
         {item.icon && <Icon name={item.icon} size={20} />}
-        {item.label}
+        {narrow ? <span className="ss-visually-hidden">{item.label}</span> : item.label}
         {item.count ? <span className="ss-rail-count">{item.count}</span> : null}
       </button>
     );
@@ -56,7 +60,7 @@ export function NavRail<V extends string = string>({
 
   return (
     <nav
-      className={cx("ss-rail", className)}
+      className={cx("ss-rail", narrow && "ss-rail-narrow", className)}
       aria-label={label}
       style={height !== undefined ? { height } : undefined}
     >

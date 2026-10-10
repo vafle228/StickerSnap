@@ -36,6 +36,7 @@ export function App() {
     <div className={`ss-root ${styles.shell}`}>
       <NavRail
         className={styles.rail}
+        narrow
         label={t("nav.label")}
         items={MAIN}
         bottomItems={BOTTOM}
