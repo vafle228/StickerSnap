@@ -1,4 +1,5 @@
 import { useAppInfo } from "../../../shared/api/queries";
+import { notify } from "../../../shared/notify";
 import type { Segment, SourceInfo } from "../../../shared/api/types";
 import { t } from "../../../shared/strings/ru";
 import {
@@ -95,4 +96,33 @@ export function addSegment({ segments, segment, fps, total, maxDuration }: Timel
   select(created.id);
   setSelection(undefined);
   setTime(range.inFrame / fps);
+}
+
+/** «Удалить отрезок»: gone at once, with «Вернуть» in the popup (artboard 8: what can be undone
+ *  is done without asking). The last segment stays: a project always has one. */
+export function deleteSegment({ segments }: TimelineInfo, id: string) {
+  const index = segments.findIndex((s) => s.id === id);
+  const removed = segments[index];
+  if (!removed || segments.length < 2) return;
+  const { segmentId, edit, select, setTime } = useEditor.getState();
+  const next = segments[index + 1] ?? segments[index - 1];
+  edit((scene) => void scene.segments.splice(index, 1));
+  if (segmentId === id && next) select(next.id);
+
+  notify.toast({
+    tone: "info",
+    title: t("editor.segment.deleted", { name: removed.name }),
+    action: {
+      label: t("editor.segment.restore"),
+      onClick: () => {
+        const state = useEditor.getState();
+        if (state.scene?.segments.some((s) => s.id === removed.id)) return;
+        state.edit((scene) => {
+          scene.segments.splice(Math.min(index, scene.segments.length), 0, removed);
+        });
+        select(removed.id);
+        if (state.source) setTime(removed.inFrame / fpsOf(state.source));
+      },
+    },
+  });
 }
