@@ -20,7 +20,7 @@ export function DevBar({ scenario }: { scenario?: Scenario }) {
     // A style property, not a class: the theme owns the class list of <html>.
     const html = document.documentElement.style;
     html.setProperty("--dev-bar-height", HEIGHT);
-    return () => html.removeProperty("--dev-bar-height");
+    return () => void html.removeProperty("--dev-bar-height");
   }, []);
 
   const go = (next: Source) => {
