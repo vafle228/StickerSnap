@@ -127,7 +127,9 @@ export function newRange(
   { total, max }: Bounds,
 ): Range {
   if (selection && selection.to > selection.from) {
-    return { inFrame: selection.from, outFrame: selection.to };
+    // A selection longer than the limit gives a segment up to the stop.
+    const end = Number.isFinite(max) ? selection.from + max - 1 : selection.to;
+    return { inFrame: selection.from, outFrame: Math.min(selection.to, end) };
   }
   const inFrame = clamp(playhead, 0, total - 1);
   const length = Number.isFinite(max) ? max : total;

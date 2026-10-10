@@ -131,6 +131,7 @@ describe("«Вписать целиком» from the stop", () => {
 describe("new segments", () => {
   it("makes one from a selection", () => {
     expect(newRange(5, orderedSelection(84, 80), bounds)).toEqual({ inFrame: 80, outFrame: 84 });
+    expect(newRange(5, orderedSelection(0, 200), bounds)).toEqual({ inFrame: 0, outFrame: 89 });
   });
 
   it("starts at the playhead and runs to the limit or the end", () => {

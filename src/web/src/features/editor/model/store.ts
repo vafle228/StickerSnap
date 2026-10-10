@@ -2,6 +2,7 @@ import { produce, type Draft } from "immer";
 import { create } from "zustand";
 import type { Project, Scene, Segment, SourceInfo } from "../../../shared/api/types";
 import { fpsOf } from "./frame";
+import type { Edge, Selection } from "./timeline";
 
 /* The editor's own state: the scene being edited plus what the screen shows of it.
    Every change of the scene goes through edit(): undo/redo and autosave hook in there
@@ -9,6 +10,14 @@ import { fpsOf } from "./frame";
 
 /** «По окну» or a scale of source pixels */
 export type Zoom = "fit" | number;
+
+/** An edge pushed against the 3,00 s stop: the hint with «Вписать целиком» (artboard 3b, B). */
+export interface Stop {
+  segmentId: string;
+  edge: Edge;
+  /** The frame the edge was pushed to */
+  wanted: number;
+}
 
 interface EditorState {
   projectId?: string;
@@ -27,6 +36,11 @@ interface EditorState {
   playing: boolean;
   /** Playhead, seconds of the source */
   time: number;
+  /** The timeline's scale: 0 «Обзор», 1 «Кадры» at their widest */
+  timelineZoom: number;
+  /** Frames picked with click and Shift+click in the «Кадры» scale */
+  selection?: Selection;
+  stop?: Stop;
 
   load: (project: Project) => void;
   unload: () => void;
@@ -36,6 +50,9 @@ interface EditorState {
   setCropTool: (on: boolean) => void;
   setPlaying: (playing: boolean) => void;
   setTime: (time: number) => void;
+  setTimelineZoom: (zoom: number) => void;
+  setSelection: (selection?: Selection) => void;
+  setStop: (stop?: Stop) => void;
 }
 
 const empty = {
@@ -50,6 +67,9 @@ const empty = {
   cropTool: false,
   playing: false,
   time: 0,
+  timelineZoom: 0,
+  selection: undefined,
+  stop: undefined,
 };
 
 export const useEditor = create<EditorState>()((set) => ({
@@ -68,11 +88,14 @@ export const useEditor = create<EditorState>()((set) => ({
     }),
   unload: () => set(empty),
   edit: (recipe) => set((s) => (s.scene ? { scene: produce(s.scene, recipe) } : {})),
-  select: (segmentId) => set({ segmentId }),
+  select: (segmentId) => set({ segmentId, selection: undefined, stop: undefined }),
   setZoom: (zoom) => set({ zoom }),
   setCropTool: (cropTool) => set({ cropTool }),
   setPlaying: (playing) => set({ playing }),
   setTime: (time) => set({ time }),
+  setTimelineZoom: (timelineZoom) => set({ timelineZoom }),
+  setSelection: (selection) => set({ selection }),
+  setStop: (stop) => set({ stop }),
 }));
 
 /** The selected segment, or undefined before a project is loaded. */
