@@ -1,0 +1,13 @@
+{
+  "name": "stickersnap",
+  "private": true,
+  "scripts": {
+    "gen:api": "openapi-typescript src/contract/openapi.yaml -o src/web/src/shared/api/schema.d.ts",
+    "check:api": "openapi-typescript src/contract/openapi.yaml -o src/web/src/shared/api/schema.d.ts --check",
+    "typecheck:api": "tsc --strict --noEmit src/web/src/shared/api/schema.d.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.4.4",
+    "typescript": "^5.6.3"
+  }
+}
