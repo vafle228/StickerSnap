@@ -29,6 +29,7 @@ export { SectionNav, type SectionNavProps } from "./components/SectionNav";
 export { Segmented, type SegmentedProps } from "./components/Segmented";
 export { Select, type SelectProps } from "./components/Select";
 export { Slider, type SliderProps } from "./components/Slider";
+export { StickerArt } from "./components/StickerArt";
 export { StickerTile, type StickerTileProps } from "./components/StickerTile";
 export { SwatchPicker, type SwatchPickerProps } from "./components/SwatchPicker";
 export { Switch, type SwitchProps } from "./components/Switch";

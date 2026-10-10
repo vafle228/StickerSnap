@@ -8,6 +8,7 @@ import { EditorHeader } from "./EditorHeader";
 import styles from "./EditorScreen.module.css";
 import { Inspector } from "./inspector/Inspector";
 import { useEditor } from "./model/store";
+import { MissingSource } from "./stage/MissingSource";
 import { VideoStage } from "./stage/VideoStage";
 import { StartSlot } from "./start/StartSlot";
 import { TimelineSlot } from "./timeline/TimelineSlot";
@@ -52,6 +53,7 @@ export function EditorScreen({ hidden }: { hidden: boolean }) {
         <div className={styles.work}>
           {ready ? (
             <>
+              <MissingSource />
               <VideoStage className={styles.stage} />
               <TimelineSlot active={!hidden} />
             </>
