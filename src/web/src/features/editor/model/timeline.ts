@@ -184,5 +184,5 @@ const TICKS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
 
 /** Seconds between ruler labels: the smallest step that leaves `minPx` between them. */
 export function tickStep(pxPerSecond: number, minPx = 56): number {
-  return TICKS.find((step) => step * pxPerSecond >= minPx) ?? TICKS[TICKS.length - 1]!;
+  return TICKS.find((step) => step * pxPerSecond >= minPx) ?? 600;
 }

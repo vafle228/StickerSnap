@@ -1,6 +1,7 @@
 import { useEffect, type RefObject } from "react";
 import type { Segment } from "../../../shared/api/types";
 import { useEditor } from "../model/store";
+import { frameAt } from "../model/timeline";
 
 type Loop = Pick<Segment, "inFrame" | "outFrame" | "speed" | "loop">;
 
@@ -78,8 +79,11 @@ export function usePlayback(
   useEffect(() => {
     const video = videoRef.current;
     if (!usable || !video) return undefined;
+    // The seek aims at the middle of the frame: at its exact start, float noise in Chromium
+    // can show the frame before it.
     const follow = (time: number) => {
-      if (Math.abs(video.currentTime - time) > 0.5 / fps) video.currentTime = time;
+      const frame = frameAt(time, fps);
+      if (frameAt(video.currentTime, fps) !== frame) video.currentTime = (frame + 0.5) / fps;
     };
     if (!useEditor.getState().playing) follow(useEditor.getState().time);
     return useEditor.subscribe((s, prev) => {

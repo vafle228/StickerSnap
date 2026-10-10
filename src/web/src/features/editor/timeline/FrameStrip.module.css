@@ -1,0 +1,244 @@
+/* Artboards 3a and 3b. Frames are tiles on the sunken zone; the selected segment is the accent
+   frame with white handles, the others are dashed; the playhead is peach, never the accent. */
+
+.wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Scrolls sideways once the scale is past «Обзор». The 8px under the frames keep the trim
+   frame and the playhead, which reach below the tiles, out of the clip. */
+.scroller {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+}
+
+.content {
+  box-sizing: content-box;
+  padding: 0 8px;
+}
+
+.ruler {
+  position: relative;
+  height: 16px;
+  margin-bottom: 4px;
+  font: 500 11px/16px var(--font-mono);
+  color: var(--ink-muted);
+}
+
+.tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.tick.start {
+  transform: none;
+}
+
+.tick.end {
+  transform: translateX(-100%);
+}
+
+.track {
+  position: relative;
+  touch-action: none;
+  user-select: none;
+}
+
+/* The tile colors of the wireframe, mixed from the tokens. */
+.tile,
+.thumb {
+  background-color: color-mix(in srgb, var(--border-strong) 30%, var(--surface-sunken));
+  background-repeat: no-repeat;
+}
+
+.tile {
+  position: absolute;
+  top: 0;
+  height: 52px;
+  border-radius: var(--radius-sm);
+  background-position: center;
+  background-size: cover;
+}
+
+.tile.alt {
+  background-color: color-mix(in srgb, var(--border-strong) 40%, var(--surface-sunken));
+}
+
+/* «Кадры»: every frame its own element with a number, ready for selection and P1 deletion. */
+.cell {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.thumb {
+  align-self: stretch;
+  height: 48px;
+  border-radius: var(--radius-sm);
+}
+
+.thumb.picked {
+  background-color: var(--primary-soft);
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.num {
+  height: 16px;
+  font: 500 11px/16px var(--font-mono);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+/* The other segments: dashed, with their name; a click selects one. */
+.other {
+  position: absolute;
+  top: 0;
+  height: var(--thumbs);
+  box-sizing: border-box;
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  cursor: pointer;
+}
+
+.chip {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  max-width: calc(100% - 12px);
+  overflow: hidden;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  font: 600 11px/18px var(--font-sans);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.trim {
+  position: absolute;
+  top: -4px;
+  height: calc(var(--thumbs) + 8px);
+  box-sizing: border-box;
+  border: 3px solid var(--primary);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  pointer-events: none;
+}
+
+/* A 16px grip around the 6 × 22 pill, centered on the trim frame's border. */
+.handle {
+  position: absolute;
+  z-index: 2;
+  top: calc((var(--thumbs) - 36px) / 2);
+  width: 16px;
+  height: 36px;
+  margin-left: -8px;
+  border-radius: var(--radius-pill);
+  cursor: ew-resize;
+  outline: none;
+}
+
+.handle.in {
+  transform: translateX(1px);
+}
+
+.handle.out {
+  transform: translateX(-1px);
+}
+
+.handle::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: 5px;
+  width: 6px;
+  height: 22px;
+  border-radius: var(--radius-pill);
+  background: var(--on-primary);
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.handle:focus-visible::after {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* Pushed against the 3,00 s stop (artboard 3b, B): wider and in the warning tone. */
+.handle.limit::after {
+  top: 4px;
+  left: 4px;
+  width: 8px;
+  height: 28px;
+  background: var(--warning);
+  box-shadow: 0 0 0 3px var(--warning-soft);
+}
+
+.playhead {
+  position: absolute;
+  z-index: 3;
+  top: -8px;
+  width: 3px;
+  height: calc(var(--thumbs) + 16px);
+  margin-left: -1px;
+  border-radius: var(--radius-pill);
+  background: var(--highlight);
+  pointer-events: none;
+}
+
+.playhead::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: -5px;
+  width: 13px;
+  height: 13px;
+  border-radius: var(--radius-pill);
+  background: var(--highlight);
+}
+
+/* Over the strip, above the ruler: the stop hint and the selection's panel. */
+.floating {
+  position: absolute;
+  z-index: 20;
+  bottom: calc(100% + 4px);
+  width: max-content;
+}
+
+.panelSpot {
+  bottom: calc(100% - 16px);
+}
+
+.hint {
+  align-items: center;
+  width: max-content;
+}
+
+.hintText {
+  flex: 1;
+  font: 600 14px/20px var(--font-sans);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.panel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 4px 4px 4px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-float);
+  font: 600 13px/18px var(--font-sans);
+  color: var(--ink);
+  white-space: nowrap;
+}
