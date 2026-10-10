@@ -14,13 +14,14 @@
     "format:check": "prettier --check src/web tools",
     "gen:tokens": "node tools/build-tokens.mjs",
     "check:tokens": "node tools/build-tokens.mjs --check",
-    "gen:api": "openapi-typescript src/contract/openapi.yaml -o src/web/src/shared/api/schema.d.ts",
-    "check:api": "openapi-typescript src/contract/openapi.yaml -o src/web/src/shared/api/schema.d.ts --check",
+    "gen:api": "openapi-typescript src/contract/openapi.yaml -o src/web/src/shared/api/schema.d.ts && node tools/build-events.mjs",
+    "check:api": "openapi-typescript src/contract/openapi.yaml -o src/web/src/shared/api/schema.d.ts --check && node tools/build-events.mjs --check",
     "typecheck:api": "tsc --strict --noEmit src/web/src/shared/api/schema.d.ts"
   },
   "devDependencies": {
     "openapi-typescript": "^7.4.4",
     "prettier": "^3.9.9",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "js-yaml": "^4.1.0"
   }
 }
