@@ -1,0 +1,4 @@
+/* Above the window scrim (a popover can open inside a window), below the toasts. */
+.popover {
+  z-index: 55;
+}

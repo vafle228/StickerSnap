@@ -29,6 +29,11 @@ function onKeyDown(e: KeyboardEvent) {
   top.close();
 }
 
+/** A window or a confirmation is open: editor hotkeys stay silent until it closes (R16). */
+export function hasModalLayer() {
+  return stack.some((l) => l.kind !== "popover");
+}
+
 /** Registers an open overlay; `close` runs on Esc when it is the top layer, or when a newer layer evicts it. */
 export function useLayer(open: boolean, kind: LayerKind, close: () => void) {
   const latest = useLatest(close);

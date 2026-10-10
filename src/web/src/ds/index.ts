@@ -2,7 +2,7 @@
 // Styles are global (index.css: tokens + components.css); screens add their own CSS Modules.
 export { ACCENTS, type AccentName, type Swatch } from "./accents";
 export { ICON_NAMES, type IconName } from "./icons/paths";
-export { useLayer, type LayerKind } from "./layers";
+export { hasModalLayer, useLayer, type LayerKind } from "./layers";
 export { TONE_ICON, type Item, type Tone } from "./types";
 
 export { Badge, type BadgeProps } from "./components/Badge";
