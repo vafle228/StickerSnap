@@ -1,9 +1,5 @@
 <p align="center">
-  <img src="assets/banner.png" alt="StickerSnap: turn any video or GIF into a Telegram video sticker" width="100%">
-</p>
-
-<p align="center">
-  <img src="assets/icon-256.png" alt="StickerSnap icon" width="96" height="96">
+  <img src=".github/assets/icon-256.png" alt="StickerSnap icon" width="112" height="112">
 </p>
 
 <h1 align="center">StickerSnap</h1>
@@ -20,6 +16,10 @@
   <img alt="FFmpeg" src="https://img.shields.io/badge/FFmpeg-%E2%89%A5%209.0-ffb38a">
 </p>
 
+<p align="center">
+  <img src=".github/assets/banner.png" alt="StickerSnap: turn any video or GIF into a Telegram video sticker" width="100%">
+</p>
+
 ---
 
 ## What it does
@@ -34,7 +34,7 @@ StickerSnap does that for you:
 4. **Publish to Telegram.** Create a new pack or add to an existing one through the shared bot [@StickerSnapAppBot](https://t.me/StickerSnapAppBot). No bot token or BotFather setup needed on your side.
 
 <!-- SCREENSHOT: editor -->
-<!-- <p align="center"><img src="assets/screenshot-editor.png" alt="StickerSnap editor" width="85%"></p> -->
+<!-- <p align="center"><img src=".github/assets/screenshot-editor.png" alt="StickerSnap editor" width="85%"></p> -->
 
 ## Features
 
