@@ -9,6 +9,7 @@
     "build": "npm run build -w src/web",
     "lint": "npm run lint -w src/web",
     "typecheck": "npm run typecheck -w src/web",
+    "test": "npm run test -w src/web",
     "format": "prettier --write src/web tools",
     "format:check": "prettier --check src/web tools",
     "gen:tokens": "node tools/build-tokens.mjs",

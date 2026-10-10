@@ -48,6 +48,8 @@ jobs:
 
       - run: npm run lint
 
+      - run: npm test
+
       # tsc -b (strict) + vite build into src/server/wwwroot
       - run: npm run build
 
