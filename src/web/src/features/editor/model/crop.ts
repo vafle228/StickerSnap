@@ -1,9 +1,10 @@
 import type { Crop, Stretch } from "../../../shared/api/types";
-import { sourceStretch, squashStretch, type Size } from "./frame";
+import type { Size } from "./frame";
 
 /* The math of the frame on the canvas (CropFrame): moving and resizing the crop rect in source
-   pixels, and the stretch box the source is squeezed into. Everything stays inside the source
-   and lands in whole pixels; a drag that tries to turn the frame inside out stops at the minimum. */
+   pixels, and the stretch box the source is squeezed into. A crop stays inside the source; a
+   stretch box sits on the source's center and may grow past it. Everything lands in whole
+   pixels; a drag that tries to turn the frame inside out stops at the minimum. */
 
 export type Rect = Crop["rect"];
 export type Corner = "nw" | "ne" | "sw" | "se";
@@ -13,11 +14,12 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-/** The proportion a crop preset holds while its corners are dragged; «Свободно» holds none. */
-export function presetAspect(preset: Crop["preset"], source: Size): number | undefined {
-  if (preset === "square") return 1;
-  if (preset === "source") return source.width / source.height;
-  return undefined;
+/** The proportion a crop holds while its corners are dragged without Shift: the preset's, or
+ *  for a free crop the one it has now. */
+export function cropAspect(crop: Pick<Crop, "preset" | "rect">, source: Size): number {
+  if (crop.preset === "square") return 1;
+  if (crop.preset === "source") return source.width / source.height;
+  return crop.rect.width / crop.rect.height;
 }
 
 /** Within a pixel of the source's proportion. */
@@ -41,8 +43,7 @@ export function moveCrop(rect: Rect, dx: number, dy: number, source: Size): Rect
 }
 
 /** The rect with `corner` dragged by (dx, dy) while the opposite corner stays. With an aspect
- *  the rect keeps it. `min` is the shortest
- *  side in source pixels. */
+ *  the rect keeps it. `min` is the shortest side in source pixels. */
 export function resizeCrop(
   rect: Rect,
   corner: Corner,
@@ -82,10 +83,17 @@ export function resizeCrop(
   };
 }
 
-/** Where the source is squeezed to in a stretch: the aspect as big as fits into the source's
- *  place, centered. Shrinking one side leaves the other where it was. */
+/** How far a stretch box may grow past the source: four times its longer side. */
+const STRETCH_MAX = 4;
+
+/** Where the source is squeezed to in a stretch, in source pixels around the source's center:
+ *  the aspect is the box itself («Как в источнике» is the source's own size). An aspect too
+ *  small to be a size (a bare 1:1) is taken as a proportion and fitted into the source. */
 export function stretchBox(aspect: Stretch["aspect"], source: Size): Rect {
-  const scale = Math.min(source.width / aspect.width, source.height / aspect.height);
+  const scale =
+    Math.max(aspect.width, aspect.height) < 16
+      ? Math.min(source.width / aspect.width, source.height / aspect.height)
+      : 1;
   const width = aspect.width * scale;
   const height = aspect.height * scale;
   return { x: (source.width - width) / 2, y: (source.height - height) / 2, width, height };
@@ -95,17 +103,29 @@ export function stretchBox(aspect: Stretch["aspect"], source: Size): Rect {
  *  both ways from its center, so the dragged side stays under the pointer. */
 export function resizeStretch(box: Rect, side: Side, delta: number, source: Size, min: number) {
   const across = side === "e" || side === "w";
-  const room = across ? source.width : source.height;
-  const size = clamp((across ? box.width : box.height) + 2 * delta, Math.min(min, room), room);
+  const most = STRETCH_MAX * Math.max(source.width, source.height);
+  const size = clamp((across ? box.width : box.height) + 2 * delta, min, most);
   const width = across ? size : box.width;
   const height = across ? box.height : size;
   return { x: (source.width - width) / 2, y: (source.height - height) / 2, width, height };
 }
 
-/** The stretch a dragged box stands for: its proportion, the preset it happens to match. */
+/** The stretch a dragged box stands for: its size, and the preset its proportion matches. */
 export function stretchOf(box: Pick<Rect, "width" | "height">, source: Size): Stretch {
   const aspect = { width: Math.round(box.width), height: Math.round(box.height) };
-  if (aspect.width === aspect.height) return squashStretch();
-  if (likeSource(aspect, source)) return sourceStretch(source);
-  return { mode: "stretch", preset: "free", aspect };
+  const preset =
+    aspect.width === aspect.height ? "squash" : likeSource(aspect, source) ? "source" : "free";
+  return { mode: "stretch", preset, aspect };
+}
+
+/** Sizes typed in the inspector (the output's) as a box as big as the one there is now. */
+export function stretchLike(size: Stretch["aspect"], now: Stretch["aspect"], source: Size) {
+  const current = stretchBox(now, source);
+  const scale = Math.max(current.width, current.height) / Math.max(size.width, size.height);
+  return { width: Math.round(size.width * scale), height: Math.round(size.height * scale) };
+}
+
+/** What the canvas shows a frame through: the crop, or the stretch box. */
+export function frameBox(frame: Crop | Stretch, source: Size): Rect {
+  return frame.mode === "crop" ? frame.rect : stretchBox(frame.aspect, source);
 }

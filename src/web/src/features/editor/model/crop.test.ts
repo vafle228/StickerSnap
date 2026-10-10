@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   cropPreset,
   moveCrop,
-  presetAspect,
+  cropAspect,
   resizeCrop,
   resizeStretch,
   stretchBox,
+  stretchLike,
   stretchOf,
 } from "./crop";
 
@@ -40,7 +41,8 @@ describe("resizing the crop", () => {
 
   it("holds the source proportion for «Как в источнике»", () => {
     const whole = { x: 0, y: 0, ...fullHd };
-    const rect = resizeCrop(whole, "se", -960, 0, fullHd, presetAspect("source", fullHd), 16);
+    const aspect = cropAspect({ preset: "source", rect: whole }, fullHd);
+    const rect = resizeCrop(whole, "se", -960, 0, fullHd, aspect, 16);
     expect(rect).toEqual({ x: 0, y: 0, width: 960, height: 540 });
   });
 
@@ -69,12 +71,18 @@ describe("crop presets", () => {
     expect(cropPreset({ width: 641, height: 360 }, fullHd)).toBe("source");
     expect(cropPreset({ width: 700, height: 360 }, fullHd)).toBe("free");
   });
+
+  it("holds a free crop's own proportion once Shift is let go", () => {
+    const rect = { x: 0, y: 0, width: 800, height: 400 };
+    expect(cropAspect({ preset: "free", rect }, fullHd)).toBe(2);
+    expect(cropAspect({ preset: "square", rect }, fullHd)).toBe(1);
+  });
 });
 
 describe("the stretch box", () => {
-  it("fills the source for its own proportion and centers a square", () => {
+  it("is the aspect itself around the source's center", () => {
     expect(stretchBox(fullHd, fullHd)).toEqual({ x: 0, y: 0, ...fullHd });
-    expect(stretchBox({ width: 1, height: 1 }, fullHd)).toEqual({
+    expect(stretchBox({ width: 1080, height: 1080 }, fullHd)).toEqual({
       x: 420,
       y: 0,
       width: 1080,
@@ -82,20 +90,32 @@ describe("the stretch box", () => {
     });
   });
 
-  it("grows a dragged side both ways from the center, up to the source", () => {
-    const box = stretchBox({ width: 1, height: 1 }, fullHd);
-    expect(resizeStretch(box, "e", 100, fullHd, 16)).toMatchObject({ x: 320, width: 1280 });
-    expect(resizeStretch(box, "w", 1000, fullHd, 16)).toMatchObject({ x: 0, width: 1920 });
-    expect(resizeStretch(box, "n", -270, fullHd, 16)).toMatchObject({ y: 270, height: 540 });
+  it("fits a bare proportion into the source", () => {
+    expect(stretchBox({ width: 1, height: 1 }, fullHd)).toMatchObject({ width: 1080 });
+  });
+
+  it("grows a dragged side both ways from the center, past the source too", () => {
+    const box = stretchBox(fullHd, fullHd);
+    expect(resizeStretch(box, "e", -100, fullHd, 16)).toMatchObject({ x: 100, width: 1720 });
+    expect(resizeStretch(box, "s", 200, fullHd, 16)).toMatchObject({ y: -200, height: 1480 });
+    expect(resizeStretch(box, "n", -3000, fullHd, 16)).toMatchObject({ height: 16 });
+    expect(resizeStretch(box, "w", 9000, fullHd, 16)).toMatchObject({ width: 7680 });
   });
 
   it("turns a box into a stretch and spots the presets", () => {
-    expect(stretchOf({ width: 1280, height: 1080 }, fullHd)).toEqual({
+    expect(stretchOf({ width: 1920, height: 1480 }, fullHd)).toEqual({
       mode: "stretch",
       preset: "free",
-      aspect: { width: 1280, height: 1080 },
+      aspect: { width: 1920, height: 1480 },
     });
     expect(stretchOf({ width: 1080, height: 1080 }, fullHd).preset).toBe("squash");
-    expect(stretchOf({ width: 1920, height: 1080 }, fullHd).preset).toBe("source");
+    expect(stretchOf({ width: 960, height: 540 }, fullHd).preset).toBe("source");
+  });
+
+  it("makes typed output sizes a box as big as the one there is", () => {
+    expect(stretchLike({ width: 512, height: 512 }, fullHd, fullHd)).toEqual({
+      width: 1920,
+      height: 1920,
+    });
   });
 });
