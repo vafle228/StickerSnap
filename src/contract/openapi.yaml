@@ -13,7 +13,9 @@ info:
     Ломающее изменение — новый `/api/v2` рядом со старым.
 
     Доступ: Electron передаёт в SPA порт и одноразовый токен; каждый запрос несёт
-    `Authorization: Bearer <token>`. Без токена — 401.
+    `Authorization: Bearer <token>`. SignalR и адреса, которые браузер грузит сам
+    (`<video>` и `<img>`: media, cover, frames, медиа стикеров), несут его как
+    `access_token` в строке запроса. Без токена — 401.
 
     Формат: JSON, поля в camelCase, перечисления — строки, даты — ISO 8601 в UTC,
     размеры — в байтах, необязательное поле отсутствует, а не `null`.
@@ -999,7 +1001,8 @@ components:
       scheme: bearer
       description: |
         Одноразовый токен, который Electron передаёт в SPA вместе с портом.
-        SignalR-хаб `/hubs/events` принимает его как `access_token` в строке запроса.
+        SignalR-хаб `/hubs/events` и адреса для `<video>` и `<img>` (media, cover, frames,
+        медиа стикеров) принимают его как `access_token` в строке запроса.
 
   parameters:
     ProjectId:
