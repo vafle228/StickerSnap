@@ -4,6 +4,8 @@ export const SCENARIOS = {
   "source-missing": "Исходник не найден",
   "pack-full": "Пак заполнен",
   offline: "Нет сети",
+  "long-video": "Длинное видео",
+  "short-gif": "Короткий GIF",
 } as const;
 
 export type Scenario = keyof typeof SCENARIOS;
