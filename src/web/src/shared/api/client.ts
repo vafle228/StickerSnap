@@ -33,6 +33,14 @@ const auth: Middleware = {
 export const api = createClient<paths>({ baseUrl: connection.baseUrl });
 api.use(auth);
 
+/** An address the browser loads by itself (<video>, <img>): it cannot send the Bearer header,
+ *  so the token rides in the query string, like the hub's (contract, «Доступ»). */
+export function mediaSrc(path: string): string {
+  const url = new URL(path, connection.baseUrl);
+  if (connection.token) url.searchParams.set("access_token", connection.token);
+  return url.href;
+}
+
 /** The response body, or an ApiError: `await call(api.GET("/api/v1/settings"))`. */
 export async function call<D, E>(
   request: Promise<{ data?: D; error?: E; response: Response }>,
