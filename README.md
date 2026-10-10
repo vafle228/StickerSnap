@@ -89,7 +89,8 @@ Design tokens come from `src/web/src/ds/tokens.json`; after changing it run `npm
 The design system components live in `src/web/src/ds` (import them from `src/ds`); the dev server shows
 all of them in both themes and five accents at http://127.0.0.1:5173/?showcase.
 Without the server, http://127.0.0.1:5173/?mock runs the SPA on demo data (MSW and a fake SignalR hub,
-typed by the API contract); a switch in the corner picks a scenario such as `?mock=offline`.
+typed by the API contract). In dev builds a bar on top of the window switches between the real
+server and the demo scenarios such as `?mock=offline`; production builds have neither.
 The API contract is `src/contract/openapi.yaml`; after changing it run `npm run gen:api`.
 Unit tests run with `npm test`.
 

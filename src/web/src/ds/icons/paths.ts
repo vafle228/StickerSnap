@@ -68,6 +68,17 @@ export const ICON_PATHS = {
     "M4 13a8 8 0 0 0 14.6 4.5L20 16",
     "M20 20v-4h-4",
   ],
+  // Editor additions, Lucide shapes on the same 1.75 stroke (plan, «Иконки»)
+  minus: ["M5 12h14"],
+  lock: ["M5 11h14v10H5z", "M8 11V7a4 4 0 0 1 8 0v4"],
+  unlock: ["M5 11h14v10H5z", "M8 11V7a4 4 0 0 1 7.5-2"],
+  repeat: [
+    "M17 2l4 4l-4 4",
+    "M3 11v-1a4 4 0 0 1 4-4h14",
+    "M7 22l-4-4l4-4",
+    "M21 13v1a4 4 0 0 1-4 4H3",
+  ],
+  clock: ["M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z", "M12 7v5l3 2"],
 } satisfies Record<string, string[]>;
 export type IconName = keyof typeof ICON_PATHS;
 

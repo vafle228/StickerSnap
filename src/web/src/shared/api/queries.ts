@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notifyProblem } from "../notify/problems";
 import { api, call } from "./client";
-import type { Settings, SettingsPatch } from "./types";
+import type { Segment, Settings, SettingsPatch } from "./types";
 
 /** Query keys of the server's resources. Lists and items have their own roots, so refetching
  *  a list after a reconnect never refetches the project open in the editor. */
@@ -55,5 +55,40 @@ export function useUpdateSettings() {
       notifyProblem(error, { key: "settings" });
     },
     onSuccess: (settings) => client.setQueryData(keys.settings, settings),
+  });
+}
+
+export function useProjects() {
+  return useQuery({
+    queryKey: keys.projects,
+    queryFn: () => call(api.GET("/api/v1/projects")),
+  });
+}
+
+/** The project open in the editor. Read once: from then on the editor owns the scene. */
+export function useProject(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.project(id ?? ""),
+    queryFn: () => call(api.GET("/api/v1/projects/{id}", { params: { path: { id: id ?? "" } } })),
+    enabled: id !== undefined,
+    staleTime: Infinity,
+  });
+}
+
+/** Size forecast of a segment that may not be saved yet (artboard 3a «Экспорт»). */
+export function useEstimate(projectId: string | undefined, segment: Segment | undefined) {
+  return useQuery({
+    queryKey: ["estimate", projectId, segment],
+    queryFn: () =>
+      call(
+        api.POST("/api/v1/projects/{id}/estimate", {
+          params: { path: { id: projectId ?? "" } },
+          body: { segment: segment as Segment },
+        }),
+      ),
+    enabled: projectId !== undefined && segment !== undefined,
+    staleTime: Infinity,
+    // The previous forecast stays on screen while the next one is computed.
+    placeholderData: (previous) => previous,
   });
 }

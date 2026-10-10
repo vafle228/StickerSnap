@@ -21,6 +21,9 @@ const LABELS: Record<SaveState, string> = {
   error: "Не сохранено",
 };
 
+// Saved is green as on artboard 3a; saving stays neutral until it lands.
+const TONES = { saved: "success", saving: "neutral", error: "danger" } as const;
+
 /** Editor header badge. A broken background save is told once by a toast and kept in view here. */
 export function SaveStatus({ state = "saved", detail, action, className }: SaveStatusProps) {
   const [open, setOpen] = useState(false);
@@ -33,7 +36,7 @@ export function SaveStatus({ state = "saved", detail, action, className }: SaveS
   return (
     <span className={cx("ss-save", className)} ref={ref} role="status">
       <Badge
-        tone={state === "error" ? "danger" : "neutral"}
+        tone={TONES[state]}
         icon={state === "saved" ? "check" : state === "error" ? "error-circle" : undefined}
         busy={state === "saving"}
         onClick={canOpen ? () => setOpen(!open) : undefined}

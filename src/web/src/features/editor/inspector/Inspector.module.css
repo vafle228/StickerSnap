@@ -1,0 +1,136 @@
+.card {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.card > h3 {
+  margin: 0;
+}
+
+.wide {
+  display: flex;
+  width: 100%;
+}
+
+.wide > button {
+  flex: 1;
+}
+
+.pair {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* A ghost button that stays chosen: the tonal look of artboard 3a (no such variant in the DS). */
+.preset {
+  flex: 1;
+}
+
+.preset[aria-checked="true"] {
+  background: var(--primary-soft);
+  color: var(--primary-ink);
+}
+
+.line {
+  display: flex;
+  justify-content: space-between;
+  font: var(--type-caption);
+  color: var(--ink-muted);
+}
+
+.line b {
+  font: var(--type-timecode);
+  color: var(--ink);
+}
+
+.sizes {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.size {
+  flex: 1;
+  min-width: 0;
+}
+
+.size input {
+  font-family: var(--font-mono);
+}
+
+.hint {
+  margin: 0;
+  font: var(--type-caption);
+  color: var(--ink-muted);
+}
+
+.scale {
+  display: flex;
+  justify-content: space-between;
+  font: 500 11px/16px var(--font-mono);
+  color: var(--ink-muted);
+}
+
+.forecast {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.forecastHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font: var(--type-caption);
+  color: var(--ink-muted);
+}
+
+.forecastHead b {
+  font: var(--type-title-3);
+  color: var(--ink);
+}
+
+.mono {
+  font: 500 12px/16px var(--font-mono);
+  color: var(--ink-muted);
+}
+
+/* Text on the left, the switch on the right, under a line (artboard 3a). */
+.long {
+  flex-direction: row-reverse;
+  justify-content: space-between;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.longText {
+  display: flex;
+  flex-direction: column;
+}
+
+.longText b {
+  font: 600 14px/20px var(--font-sans);
+  color: var(--ink);
+}
+
+.longText span {
+  font: 500 12px/16px var(--font-sans);
+  color: var(--highlight-ink);
+}
+
+.link {
+  align-self: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-ink);
+  font: 600 13px/18px var(--font-sans);
+  cursor: pointer;
+}
+
+.link:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

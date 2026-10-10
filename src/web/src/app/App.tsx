@@ -1,4 +1,5 @@
 import { Button, NavRail, type NavRailItem } from "../ds";
+import { EditorScreen } from "../features/editor/EditorScreen";
 import { t, type StringKey } from "../shared/strings/ru";
 import { useLiveUpdates } from "../shared/api/live";
 import { NotifyHost } from "../shared/notify";
@@ -53,23 +54,29 @@ export function App() {
         onChange={setSection}
       />
       <main className={styles.main}>
-        <header className={styles.header}>
-          <h1 className={styles.title}>{t(TITLES[section])}</h1>
-          <div className={styles.themes} role="group" aria-label={t("theme.label")}>
-            {THEME_MODES.map((m) => (
-              <Button
-                key={m}
-                size="sm"
-                variant={m === mode ? "primary" : "ghost"}
-                aria-pressed={m === mode}
-                onClick={() => setTheme({ theme: m })}
-              >
-                {t(MODE_LABELS[m])}
-              </Button>
-            ))}
-          </div>
-        </header>
-        <p className={styles.empty}>{t("shell.empty")}</p>
+        {/* The editor is never unmounted: switching sections keeps its scene and playhead. */}
+        <EditorScreen hidden={section !== "editor"} />
+        {section !== "editor" && (
+          <>
+            <header className={styles.header}>
+              <h1 className={styles.title}>{t(TITLES[section])}</h1>
+              <div className={styles.themes} role="group" aria-label={t("theme.label")}>
+                {THEME_MODES.map((m) => (
+                  <Button
+                    key={m}
+                    size="sm"
+                    variant={m === mode ? "primary" : "ghost"}
+                    aria-pressed={m === mode}
+                    onClick={() => setTheme({ theme: m })}
+                  >
+                    {t(MODE_LABELS[m])}
+                  </Button>
+                ))}
+              </div>
+            </header>
+            <p className={styles.empty}>{t("shell.empty")}</p>
+          </>
+        )}
       </main>
       <OverlayHost />
       <NotifyHost />

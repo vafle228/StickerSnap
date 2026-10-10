@@ -1,0 +1,23 @@
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.name {
+  overflow: hidden;
+  margin: 0;
+  font: var(--type-title-3);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.history {
+  display: flex;
+  gap: var(--space-1);
+}
