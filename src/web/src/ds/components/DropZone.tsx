@@ -11,6 +11,10 @@ export interface DropZoneProps {
   icon?: IconName;
   /** tile: «Новый проект» in the projects grid, 4:3 */
   variant?: "zone" | "tile";
+  /** The main button drawn inside the zone («Выбрать видео…»); the whole zone is that button */
+  action?: string;
+  /** A file is being read: the zone takes no clicks or drops */
+  busy?: boolean;
   /** Force the drag-over look (rainbow dashes) */
   dragging?: boolean;
   onFiles?: (files: File[]) => void;
@@ -26,6 +30,8 @@ export function DropZone({
   dropTitle = "Отпустите, чтобы открыть",
   icon,
   variant = "zone",
+  action,
+  busy,
   dragging,
   onFiles,
   onClick,
@@ -33,12 +39,12 @@ export function DropZone({
 }: DropZoneProps) {
   const [over, setOver] = useState(false);
   const gradientId = useId();
-  const active = dragging ?? over;
+  const active = !busy && (dragging ?? over);
 
   const drop = (e: DragEvent<HTMLButtonElement>) => {
     e.preventDefault();
     setOver(false);
-    onFiles?.(Array.from(e.dataTransfer.files));
+    if (!busy) onFiles?.(Array.from(e.dataTransfer.files));
   };
 
   return (
@@ -50,7 +56,10 @@ export function DropZone({
         variant === "tile" && "ss-drop-tile",
         className,
       )}
-      onClick={onClick}
+      // Not `disabled`: a disabled button drops its drag events and the browser opens the file.
+      aria-disabled={busy || undefined}
+      aria-busy={busy || undefined}
+      onClick={busy ? undefined : onClick}
       onDragEnter={(e) => {
         e.preventDefault();
         setOver(true);
@@ -78,6 +87,11 @@ export function DropZone({
       </span>
       <p className="ss-drop-title">{active ? dropTitle : title}</p>
       {hint !== null && <p className="ss-drop-hint">{hint ?? "MP4, MOV, WEBM или GIF"}</p>}
+      {action && (
+        <span className="ss-btn ss-btn-primary ss-drop-action" aria-hidden>
+          {action}
+        </span>
+      )}
     </button>
   );
 }

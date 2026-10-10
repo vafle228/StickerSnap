@@ -14,6 +14,8 @@ export interface Platform {
   pickVideo(): Promise<SourceRef | null>;
   /** A .webm for the checker (R8) */
   pickWebm(): Promise<SourceRef | null>;
+  /** «Открыть файл…» in «Проекты»: the path of a .ssproj, null on cancel. Only with paths. */
+  pickProject(): Promise<string | null>;
   /** A file dropped on the window */
   sourceOf(file: File): Promise<SourceRef>;
   /** Saves a rendered file (GET /api/v1/files/{fileId}); in the browser it is a download (R9) */
@@ -25,6 +27,8 @@ export interface Platform {
   pickFolder(current: string): Promise<string | null>;
   /** «Открыть» of a folder in Settings, in the system file manager. Only with paths. */
   openFolder(path: string): void;
+  /** «Показать в папке» of a project: the file manager with the file selected. Only with paths. */
+  showInFolder(path: string): void;
 }
 
 const VIDEO_TYPES = ".mp4,.mov,.webm,.gif,.webp,video/*,image/gif,image/webp";
@@ -67,6 +71,7 @@ export const browserPlatform: Platform = {
   hasPaths: false,
   pickVideo: () => pickAndUpload(VIDEO_TYPES),
   pickWebm: () => pickAndUpload(".webm,video/webm"),
+  pickProject: () => Promise.resolve(null),
   sourceOf: upload,
   async saveFile(fileUrl, fileName) {
     // The token goes in a header, so the file is fetched first and then handed to the browser.
@@ -90,6 +95,7 @@ export const browserPlatform: Platform = {
   },
   pickFolder: () => Promise.resolve(null),
   openFolder: () => {},
+  showInFolder: () => {},
 };
 
 /** The platform this SPA runs on. Stage 1a has only the browser. */

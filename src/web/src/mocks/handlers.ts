@@ -29,6 +29,9 @@ export function handlers(db: MockDb) {
   const findProject = (id: string) => db.projects.find((p) => p.id === id);
   const findPack = (name: string) => db.packs.find((p) => p.name === name);
   const offline = db.scenario === "offline";
+  const broken = db.scenario === "project-errors";
+  // «Ошибки проекта»: this one is damaged, so opening it fails with «Подробности»
+  const DAMAGED = "6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e52";
 
   return [
     // ---------------------------------------------------------------- Приложение
@@ -57,12 +60,13 @@ export function handlers(db: MockDb) {
     route("post", "/api/v1/validate", () => ({ status: 200, body: report })),
 
     // ---------------------------------------------------------------- Проекты
-    route("get", "/api/v1/projects", () => ({ status: 200, body: db.projects.map(summaryOf) })),
+    route("get", "/api/v1/projects", () => ({
+      status: 200,
+      body: [...db.projects].sort((a, b) => b.savedAt.localeCompare(a.savedAt)).map(summaryOf),
+    })),
     route("post", "/api/v1/projects", () => {
-      const base = db.projects[0];
-      if (!base) return problem("internal");
       const project = {
-        ...structuredClone(base),
+        ...structuredClone(db.template),
         id: crypto.randomUUID(),
         name: "Новый проект",
         revision: 1,
@@ -75,10 +79,22 @@ export function handlers(db: MockDb) {
       return { status: 201, body: project };
     }),
     route("post", "/api/v1/projects/open", ({ body }) => {
-      const project = db.projects.find((p) => p.path === body.path);
-      return project ? { status: 200, body: project } : problem("project_not_found");
+      const listed = db.projects.find((p) => p.path === body.path);
+      if (listed) return { status: 200, body: listed };
+      // «Вернуть» after «Убрать из списка»: the file was there all along
+      const forgotten = db.forgotten.find((p) => p.path === body.path);
+      if (!forgotten) return problem("project_not_found");
+      db.forgotten = db.forgotten.filter((p) => p !== forgotten);
+      db.projects.push(forgotten);
+      fakeHub.emit("projectChanged", summaryOf(forgotten));
+      return { status: 200, body: forgotten };
     }),
     route("get", "/api/v1/projects/{id}", ({ params }) => {
+      if (broken && params.id === DAMAGED) {
+        return problem("project_invalid", {
+          log: "ssproj: scene.schemaVersion 7 is newer than 1; segments[2].outFrame is not a number",
+        });
+      }
       const project = findProject(params.id);
       return project ? { status: 200, body: project } : problem("project_not_found");
     }),
@@ -95,6 +111,10 @@ export function handlers(db: MockDb) {
     route("patch", "/api/v1/projects/{id}", ({ params, body }) => {
       const project = findProject(params.id);
       if (!project) return problem("project_not_found");
+      if (broken)
+        return problem("save_failed", {
+          log: "IOException: There is not enough space on the disk.",
+        });
       project.name = body.name;
       const summary = summaryOf(project);
       fakeHub.emit("projectChanged", summary);
@@ -105,11 +125,16 @@ export function handlers(db: MockDb) {
       if (!project) return problem("project_not_found");
       project.source = { ...project.source, status: "ok" };
       fakeHub.emit("projectChanged", summaryOf(project));
-      return { status: 200, body: { project, segmentsOutOfRange: [] } };
+      // «Исходник не найден»: the video picked instead is shorter, the last segment falls off its end
+      const last = project.scene.segments.at(-1);
+      const segmentsOutOfRange = db.scenario === "source-missing" && last ? [last.id] : [];
+      return { status: 200, body: { project, segmentsOutOfRange } };
     }),
-    route("delete", "/api/v1/projects/{id}", ({ params }) => {
-      if (!findProject(params.id)) return problem("project_not_found");
-      db.projects = db.projects.filter((p) => p.id !== params.id);
+    route("delete", "/api/v1/projects/{id}", ({ params, url }) => {
+      const project = findProject(params.id);
+      if (!project) return problem("project_not_found");
+      db.projects = db.projects.filter((p) => p !== project);
+      if (url.searchParams.get("mode") === "forget") db.forgotten.push(project);
       fakeHub.emit("projectRemoved", { id: params.id });
       return noContent();
     }),

@@ -1,0 +1,187 @@
+/* Artboard 6: title and the two ways in, the count, then the grid with the new-project tile first. */
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.heading {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 240px;
+}
+
+.title {
+  margin: 0;
+  font: var(--type-title-1);
+  letter-spacing: var(--type-title-1-tracking);
+}
+
+.folder {
+  margin: 0;
+  font: var(--type-caption);
+  color: var(--ink-muted);
+}
+
+.path {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.count {
+  margin: 0 0 calc(-1 * var(--space-2));
+  font: var(--type-caption);
+  color: var(--ink-subtle);
+}
+
+.count b {
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.grid {
+  display: grid;
+  /* Four columns as on artboard 6; fewer only when the window is too narrow for them */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-5);
+  margin: 0;
+  /* room for the cards' raised shadows */
+  padding: 0 0 var(--space-5);
+  list-style: none;
+}
+
+.grid > li {
+  display: flex;
+  min-width: 0;
+}
+
+@media (max-width: 1180px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Artboard 6: the cover 8px inside the card and 192px tall, the name row under it */
+.card {
+  flex: 1;
+  gap: 0;
+  width: auto;
+  min-width: 0;
+  padding: 8px 0 0;
+}
+
+.card :global(.ss-checker) {
+  height: 192px;
+  margin: 0 8px;
+  aspect-ratio: auto;
+}
+
+/* Without a real cover the placeholder sits small in the middle, as the artboard's covers do */
+.card :global(.ss-checker > svg) {
+  width: 112px;
+  height: 112px;
+}
+
+.card :global(.ss-project-foot) {
+  padding: 12px 8px 12px 16px;
+}
+
+/* The tile is as tall as a card next to it, its text centred */
+.tile {
+  flex: 1;
+  height: auto;
+  aspect-ratio: auto;
+  min-height: 264px;
+  padding: var(--space-5);
+}
+
+.rename {
+  margin: -6px 0 2px;
+}
+
+.rename :global(.ss-field-box) {
+  height: 32px;
+}
+
+/* Artboard 6-1: nothing yet */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  align-self: center;
+  width: min(440px, 100%);
+  margin-top: var(--space-6);
+  padding: var(--space-6) var(--space-5) var(--space-5);
+  text-align: center;
+}
+
+.emptyIcon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-inset);
+  color: var(--ink-muted);
+}
+
+.emptyTitle {
+  margin: var(--space-2) 0 0;
+  font: var(--type-title-3);
+}
+
+.emptyText {
+  margin: 0;
+  font: var(--type-caption);
+  color: var(--ink-muted);
+}
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* The card menu of artboard 6 is 248px wide: «Опубликовать в Telegram…» fits on one line */
+.menu {
+  width: 248px;
+}

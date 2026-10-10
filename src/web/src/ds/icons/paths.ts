@@ -39,6 +39,7 @@ export const ICON_PATHS = {
   "error-circle": ["M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z", "M12 8v5", "M12 16h.01"],
   spinner: ["M12 4a8 8 0 1 0 8 8"],
   trash: ["M5 7h14", "M10 11v6", "M14 11v6", "M6 7l1 13h10l1-13", "M9 7V4h6v3"],
+  pencil: ["M4 20h4L19 9l-4-4L4 16z", "M13.5 6.5l4 4"],
   copy: ["M9 9h11v11H9z", "M5 15H4V4h11v1"],
   link: [
     "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1",

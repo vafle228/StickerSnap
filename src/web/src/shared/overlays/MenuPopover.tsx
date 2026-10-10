@@ -5,6 +5,8 @@ export interface MenuPopoverProps<V extends string> extends Omit<PopoverProps, "
   items: readonly (MenuItem<V> | "-")[];
   label?: string;
   onSelect: (value: V) => void;
+  /** Width and the like of the menu panel */
+  menuClassName?: string;
 }
 
 /** The «⋯» menu: a Menu in a popover. Picking an item closes it first, so an item that opens
@@ -13,6 +15,7 @@ export function MenuPopover<V extends string>({
   items,
   label,
   onSelect,
+  menuClassName,
   ...popover
 }: MenuPopoverProps<V>) {
   return (
@@ -20,6 +23,7 @@ export function MenuPopover<V extends string>({
       <Menu
         items={items}
         label={label}
+        className={menuClassName}
         autoFocus
         onSelect={(value) => {
           popover.onClose();

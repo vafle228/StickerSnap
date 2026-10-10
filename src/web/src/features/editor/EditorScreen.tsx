@@ -8,6 +8,7 @@ import { EditorHeader } from "./EditorHeader";
 import styles from "./EditorScreen.module.css";
 import { Inspector } from "./inspector/Inspector";
 import { useEditor } from "./model/store";
+import { MissingSource } from "./stage/MissingSource";
 import { VideoStage } from "./stage/VideoStage";
 import { StartSlot } from "./start/StartSlot";
 import { TimelineSlot } from "./timeline/TimelineSlot";
@@ -47,11 +48,13 @@ export function EditorScreen({ hidden }: { hidden: boolean }) {
 
   return (
     <div className={styles.editor} hidden={hidden}>
-      <EditorHeader ready={ready} />
+      {/* The start screen has the window to itself (artboard 6): no name, no import, no publish */}
+      {projectId && <EditorHeader ready={ready} />}
       <div className={styles.body}>
         <div className={styles.work}>
           {ready ? (
             <>
+              <MissingSource />
               <VideoStage className={styles.stage} />
               <TimelineSlot active={!hidden} />
             </>
