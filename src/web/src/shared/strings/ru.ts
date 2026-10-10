@@ -169,10 +169,7 @@ export const ru = {
   "settings.folders.stickersNote":
     "Сюда кладётся результат экспорта. В Linux по умолчанию ~/StickerSnap/Стикеры.",
   "settings.folders.change": "Изменить…",
-  "settings.folders.done": "Готово",
   "settings.folders.open": "Открыть",
-  "settings.folders.typeHint":
-    "Путь к папке на компьютере, где запущен StickerSnap. Enter сохраняет, Esc отменяет.",
   "settings.keys.text": "Только для справки. Назначать свои клавиши можно будет позже.",
   "settings.about.versions": "Версия {app} · FFmpeg {ffmpeg} · Windows и Linux",
   "settings.about.copy": "Скопировать версии",

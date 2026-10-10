@@ -1,6 +1,6 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { Card, Icon, SectionNav, type IconName } from "../../ds";
-import { useAccount } from "../../shared/api/queries";
+import { useAccount, useAppInfo } from "../../shared/api/queries";
 import { t, type StringKey } from "../../shared/strings/ru";
 import { AboutSection } from "./AboutSection";
 import { FoldersSection } from "./FoldersSection";
@@ -18,16 +18,20 @@ const SECTIONS: readonly { id: SectionId; label: StringKey; icon: IconName }[] =
   { id: "keys", label: "settings.keys", icon: "keyboard" },
   { id: "about", label: "settings.about", icon: "info" },
 ];
-const IDS = SECTIONS.map((s) => s.id);
 
 /** Artboard 5. One screen: the table of contents on the left, every section in one scroll on
  *  the right. Changes apply at once (PATCH /settings), there is no «Сохранить». */
 export function SettingsScreen() {
   const scroller = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useActiveSection(scroller, IDS);
+  // «Папки» exist only in the desktop app: the web version downloads the .webm and keeps
+  // projects on the server, where the user has no folders to pick or open.
+  const desktop = useAppInfo().data?.mode === "desktop";
+  const sections = useMemo(() => SECTIONS.filter((s) => desktop || s.id !== "folders"), [desktop]);
+  const ids = useMemo(() => sections.map((s) => s.id), [sections]);
+  const [active, setActive] = useActiveSection(scroller, ids);
   const linked = useAccount().data?.state === "linked";
 
-  const items = SECTIONS.map(({ id, label, icon }) => ({
+  const items = sections.map(({ id, label, icon }) => ({
     value: id,
     label: (
       <>
@@ -55,7 +59,7 @@ export function SettingsScreen() {
       <div ref={scroller} className={styles.content}>
         <TelegramSection />
         <LookSection />
-        <FoldersSection />
+        {desktop && <FoldersSection />}
         <KeysSection />
         <AboutSection />
       </div>

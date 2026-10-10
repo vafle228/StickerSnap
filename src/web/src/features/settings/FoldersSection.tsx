@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId } from "react";
 import { Button, TextField } from "../../ds";
-import { useAppInfo, useSettings, useUpdateSettings } from "../../shared/api/queries";
+import { useSettings, useUpdateSettings } from "../../shared/api/queries";
 import type { Settings } from "../../shared/api/types";
 import { platform } from "../../shared/platform";
 import { t, type StringKey } from "../../shared/strings/ru";
@@ -14,11 +14,16 @@ const FOLDERS: readonly { folder: Folder; label: StringKey; note: StringKey }[] 
   { folder: "stickers", label: "settings.folders.stickers", note: "settings.folders.stickersNote" },
 ];
 
-/** «Папки»: where new projects and rendered .webm go. A new folder is for new files only. */
+/** «Папки», desktop app only: where new projects and rendered .webm go. A new folder is for
+ *  new files only. «Изменить…» opens the system folder picker, «Открыть» the file manager. */
 export function FoldersSection() {
   const folders = useSettings().data?.folders;
   const { mutate } = useUpdateSettings();
-  const desktop = useAppInfo().data?.mode === "desktop";
+
+  const change = async (folder: Folder, path: string) => {
+    const picked = await platform.pickFolder(path);
+    if (picked && picked !== path) mutate({ folders: { [folder]: picked } });
+  };
 
   return (
     <SettingsSection id="folders" title={t("settings.folders")} text={t("settings.folders.text")}>
@@ -28,101 +33,43 @@ export function FoldersSection() {
           label={t(label)}
           note={t(note)}
           path={folders?.[folder] ?? ""}
-          desktop={desktop}
-          onChange={(path) => mutate({ folders: { [folder]: path } })}
+          onPick={() => void change(folder, folders?.[folder] ?? "")}
         />
       ))}
     </SettingsSection>
   );
 }
 
-/** The desktop app has a system folder picker behind «Изменить…» and a file manager behind
- *  «Открыть». The web version has neither: the field itself turns editable (Enter or leaving
- *  it saves, Esc cancels) and «Открыть» is not shown. */
 function FolderRow({
   label,
   note,
   path,
-  desktop,
-  onChange,
+  onPick,
 }: {
   label: string;
   note: string;
   path: string;
-  /** The server runs as the desktop app (GET /api/v1/app, mode) */
-  desktop: boolean;
-  onChange: (path: string) => void;
+  onPick: () => void;
 }) {
   const labelId = useId();
-  const [draft, setDraft] = useState<string | null>(null);
-  const editing = draft !== null;
-  const box = useRef<HTMLDivElement>(null);
-
-  // The field already exists, so autoFocus would not fire: focus it when editing starts.
-  useEffect(() => {
-    if (!editing) return;
-    const input = box.current?.querySelector("input");
-    input?.focus();
-    input?.select();
-  }, [editing]);
-
-  const commit = () => {
-    const next = draft?.trim();
-    setDraft(null);
-    if (next && next !== path) onChange(next);
-  };
-
-  const change = async () => {
-    if (!desktop) {
-      setDraft(path);
-      return;
-    }
-    const picked = await platform.pickFolder(path);
-    if (picked && picked !== path) onChange(picked);
-  };
-
   return (
     <div className={styles.group}>
       <span className={styles.label} id={labelId}>
         {label}
       </span>
       <div className={styles.folderLine}>
-        <div ref={box} className={styles.path}>
-          <TextField
-            aria-labelledby={labelId}
-            title={editing ? undefined : path}
-            readOnly={!editing}
-            spellCheck={false}
-            value={draft ?? path}
-            hint={editing ? t("settings.folders.typeHint") : note}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={() => editing && commit()}
-            onKeyDown={(e) => {
-              if (!editing) return;
-              if (e.key === "Enter") commit();
-              if (e.key === "Escape") {
-                e.stopPropagation();
-                setDraft(null);
-              }
-            }}
-          />
-        </div>
-        {editing ? (
-          <Button
-            // mousedown keeps the focus in the field, so blur does not save before the click
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={commit}
-          >
-            {t("settings.folders.done")}
-          </Button>
-        ) : (
-          <Button onClick={() => void change()}>{t("settings.folders.change")}</Button>
-        )}
-        {desktop && !editing && (
-          <Button variant="ghost" onClick={() => platform.openFolder(path)}>
-            {t("settings.folders.open")}
-          </Button>
-        )}
+        <TextField
+          className={styles.path}
+          aria-labelledby={labelId}
+          readOnly
+          title={path}
+          value={path}
+          hint={note}
+        />
+        <Button onClick={onPick}>{t("settings.folders.change")}</Button>
+        <Button variant="ghost" onClick={() => platform.openFolder(path)}>
+          {t("settings.folders.open")}
+        </Button>
       </div>
     </div>
   );
