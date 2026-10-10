@@ -16,7 +16,7 @@ export class ApiError extends Error {
   }
 }
 
-function isProblem(body: unknown): body is Problem {
+export function isProblem(body: unknown): body is Problem {
   return typeof body === "object" && body !== null && typeof (body as Problem).code === "string";
 }
 
