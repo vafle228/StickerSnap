@@ -80,11 +80,13 @@ Requires Node.js 20 and the .NET 10 SDK.
 
 ```sh
 npm install
+npm run fetch:ffmpeg                              # the pinned FFmpeg into tools/ffmpeg/<rid>
 dotnet run --project src/server/StickerSnap.Api   # API on http://127.0.0.1:5180
-npm run dev                       # SPA with HMR on http://127.0.0.1:5173, proxies /api and /hubs
+npm run dev                                       # SPA with HMR on http://127.0.0.1:5173, proxies /api and /hubs
 ```
 
-`npm run build` puts the SPA into `src/server/StickerSnap.Api/wwwroot`, and the server then serves it on its own port.
+`npm run build` puts the SPA into `src/server/StickerSnap.Api/wwwroot`, and the server then serves
+it on its own port.
 Design tokens come from `src/web/src/ds/tokens.json`; after changing it run `npm run gen:tokens`.
 The design system components live in `src/web/src/ds` (import them from `src/ds`); the dev server shows
 all of them in both themes and five accents at http://127.0.0.1:5173/?showcase.
@@ -93,6 +95,23 @@ typed by the API contract). In dev builds a bar on top of the window switches be
 server and the demo scenarios such as `?mock=offline`; production builds have neither.
 The API contract is `src/contract/openapi.yaml`; after changing it run `npm run gen:api`.
 Unit tests run with `npm test`.
+
+### Server
+
+The server is its own .NET solution, `src/server/StickerSnap.slnx`, in Clean Architecture:
+`StickerSnap.Core` (the domain), `StickerSnap.Application` (use cases and the repository and
+service interfaces they need), `StickerSnap.Infrastructure` (JSON-file storage, FFmpeg, the Bot
+API) and `StickerSnap.Api` (the ASP.NET host). Dependencies point inwards only, and
+`StickerSnap.Tests` checks that. Package versions live in `src/server/Directory.Packages.props`.
+
+```sh
+cd src/server
+dotnet test --solution StickerSnap.slnx                                  # every server test
+dotnet test --solution StickerSnap.slnx --filter-not-trait Category=Slow # the fast ones, as CI
+```
+
+`npm run fetch:ffmpeg` downloads the LGPL build of FFmpeg 9.0 with libvpx that the server renders
+with, pinned by version and SHA-256 (`tools/fetch-ffmpeg.mjs`); the binaries are never committed.
 
 ### Desktop app
 

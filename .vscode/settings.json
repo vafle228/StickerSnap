@@ -1,0 +1,4 @@
+{
+  // The server's solution lives in src/server, not in the repository root
+  "dotnet.defaultSolution": "src/server/StickerSnap.slnx"
+}

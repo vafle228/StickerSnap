@@ -83,6 +83,19 @@ Platform для Electron проверяется в SPA (`shared/platform/electro
 
 ## Сервер
 
-`src/server/StickerSnap.Tests`: xUnit v3 на Microsoft.Testing.Platform (включён в `src/server/global.json`)
-и `WebApplicationFactory<Program>`. Тест приложения поднимает его в памяти со своим `wwwroot`,
-сборка SPA не нужна. Эндпоинт приходит вместе со своими тестами.
+`src/server/StickerSnap.Tests`: xUnit v3 на Microsoft.Testing.Platform (включён в `src/server/global.json`),
+проверки на AwesomeAssertions (`x.Should().Be(...)`), подмены на NSubstitute, время на `FakeTimeProvider`.
+Папки повторяют слои: `Core`, `Application`, `Infrastructure`, `Api`, плюс `Architecture`.
+
+- **Юнит-тесты — основание пирамиды.** Правила домена в `Core` и сценарии `Application` проверяются
+  без диска, сети и процессов: репозитории и порты подменяются. Таймеры и задержки идут через
+  `TimeProvider`, тест двигает время сам, а не ждёт.
+- **Интеграционные — по одному на адаптер или эндпоинт.** `Infrastructure` — на временном каталоге;
+  `Api` — через `ApiFactory` (`WebApplicationFactory<Program>` в окружении Testing со своим `wwwroot`,
+  сборка SPA не нужна). Эндпоинт приходит вместе со своими тестами.
+- **Медленные помечены `[Trait("Category", Category.Slow)]`.** Настоящий FFmpeg на файлах, всё, что
+  идёт секунды. Job «Server» в CI их пропускает (`--filter-not-trait Category=Slow`), у них будет
+  свой workflow.
+- **Архитектура проверяется тестами.** `Architecture/LayerTests` (ArchUnitNET) падают, если `Core`
+  знает о другом слое или фреймворке, `Application` — об инфраструктуре, а `Api` использует
+  `Infrastructure` где-то кроме `Program`.
