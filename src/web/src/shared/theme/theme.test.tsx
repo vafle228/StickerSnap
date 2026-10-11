@@ -66,7 +66,10 @@ describe("theme", () => {
 
     act(() => result.current.setTheme({ theme: "dark", accent: "teal" }));
     expect(html().dataset.theme).toBe("dark");
-    expect(html().className).toBe("ss-accent-teal");
+    expect(html().classList.contains("ss-accent-teal")).toBe(true);
+    // No transitions while the window repaints, back after two frames
+    expect(html().classList.contains("ss-no-motion")).toBe(true);
+    await waitFor(() => expect(html().className).toBe("ss-accent-teal"));
     await waitFor(() => expect(db.settings).toMatchObject({ theme: "dark", accent: "teal" }));
   });
 

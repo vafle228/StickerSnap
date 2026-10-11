@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { AccentName } from "../../ds/accents";
+import { freezeMotion } from "../../ds/hooks";
 import { useSettings, useUpdateSettings } from "../api/queries";
 import type { Accent, Theme } from "../api/types";
 
@@ -33,8 +34,13 @@ const darkQuery = () => window.matchMedia("(prefers-color-scheme: dark)");
 function applyTheme(mode: ThemeMode, accent: AccentName) {
   const dark = mode === "dark" || (mode === "system" && darkQuery().matches);
   const root = document.documentElement;
-  root.dataset.theme = dark ? "dark" : "light";
-  root.className = `ss-accent-${accent}`;
+  const theme = dark ? "dark" : "light";
+  const className = `ss-accent-${accent}`;
+  if (root.dataset.theme === theme && root.classList.contains(className)) return;
+  root.dataset.theme = theme;
+  root.className = className;
+  // The whole window repaints at once: no button may follow late (docs/ui-motion.md, 4.3).
+  freezeMotion(root);
 }
 
 /** Keeps data-theme and the accent class on <html> in step with the server's settings and the OS. */

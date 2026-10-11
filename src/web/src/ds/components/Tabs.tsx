@@ -1,5 +1,5 @@
 import { cx } from "../cx";
-import { useControlled } from "../hooks";
+import { useControlled, useSlidingThumb } from "../hooks";
 import { itemsOf, type Item } from "../types";
 
 export interface TabsProps<V extends string = string> {
@@ -20,8 +20,9 @@ export function Tabs<V extends string = string>({
 }: TabsProps<V>) {
   const list = itemsOf(items);
   const [current, setCurrent] = useControlled(value, defaultValue ?? list[0]?.value, onChange);
+  const { group, box, ready } = useSlidingThumb(current);
   return (
-    <div className={cx("ss-tabs", className)} role="tablist">
+    <div ref={group} className={cx("ss-tabs", box && "has-thumb", className)} role="tablist">
       {list.map((it) => {
         const on = it.value === current;
         return (
@@ -37,6 +38,14 @@ export function Tabs<V extends string = string>({
           </button>
         );
       })}
+      {/* The underline sticks out 4px on each side of the label, as the ::after it replaces */}
+      {box && (
+        <span
+          className={cx("ss-tabs-bar", ready && "is-ready")}
+          style={{ width: box.width + 8, transform: `translateX(${box.x - 4}px)` }}
+          aria-hidden
+        />
+      )}
     </div>
   );
 }

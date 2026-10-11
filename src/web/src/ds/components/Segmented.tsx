@@ -1,5 +1,5 @@
 import { cx } from "../cx";
-import { useControlled } from "../hooks";
+import { useControlled, useSlidingThumb } from "../hooks";
 import { itemsOf } from "../types";
 import type { TabsProps } from "./Tabs";
 
@@ -19,8 +19,14 @@ export function Segmented<V extends string = string>({
 }: SegmentedProps<V>) {
   const list = itemsOf(items);
   const [current, setCurrent] = useControlled(value, defaultValue ?? list[0]?.value, onChange);
+  const { group, box, ready } = useSlidingThumb(current);
   return (
-    <div className={cx("ss-seg", className)} role="radiogroup" aria-label={label}>
+    <div
+      ref={group}
+      className={cx("ss-seg", box && "has-thumb", className)}
+      role="radiogroup"
+      aria-label={label}
+    >
       {list.map((it) => {
         const on = it.value === current;
         return (
@@ -36,6 +42,13 @@ export function Segmented<V extends string = string>({
           </button>
         );
       })}
+      {box && (
+        <span
+          className={cx("ss-seg-thumb", ready && "is-ready")}
+          style={{ width: box.width, transform: `translateX(${box.x}px)` }}
+          aria-hidden
+        />
+      )}
     </div>
   );
 }

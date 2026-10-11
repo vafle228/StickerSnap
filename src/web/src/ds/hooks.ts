@@ -131,3 +131,39 @@ export function freezeMotion(root: HTMLElement = document.documentElement) {
   root.classList.add("ss-no-motion");
   requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("ss-no-motion")));
 }
+
+/** One plate per group (Segmented) or one underline (Tabs) that slides to the active item.
+ *  Measures the `.is-active` child of `group`, again whenever an item resizes (fonts, labels).
+ *  `ready` turns on a frame after the first measure, so the first paint does not slide in. */
+export function useSlidingThumb(active: unknown) {
+  const group = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState<{ x: number; width: number } | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = group.current;
+    if (!el) return undefined;
+    const measure = () => {
+      const item = el.querySelector<HTMLElement>(":scope > .is-active");
+      setBox((prev) => {
+        if (!item) return null;
+        const next = { x: item.offsetLeft, width: item.offsetWidth };
+        return prev?.x === next.x && prev.width === next.width ? prev : next;
+      });
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    for (const item of Array.from(el.children)) observer.observe(item);
+    return () => observer.disconnect();
+  }, [active]);
+
+  useEffect(() => {
+    if (!box || ready) return undefined;
+    const frame = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(frame);
+  }, [box, ready]);
+
+  return { group, box, ready };
+}
