@@ -38,7 +38,10 @@ export function SpeedLoopCard() {
           step={0.01}
           value={toSlider(segment.speed)}
           format={shown}
-          onChange={(value) => editSegment((s) => void (s.speed = fromSlider(value)))}
+          // A drag of the slider is one step of history, not one per tick
+          onChange={(value) =>
+            editSegment((s) => void (s.speed = fromSlider(value)), { merge: "speed" })
+          }
         />
         <div className={styles.scale} aria-hidden>
           <span>{speedText(SPEED_MIN)}</span>

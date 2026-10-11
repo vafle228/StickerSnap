@@ -17,6 +17,7 @@ export const SCENARIOS = {
   "import-broken": "Битый файл",
   "too-big": "Не влезет",
   "export-fails": "Экспорт не удался",
+  "save-fails": "Не сохраняется",
   "webm-bad": "Чужой .webm",
 } as const;
 

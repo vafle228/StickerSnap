@@ -141,6 +141,20 @@ describe("demo server", () => {
       );
       expect(await failure(stale)).toBe("revision_conflict");
     });
+
+    it("«Не сохраняется»: fails the first save with save_failed and takes the next one", async () => {
+      use("save-fails");
+      const project = await call(api.GET("/api/v1/projects/{id}", byId(FIRST)));
+      const save = () =>
+        call(
+          api.PUT("/api/v1/projects/{id}/scene", {
+            ...byId(FIRST),
+            body: { revision: project.revision, scene: project.scene },
+          }),
+        );
+      expect(await failure(save())).toBe("save_failed");
+      expect((await save()).revision).toBe(project.revision + 1);
+    });
   });
 
   describe("source", () => {

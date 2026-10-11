@@ -7,6 +7,7 @@ import { t } from "../../shared/strings/ru";
 import { EditorHeader } from "./EditorHeader";
 import styles from "./EditorScreen.module.css";
 import { Inspector } from "./inspector/Inspector";
+import { useAutosave } from "./model/useAutosave";
 import { useEditor } from "./model/store";
 import { useRenderJobs } from "./render/useRenderJobs";
 import { MissingSource } from "./stage/MissingSource";
@@ -25,6 +26,7 @@ export function EditorScreen({ hidden }: { hidden: boolean }) {
   const unload = useEditor((s) => s.unload);
   const setPlaying = useEditor((s) => s.setPlaying);
   useRenderJobs(project.data);
+  useAutosave();
 
   useEffect(() => {
     if (project.data && project.data.id !== loadedId) load(project.data);
@@ -47,6 +49,8 @@ export function EditorScreen({ hidden }: { hidden: boolean }) {
 
   const ready = projectId !== undefined && loadedId === projectId;
   useHotkey("playPause", () => setPlaying(!useEditor.getState().playing), ready && !hidden);
+  useHotkey("undo", () => useEditor.getState().undo(), ready && !hidden);
+  useHotkey("redo", () => useEditor.getState().redo(), ready && !hidden);
 
   return (
     <div className={styles.editor} hidden={hidden}>

@@ -33,6 +33,8 @@ export function handlers(db: MockDb) {
   const broken = db.scenario === "project-errors";
   // «Ошибки проекта»: this one is damaged, so opening it fails with «Подробности»
   const DAMAGED = "6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e52";
+  // «Не сохраняется»: the folder is out of reach for the first save; the retry 30 s later lands
+  let saveFailures = db.scenario === "save-fails" ? 1 : 0;
 
   return [
     // ---------------------------------------------------------------- Приложение
@@ -89,6 +91,10 @@ export function handlers(db: MockDb) {
       const project = findProject(params.id);
       if (!project) return problem("project_not_found");
       if (body.revision !== project.revision) return problem("revision_conflict");
+      if (saveFailures > 0) {
+        saveFailures -= 1;
+        return problem("save_failed", { log: `EACCES: permission denied, open '${project.path}'` });
+      }
       project.scene = body.scene;
       project.revision += 1;
       project.savedAt = new Date().toISOString();

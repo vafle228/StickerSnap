@@ -84,7 +84,7 @@ export function markEdge({ segment, fps, bounds }: TimelineInfo, edge: Edge) {
   setStop(moved.limited ? { segmentId: segment.id, edge, wanted } : undefined);
 }
 
-/** One edit, so one step of history once undo comes: a whole drag of a handle lands here. */
+/** One edit, so one step of history: a whole drag of a handle lands here. */
 export function setEdges(segment: Segment, edges: Pick<Segment, "inFrame" | "outFrame">) {
   if (edges.inFrame === segment.inFrame && edges.outFrame === segment.outFrame) return;
   editSegment((s) => {
