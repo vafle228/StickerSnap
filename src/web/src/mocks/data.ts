@@ -48,6 +48,7 @@ function segment(
     loop: "normal",
     preset,
     longSticker: false,
+    autoFit: true,
   };
 }
 

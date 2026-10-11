@@ -14,6 +14,7 @@ const segment = (id: string, name: string): Segment => ({
   loop: "normal",
   preset: "sticker",
   longSticker: false,
+  autoFit: true,
 });
 
 const segments = [segment("seg-1", "Стикер 1"), segment("seg-2", "Стикер 2")];
