@@ -1,34 +1,16 @@
 using System.Net;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
-namespace StickerSnap.Tests;
+namespace StickerSnap.Tests.Api;
 
 /// <summary>The server serves the SPA, and an unknown API path never gets the SPA page.</summary>
-public sealed class SpaHostTests : IClassFixture<SpaHostTests.Factory>
+public sealed class SpaHostTests(SpaHostTests.Server server) : IClassFixture<SpaHostTests.Server>
 {
-    private const string Page = "<!doctype html><div id=\"root\"></div>";
+    /// <summary>One server for the class, as run by hand or in the browser: no shell, no token.</summary>
+    public sealed class Server() : ApiFactory;
 
-    /// <summary>The app with its own wwwroot, so the test does not need `npm run build`.</summary>
-    public sealed class Factory : WebApplicationFactory<Program>
-    {
-        private readonly string _webRoot = Directory.CreateTempSubdirectory("stickersnap-wwwroot-").FullName;
+    private readonly HttpClient _client = server.CreateClient();
 
-        public Factory() => File.WriteAllText(Path.Combine(_webRoot, "index.html"), Page);
-
-        protected override void ConfigureWebHost(IWebHostBuilder builder) =>
-            builder.UseWebRoot(_webRoot);
-
-        protected override void Dispose(bool disposing)
-        {
-            base.Dispose(disposing);
-            Directory.Delete(_webRoot, recursive: true);
-        }
-    }
-
-    private readonly HttpClient _client;
-
-    public SpaHostTests(Factory factory) => _client = factory.CreateClient();
+    private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     [Theory]
     [InlineData("/api/v1/nothing-here")]
@@ -36,10 +18,10 @@ public sealed class SpaHostTests : IClassFixture<SpaHostTests.Factory>
     [InlineData("/hubs/nothing-here")]
     public async Task Answers_404_for_an_api_or_hub_path_without_a_handler(string path)
     {
-        var response = await _client.GetAsync(path, TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync(path, Cancel);
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.NotEqual("text/html", response.Content.Headers.ContentType?.MediaType);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        response.Content.Headers.ContentType?.MediaType.Should().NotBe("text/html");
     }
 
     [Theory]
@@ -48,10 +30,10 @@ public sealed class SpaHostTests : IClassFixture<SpaHostTests.Factory>
     [InlineData("/settings/look")]
     public async Task Serves_the_spa_page_for_every_other_path(string path)
     {
-        var response = await _client.GetAsync(path, TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync(path, Cancel);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
-        Assert.Equal(Page, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("text/html");
+        (await response.Content.ReadAsStringAsync(Cancel)).Should().Be(ApiFactory.Page);
     }
 }

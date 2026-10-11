@@ -92,6 +92,7 @@ jobs:
       - run: dotnet build StickerSnap.slnx -c Release
         working-directory: src/server
 
-      # xUnit on Microsoft.Testing.Platform (src/server/global.json), WebApplicationFactory
-      - run: dotnet test --solution StickerSnap.slnx -c Release --no-build
+      # xUnit on Microsoft.Testing.Platform (src/server/global.json): unit, architecture and
+      # WebApplicationFactory tests; the ones tagged Category=Slow get a workflow of their own
+      - run: dotnet test --solution StickerSnap.slnx -c Release --no-build --filter-not-trait "Category=Slow"
         working-directory: src/server

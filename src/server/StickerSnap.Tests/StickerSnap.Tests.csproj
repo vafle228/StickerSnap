@@ -1,20 +1,30 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Every server test, one folder per layer (Core, Application, Infrastructure, Api) plus Architecture. -->
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
   <ItemGroup>
+    <Using Include="AwesomeAssertions" />
+    <Using Include="NSubstitute" />
     <Using Include="Xunit" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\StickerSnap.Api\StickerSnap.Api.csproj" />
+    <ProjectReference Include="..\StickerSnap.Application\StickerSnap.Application.csproj" />
+    <ProjectReference Include="..\StickerSnap.Core\StickerSnap.Core.csproj" />
+    <ProjectReference Include="..\StickerSnap.Infrastructure\StickerSnap.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AwesomeAssertions" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="TngTech.ArchUnitNET.xUnitV3" />
     <PackageReference Include="xunit.v3" />
   </ItemGroup>
 
