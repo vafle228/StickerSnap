@@ -431,3 +431,34 @@
   font: 500 13px/18px var(--font-sans);
   color: var(--ink-muted);
 }
+
+/* Motion («Движение в интерфейсе», 4.4). A jump by a click glides the frame and its hole; a drag,
+   an arrow key or an undo never does (glide.ts). The dimming fades in with «Рамка». */
+.gliding {
+  transition:
+    left var(--duration-base) var(--ease-soft),
+    top var(--duration-base) var(--ease-soft),
+    width var(--duration-base) var(--ease-soft),
+    height var(--duration-base) var(--ease-soft);
+}
+
+.shade {
+  transition: opacity var(--duration-base) var(--ease-soft);
+}
+
+@starting-style {
+  .shade {
+    opacity: 0;
+  }
+}
+
+/* The video takes over from the frame poster once its first frame is ready: no black flash. */
+video.video {
+  transition: opacity var(--duration-fast) var(--ease-soft);
+}
+
+@starting-style {
+  video.video {
+    opacity: 0;
+  }
+}

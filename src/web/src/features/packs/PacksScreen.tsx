@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Banner, Button, Card, Icon } from "../../ds";
+import { Banner, Button, Card, Collapse, Icon } from "../../ds";
 import { useApp } from "../../app/store";
 import { useAccount, useAppInfo, usePacks } from "../../shared/api/queries";
 import { notifyProblem } from "../../shared/notify";
@@ -39,7 +39,7 @@ export function PacksScreen() {
   const create = () => startPublish({ newPack: true });
 
   return (
-    <div className={styles.screen}>
+    <div className={`${styles.screen} ss-section`}>
       <header className={styles.header}>
         <div className={styles.heading}>
           <h1 className={styles.title}>{t("nav.packs")}</h1>
@@ -72,7 +72,7 @@ export function PacksScreen() {
         )}
       </header>
 
-      {unlinked && (
+      <Collapse open={unlinked}>
         <Banner
           tone="warning"
           title={t("packs.unlinked.title")}
@@ -83,7 +83,7 @@ export function PacksScreen() {
             </Button>
           }
         />
-      )}
+      </Collapse>
 
       {empty ? (
         <Card className={styles.empty}>

@@ -15,6 +15,7 @@ import {
   type Side,
 } from "../model/crop";
 import { frameInput, outputSize, type Size } from "../model/frame";
+import { useGlide } from "../glide";
 import { editSegment, useEditor } from "../model/store";
 import styles from "./VideoStage.module.css";
 
@@ -66,6 +67,9 @@ export function CropFrame({ frame, preset, source, limits, scale }: CropFramePro
   };
   const input = frameInput(frame, source);
   const output = limits && outputSize(frame, preset, limits);
+  // A drag draws from frameDraft: it never glides, and a glide stops as soon as one begins.
+  const dragging = useEditor((s) => s.frameDraft !== undefined);
+  const gliding = useGlide(JSON.stringify(box), dragging);
 
   /** The frame a gesture makes when the pointer is `dx`, `dy` source pixels from its start. */
   const dragged = (what: Gesture, dx: number, dy: number, free: boolean): Frame => {
@@ -143,11 +147,15 @@ export function CropFrame({ frame, preset, source, limits, scale }: CropFramePro
     <>
       {crop && (
         <div className={styles.shade} aria-hidden>
-          <div className={styles.hole} style={style} />
+          <div className={cx(styles.hole, gliding && styles.gliding)} style={style} />
         </div>
       )}
       <div
-        className={cx(crop ? styles.crop : styles.stretch, styles.editable)}
+        className={cx(
+          crop ? styles.crop : styles.stretch,
+          styles.editable,
+          gliding && styles.gliding,
+        )}
         style={style}
         role="group"
         tabIndex={crop ? 0 : undefined}

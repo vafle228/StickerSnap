@@ -1,5 +1,13 @@
 // StickerSnap design system v6 «Мягкий и плотный»: 32 components.
 // Styles are global (index.css: tokens + components.css); screens add their own CSS Modules.
+export {
+  EXIT_FALLBACK_MS,
+  freezeMotion,
+  prefersReducedMotion,
+  usePresence,
+  type Presence,
+  type PresenceState,
+} from "./hooks";
 export { ACCENTS, type AccentName, type Swatch } from "./accents";
 export { ICON_NAMES, type IconName } from "./icons/paths";
 export { hasModalLayer, useLayer, type LayerKind } from "./layers";
@@ -10,6 +18,7 @@ export { Banner, type BannerProps } from "./components/Banner";
 export { Button, type ButtonProps } from "./components/Button";
 export { Card, type CardProps } from "./components/Card";
 export { Checkbox, type CheckboxProps } from "./components/Checkbox";
+export { Collapse, type CollapseProps } from "./components/Collapse";
 export { ConfirmDialog, type ConfirmDialogProps } from "./components/ConfirmDialog";
 export { Dialog, type DialogProps } from "./components/Dialog";
 export { DropZone, type DropZoneProps } from "./components/DropZone";

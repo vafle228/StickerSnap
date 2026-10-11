@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Badge,
   Banner,
+  Collapse,
   Button,
   Card,
   DropZone,
@@ -80,7 +81,7 @@ export function PackView({ summary }: { summary: PackSummary }) {
 
   return (
     <Card className={styles.view} aria-label={summary.title}>
-      {gone && (
+      <Collapse key={summary.name} open={gone}>
         <Banner
           tone="warning"
           title={t("packs.gone.title", { title: summary.title })}
@@ -91,7 +92,7 @@ export function PackView({ summary }: { summary: PackSummary }) {
             </Button>
           }
         />
-      )}
+      </Collapse>
 
       <div className={styles.viewHead}>
         <div className={styles.viewHeading}>

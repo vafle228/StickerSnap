@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "../../app/store";
 import { useProject } from "../../shared/api/queries";
 import { useHotkey } from "../../shared/hotkeys";
@@ -48,16 +48,30 @@ export function EditorScreen({ hidden }: { hidden: boolean }) {
   }, [hidden, setPlaying]);
 
   const ready = projectId !== undefined && loadedId === projectId;
+  // After an import the editor fades in over the start screen, a step slower than a section.
+  // The class goes once the fade is done, so coming back from another section is not slowed.
+  const [wasReady, setWasReady] = useState(ready);
+  const [arriving, setArriving] = useState(false);
+  if (ready !== wasReady) {
+    setWasReady(ready);
+    setArriving(ready);
+  }
   useHotkey("playPause", () => setPlaying(!useEditor.getState().playing), ready && !hidden);
   useHotkey("undo", () => useEditor.getState().undo(), ready && !hidden);
   useHotkey("redo", () => useEditor.getState().redo(), ready && !hidden);
 
   return (
-    <div className={styles.editor} hidden={hidden}>
+    <div className={`${styles.editor} ss-section`} hidden={hidden}>
       {/* The start screen has the window to itself (artboard 6): no name, no import, no publish */}
       {projectId && <EditorHeader ready={ready} />}
       <div className={styles.body}>
-        <div className={styles.work}>
+        <div
+          key={ready ? "work" : "start"}
+          className={arriving ? `${styles.work} ss-section ss-section-slow` : styles.work}
+          onTransitionEnd={(e) => {
+            if (e.target === e.currentTarget) setArriving(false);
+          }}
+        >
           {ready ? (
             <>
               <MissingSource />

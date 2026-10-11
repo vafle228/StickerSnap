@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { Button, Card, Icon, Segmented, Switch } from "../../../ds";
+import { Button, Card, Collapse, Icon, Segmented, Switch } from "../../../ds";
 import { useAppInfo, useEstimate, useJob } from "../../../shared/api/queries";
 import type { Estimate, Job, Segment, SegmentPreset } from "../../../shared/api/types";
 import { notifyProblem } from "../../../shared/notify";
@@ -106,7 +106,10 @@ function ExportSettings({ segment }: { segment: Segment }) {
         )}
       </div>
 
-      {forecast && !forecast.fits && <OverLimit forecast={forecast} asIs={!segment.autoFit} />}
+      {/* The warning opens its room in the card instead of pushing the rest down at once */}
+      <Collapse key={segment.id} open={forecast !== undefined && !forecast.fits}>
+        {forecast && <OverLimit forecast={forecast} asIs={!segment.autoFit} />}
+      </Collapse>
 
       {limits && (
         <Switch

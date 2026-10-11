@@ -84,7 +84,7 @@ export function ProjectsScreen() {
   };
 
   return (
-    <div className={styles.screen}>
+    <div className={`${styles.screen} ss-section`}>
       <header className={styles.header}>
         <div className={styles.heading}>
           <h1 className={styles.title}>{t("nav.projects")}</h1>

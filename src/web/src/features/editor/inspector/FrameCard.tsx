@@ -12,6 +12,7 @@ import {
   squashStretch,
 } from "../model/frame";
 import { stretchLike, stretchOf } from "../model/crop";
+import { glideNext } from "../glide";
 import { editSegment, useEditor, useSegment } from "../model/store";
 import styles from "./Inspector.module.css";
 
@@ -33,13 +34,19 @@ export function FrameCard() {
   const side = limits?.[segment.preset].side;
   // While the frame is dragged on the canvas, the sizes follow it.
   const output = limits && outputSize(draft ?? frame, segment.preset, limits[segment.preset]);
-  const setFrame = (next: Segment["frame"]) => editSegment((s) => void (s.frame = next));
+  // A click moves the frame on the canvas in one glide, a drag there never does.
+  const setFrame = (next: Segment["frame"]) => {
+    glideNext();
+    editSegment((s) => void (s.frame = next));
+  };
   // The frame belongs to one sticker; another one is set the same way only when asked to.
   const differs = segments?.some((seg) => JSON.stringify(seg.frame) !== JSON.stringify(frame));
-  const toAll = () =>
+  const toAll = () => {
+    glideNext();
     useEditor.getState().edit((scene) => {
       for (const seg of scene.segments) seg.frame = structuredClone(frame);
     });
+  };
 
   return (
     <Card eyebrow={t("inspector.frameOf", { name: segment.name })} className={styles.card}>

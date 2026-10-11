@@ -179,3 +179,52 @@
     padding-left: 0;
   }
 }
+
+/* Motion («Движение в интерфейсе», 4.5). The note under the strip drops in like a field hint. */
+.note {
+  transition:
+    opacity var(--duration-fast) var(--ease-soft),
+    transform var(--duration-fast) var(--ease-soft);
+}
+
+@starting-style {
+  .note {
+    opacity: 0;
+    transform: translateY(calc(var(--motion-shift) / -2));
+  }
+}
+
+/* A new segment's tab opens its room in the row; a deleted one fades, then the row closes.
+   The slot itself only moves its column, so its transitionend is the end of the exit. */
+.tabSlot {
+  display: inline-grid;
+  grid-template-columns: 1fr;
+  transition: grid-template-columns var(--duration-base) var(--ease-soft);
+}
+
+.tabSlot > .tab {
+  min-width: 0;
+  overflow: clip;
+  overflow-clip-margin: var(--space-2);
+  transition: opacity var(--duration-base) var(--ease-soft);
+}
+
+.tabSlot[data-state="closed"] {
+  grid-template-columns: 0fr;
+  transition: grid-template-columns var(--duration-fast) var(--ease-exit) var(--duration-instant);
+}
+
+.tabSlot[data-state="closed"] > .tab {
+  opacity: 0;
+  transition: opacity var(--duration-instant) var(--ease-exit);
+}
+
+@starting-style {
+  .tabSlot:not([data-appear="false"]) {
+    grid-template-columns: 0fr;
+  }
+
+  .tabSlot:not([data-appear="false"]) > .tab {
+    opacity: 0;
+  }
+}

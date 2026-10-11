@@ -9,7 +9,7 @@ import { create } from "zustand";
 export type CloseOverlay = () => void;
 export type RenderOverlay = (close: CloseOverlay) => ReactNode;
 
-interface Slot {
+export interface Slot {
   id: number;
   render: RenderOverlay;
   onClose?: () => void;

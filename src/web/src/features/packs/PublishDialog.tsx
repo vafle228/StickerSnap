@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   Badge,
   Banner,
@@ -42,8 +42,12 @@ export function PublishDialog() {
   const [chosen, setChosen] = useState<string>();
   const projectId = start?.projectId ?? chosen ?? projects[0]?.id;
   const draft = usePublishDraft(start ? projectId : undefined);
+  // After closing, the window fades out with what it showed last.
+  const last = useRef({ start, draft: draft.data });
+  if (start) last.current = { start, draft: draft.data };
+  const shown = last.current;
 
-  if (!start) return null;
+  if (!shown.start) return null;
   const done = () => {
     setChosen(undefined);
     close();
@@ -52,6 +56,7 @@ export function PublishDialog() {
 
   return (
     <Dialog
+      open={start !== null}
       wide
       className={styles.dialog}
       title={t("publish.title")}
@@ -63,12 +68,12 @@ export function PublishDialog() {
       onClose={done}
     >
       {isLinked(account) ? (
-        draft.data ? (
+        shown.draft ? (
           <PublishForm
             // Another project starts the questions over
             key={projectId}
-            start={start}
-            draft={draft.data}
+            start={shown.start}
+            draft={shown.draft}
             project={
               <Select
                 className={styles.project}
@@ -79,7 +84,7 @@ export function PublishDialog() {
                 onChange={setChosen}
               />
             }
-            projectLocked={start.projectId !== undefined}
+            projectLocked={shown.start.projectId !== undefined}
             projectName={projects.find((p) => p.id === projectId)?.name}
             onCancel={done}
           />
@@ -419,7 +424,7 @@ function SegmentRow({
       ) : (
         <span className={styles.rowEmoji}>
           {emoji.map((e) => (
-            <span key={e} className={styles.emojiChip}>
+            <span key={e} className={`${styles.emojiChip} ss-chip-in`}>
               {e}
               <button
                 type="button"

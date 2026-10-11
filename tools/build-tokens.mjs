@@ -44,6 +44,10 @@ for (const section of ["spacing", "radius", "shadow", "timing", "size"]) {
   for (const t of tokens[section].tokens) add(t.name, t.value);
 }
 
+// «Меньше движения»: a token with `reduced` takes that value under prefers-reduced-motion,
+// so every component built on the tokens calms down without its own media query.
+const reduced = tokens.timing.tokens.filter((t) => t.reduced !== undefined);
+
 // Accent classes (R20): the class on the app root swaps the primary family.
 const accents = [
   ...new Set(
@@ -70,6 +74,13 @@ ${themeIds
       `${id === defaultTheme ? ":root, " : ""}[data-theme="${id}"] {\n${themed[id].join("\n")}\n}`,
   )
   .join("\n\n")}
+
+/* Reduced motion: no shifts or scaling, only short fades («Движение в интерфейсе», section 3). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+${reduced.map((t) => `  ${decl(t.name, t.reduced)}`).join("\n")}
+  }
+}
 
 /* Accents (R20): one class on the app root recolors primary, selection, focus and the primary glow.
    Notification tones, highlight and the rainbow stay. */

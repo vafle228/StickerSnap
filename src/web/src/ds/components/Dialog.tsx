@@ -1,7 +1,8 @@
-import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useContext, useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cx } from "../cx";
-import { useLayer } from "../layers";
+import { usePresence } from "../hooks";
+import { DialogPresence, useLayer } from "../layers";
 import { IconButton } from "./IconButton";
 
 export interface DialogProps {
@@ -30,7 +31,7 @@ const FOCUSABLE =
 /** Window (layer 2) or confirmation (layer 3, `alert`). Holds Tab inside, returns focus to the opener.
  *  An element marked data-autofocus gets the focus first («Отмена» in ConfirmDialog). */
 export function Dialog({
-  open = true,
+  open: openProp = true,
   title,
   text,
   children,
@@ -44,7 +45,11 @@ export function Dialog({
 }: DialogProps) {
   const titleId = useId();
   const ref = useRef<HTMLDivElement>(null);
+  const host = useContext(DialogPresence);
+  const open = openProp && host.open;
   const live = open && !inline;
+  // The layer, the focus and the clicks leave at once; the window fades out after them.
+  const presence = usePresence(open, host.onExited);
 
   useLayer(live, alert ? "confirm" : "dialog", () => onClose?.());
 
@@ -56,7 +61,7 @@ export function Dialog({
     return () => opener?.focus();
   }, [live]);
 
-  if (!open) return null;
+  if (!presence.mounted) return null;
 
   const holdTab = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Tab" || inline) return;
@@ -78,7 +83,9 @@ export function Dialog({
 
   const overlay = (
     <div
+      ref={presence.ref}
       className={cx("ss-root ss-overlay", inline && "ss-overlay-inline")}
+      data-state={presence.state}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && dismissible && !alert) onClose?.();
       }}

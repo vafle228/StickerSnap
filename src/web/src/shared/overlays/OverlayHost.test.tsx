@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import "../../test/dom";
@@ -51,5 +51,21 @@ describe("windows and confirmations", () => {
 
     await user.keyboard("{Escape}");
     expect(hasModalLayer()).toBe(false);
+  });
+
+  it("lets a closed window fade out without holding the focus or the next Esc", async () => {
+    const user = userEvent.setup();
+    render(<OverlayHost />);
+    openWindow();
+
+    await user.keyboard("{Escape}");
+    const leaving = document.querySelector<HTMLElement>(".ss-overlay");
+    expect(leaving?.dataset.state).toBe("closed");
+    expect(leaving?.inert).toBe(true);
+    expect(hasModalLayer()).toBe(false);
+
+    openWindow();
+    expect(screen.getByRole("dialog", { name: "Настройки пака" })).toBeTruthy();
+    await waitFor(() => expect(document.querySelectorAll(".ss-overlay")).toHaveLength(1));
   });
 });

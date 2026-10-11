@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import { EXIT_FALLBACK_MS } from "../../ds/hooks";
 import { create } from "zustand";
 import { ConfirmDialog, type IconName, type Tone } from "../../ds";
 import { overlays } from "../overlays/overlays";
@@ -41,6 +42,8 @@ export interface ToastOptions {
 
 export interface ToastEntry extends ToastOptions {
   id: number;
+  /** Closed and on its way out: still drawn while it leaves, no longer counted or found by key */
+  leaving?: boolean;
 }
 
 export interface ToastHandle {
@@ -54,13 +57,28 @@ const MAX = 3;
 const sticky = (t: ToastOptions) =>
   t.tone === "warning" || t.tone === "danger" || t.progress !== undefined;
 
-/** At most three: a fourth pushes out the oldest info or success toast. */
+/** Drops the entry once its exit has run. NotifyHost calls it when the toast has left;
+ *  the timer is the fallback when nothing draws the stack. */
+function remove(id: number) {
+  useToasts.setState((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
+}
+
+function leave(toast: ToastEntry): ToastEntry {
+  if (toast.leaving) return toast;
+  setTimeout(() => remove(toast.id), EXIT_FALLBACK_MS);
+  return { ...toast, leaving: true };
+}
+
+/** At most three: a fourth pushes out the oldest info or success toast. Leaving ones don't count. */
 function capped(toasts: ToastEntry[]): ToastEntry[] {
   const list = [...toasts];
-  while (list.length > MAX) {
-    const oldest = list.findIndex((t) => !sticky(t));
+  const shown = () => list.filter((t) => !t.leaving).length;
+  while (shown() > MAX) {
+    const oldest = list.findIndex((t) => !t.leaving && !sticky(t));
     if (oldest < 0) break;
-    list.splice(oldest, 1);
+    const entry = list[oldest];
+    if (!entry) break;
+    list[oldest] = leave(entry);
   }
   return list;
 }
@@ -70,7 +88,7 @@ export const useToasts = create<{ toasts: ToastEntry[] }>()(() => ({ toasts: [] 
 let nextId = 1;
 
 function close(id: number) {
-  useToasts.setState((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
+  useToasts.setState((s) => ({ toasts: s.toasts.map((t) => (t.id === id ? leave(t) : t)) }));
 }
 
 function update(id: number, patch: Partial<ToastOptions>) {
@@ -87,7 +105,7 @@ export const notify = {
   /** Shows a popup and returns a handle to update or close it. */
   toast(options: ToastOptions): ToastHandle {
     const same = options.key
-      ? useToasts.getState().toasts.find((t) => t.key === options.key)
+      ? useToasts.getState().toasts.find((t) => t.key === options.key && !t.leaving)
       : undefined;
     if (same) {
       useToasts.setState((s) => ({
@@ -101,6 +119,9 @@ export const notify = {
   },
 
   close,
+
+  /** The toast has left the screen (NotifyHost). */
+  exited: remove,
 
   /** «Подробности» of an error: a read-only window, so a click on the scrim closes it. */
   showDetails(details: ToastDetails) {

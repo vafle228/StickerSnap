@@ -1,5 +1,5 @@
 import { cx } from "../cx";
-import { useControlled } from "../hooks";
+import { prefersReducedMotion, useControlled } from "../hooks";
 import { itemsOf } from "../types";
 import type { TabsProps } from "./Tabs";
 
@@ -8,7 +8,8 @@ export interface SectionNavProps<V extends string = string> extends TabsProps<V>
   label?: string;
 }
 
-/** Table of contents of a long screen (Настройки): smooth scroll to the section. */
+/** Table of contents of a long screen (Настройки): smooth scroll to the section, instant when
+ *  the system asks for less motion (CSS cannot reach a scroll started from JS). */
 export function SectionNav<V extends string = string>({
   items,
   value,
@@ -32,9 +33,10 @@ export function SectionNav<V extends string = string>({
             onClick={(e) => {
               e.preventDefault();
               setCurrent(it.value);
-              document
-                .getElementById(it.value)
-                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              document.getElementById(it.value)?.scrollIntoView({
+                behavior: prefersReducedMotion() ? "auto" : "smooth",
+                block: "start",
+              });
             }}
           >
             {it.label}

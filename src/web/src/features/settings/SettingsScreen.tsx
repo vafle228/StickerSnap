@@ -45,7 +45,7 @@ export function SettingsScreen() {
   }));
 
   return (
-    <div className={styles.screen}>
+    <div className={`${styles.screen} ss-section`}>
       <Card className={styles.toc}>
         <h1 className={styles.title}>{t("nav.settings")}</h1>
         <SectionNav<SectionId>
