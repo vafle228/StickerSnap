@@ -24,6 +24,9 @@
     "dist": "npm run build && electron-builder",
     "e2e": "playwright test"
   },
+  "engines": {
+    "node": ">=22.12"
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.64.0",

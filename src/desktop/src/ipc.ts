@@ -76,7 +76,8 @@ export function registerIpc(ctx: IpcContext) {
 
   handle(
     "dialog:open-file",
-    (args): args is [FileKind] => args.length === 1 && isString(args[0]) && Object.hasOwn(OPEN, args[0]),
+    (args): args is [FileKind] =>
+      args.length === 1 && isString(args[0]) && Object.hasOwn(OPEN, args[0]),
     async (window, kind) => {
       const options = { ...OPEN[kind], properties: ["openFile" as const] };
       const result = window

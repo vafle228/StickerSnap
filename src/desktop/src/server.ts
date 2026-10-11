@@ -38,7 +38,11 @@ export function serverCommand(layout: Layout): ServerCommand {
     return { command: join(dir, exe), args: [], cwd: dir };
   }
   const project = join(layout.appPath, "..", "server");
-  return { command: "dotnet", args: ["run", "--project", project, "--no-launch-profile"], cwd: project };
+  return {
+    command: "dotnet",
+    args: ["run", "--project", project, "--no-launch-profile"],
+    cwd: project,
+  };
 }
 
 /** A token nobody can guess, new on every launch (contract, «Доступ») */
@@ -98,7 +102,10 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 /** Starts the server on 127.0.0.1:`port` and resolves once it answers HTTP. The server learns
  *  the token, that it runs as the desktop app, and the shell's pid: it quits by itself when the
  *  shell is gone, even if the shell crashed (Program.cs). */
-export async function startServer(cmd: ServerCommand, options: StartOptions): Promise<RunningServer> {
+export async function startServer(
+  cmd: ServerCommand,
+  options: StartOptions,
+): Promise<RunningServer> {
   const baseUrl = `http://127.0.0.1:${options.port}`;
   const child = spawn(cmd.command, cmd.args, {
     cwd: cmd.cwd,

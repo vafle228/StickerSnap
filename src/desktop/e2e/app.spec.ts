@@ -19,7 +19,14 @@ function launch(userData = mkdtempSync(join(tmpdir(), "stickersnap-e2e-"))) {
 
 async function serverIsDown(origin: string) {
   await expect
-    .poll(() => fetch(origin).then(() => "up", () => "down"), { timeout: 10_000 })
+    .poll(
+      () =>
+        fetch(origin).then(
+          () => "up",
+          () => "down",
+        ),
+      { timeout: 10_000 },
+    )
     .toBe("down");
 }
 

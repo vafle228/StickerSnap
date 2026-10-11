@@ -54,6 +54,28 @@ jobs:
       # tsc -b (strict) + vite build into src/server/wwwroot
       - run: npm run build
 
+  desktop:
+    name: Desktop shell
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Electron 40+ needs Node 22; no Electron binary is downloaded here
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint -w src/desktop
+
+      # tsc strict over the main process, the preload, the tests and the e2e
+      - run: npm run typecheck -w src/desktop
+
+      # unit tests of the shell in node; the real app runs in workflow «Desktop»
+      - run: npm test -w src/desktop
+
   server:
     name: Server
     runs-on: ubuntu-latest
