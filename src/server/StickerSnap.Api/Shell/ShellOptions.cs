@@ -1,4 +1,4 @@
-namespace StickerSnap.Server.Shell;
+namespace StickerSnap.Api.Shell;
 
 /// <summary>
 /// What the desktop shell (src/desktop) tells the server it starts, as StickerSnap__* variables.

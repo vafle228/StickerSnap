@@ -45,18 +45,18 @@ describe("where the server comes from", () => {
   it("runs the published server from the installed app's resources", () => {
     const cmd = serverCommand(layout({ packaged: true, platform: "win32", resourcesPath: "R" }));
     const dir = join("R", "server");
-    expect(cmd).toEqual({ command: join(dir, "StickerSnap.Server.exe"), args: [], cwd: dir });
+    expect(cmd).toEqual({ command: join(dir, "StickerSnap.Api.exe"), args: [], cwd: dir });
   });
 
   it("runs the server published into server-dist from the repository", () => {
     const dir = join("/repo/src/desktop", "server-dist", "linux-x64");
-    const cmd = serverCommand(layout({ exists: (p) => p === join(dir, "StickerSnap.Server") }));
-    expect(cmd).toEqual({ command: join(dir, "StickerSnap.Server"), args: [], cwd: dir });
+    const cmd = serverCommand(layout({ exists: (p) => p === join(dir, "StickerSnap.Api") }));
+    expect(cmd).toEqual({ command: join(dir, "StickerSnap.Api"), args: [], cwd: dir });
   });
 
   it("builds and runs the source when nothing is published", () => {
     const cmd = serverCommand(layout({}));
-    const project = join("/repo/src", "server");
+    const project = join("/repo/src", "server", "StickerSnap.Api");
     expect(cmd).toEqual({
       command: "dotnet",
       args: ["run", "--project", project, "--no-launch-profile"],

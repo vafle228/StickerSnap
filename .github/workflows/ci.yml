@@ -51,7 +51,7 @@ jobs:
       # unit and contract tests in node, component tests (*.test.tsx) in happy-dom
       - run: npm test
 
-      # tsc -b (strict) + vite build into src/server/wwwroot
+      # tsc -b (strict) + vite build into src/server/StickerSnap.Api/wwwroot
       - run: npm run build
 
       # the production build carries no demo data, dev bar or showcase
@@ -90,6 +90,9 @@ jobs:
           dotnet-version: 10.0.x
 
       - run: dotnet build StickerSnap.slnx -c Release
+        working-directory: src/server
 
-      # xUnit on Microsoft.Testing.Platform (global.json), WebApplicationFactory
-      - run: dotnet test --solution StickerSnap.slnx -c Release --no-build
+      # xUnit on Microsoft.Testing.Platform (src/server/global.json): unit, architecture and
+      # WebApplicationFactory tests; the ones tagged Category=Slow get a workflow of their own
+      - run: dotnet test --solution StickerSnap.slnx -c Release --no-build --filter-not-trait "Category=Slow"
+        working-directory: src/server

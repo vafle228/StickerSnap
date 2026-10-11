@@ -5,7 +5,7 @@ import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 // Dev: Vite serves the SPA with HMR and proxies the API and the SignalR hub
-// to the ASP.NET server (src/server, `dotnet run` listens on this port).
+// to the ASP.NET server (src/server/StickerSnap.Api, `dotnet run` listens on this port).
 const serverUrl = process.env.STICKERSNAP_SERVER_URL ?? "http://127.0.0.1:5180";
 
 // Two builds. `npm run build` is the production one: no demo data, no dev bar, no showcase
@@ -53,7 +53,7 @@ export default defineConfig(({ command, mode }) => ({
   },
   build: {
     // ASP.NET serves the built SPA from its wwwroot.
-    outDir: fileURLToPath(new URL("../server/wwwroot", import.meta.url)),
+    outDir: fileURLToPath(new URL("../server/StickerSnap.Api/wwwroot", import.meta.url)),
     emptyOutDir: true,
   },
   test: {

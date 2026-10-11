@@ -2,6 +2,7 @@
   // The desktop app from VS Code: Terminal → Run Task (or Ctrl+Shift+B for the production one).
   // Production has no demo data or dev bar; dev is «StickerSnap Dev» with the demo scenarios.
   // Output: src/desktop/release (production) and src/desktop/release/dev.
+  // The server: run it, its tests (Ctrl+Shift+P → Run Test Task) and the pinned FFmpeg.
   "version": "2.0.0",
   "tasks": [
     {
@@ -34,6 +35,29 @@
       "type": "shell",
       "command": "npm run package -w src/desktop -- --dev --installer",
       "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Сервер: запустить",
+      "detail": "ASP.NET на http://127.0.0.1:5180, SPA из npm run build или Vite с прокси",
+      "type": "shell",
+      "command": "dotnet run --project src/server/StickerSnap.Api",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Сервер: тесты",
+      "detail": "Быстрые тесты сервера, как в CI (без Category=Slow)",
+      "type": "shell",
+      "command": "dotnet test --solution StickerSnap.slnx --filter-not-trait Category=Slow",
+      "options": { "cwd": "${workspaceFolder}/src/server" },
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "FFmpeg: скачать",
+      "detail": "Закреплённая LGPL-сборка FFmpeg 9.0 в tools/ffmpeg/<rid>",
+      "type": "shell",
+      "command": "npm run fetch:ffmpeg",
       "problemMatcher": []
     }
   ]

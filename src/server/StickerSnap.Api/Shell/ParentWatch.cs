@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Options;
 
-namespace StickerSnap.Server.Shell;
+namespace StickerSnap.Api.Shell;
 
 /// <summary>
 /// Stops the server when the shell that started it is gone. A normal quit stops the server
@@ -11,6 +11,7 @@ namespace StickerSnap.Server.Shell;
 public sealed class ParentWatch(
     IOptions<ShellOptions> options,
     IHostApplicationLifetime lifetime,
+    TimeProvider time,
     ILogger<ParentWatch> logger) : BackgroundService
 {
     public static readonly TimeSpan Interval = TimeSpan.FromSeconds(1);
@@ -19,7 +20,7 @@ public sealed class ParentWatch(
     {
         if (options.Value.ParentPid is not int pid) return;
 
-        using var timer = new PeriodicTimer(Interval);
+        using var timer = new PeriodicTimer(Interval, time);
         do
         {
             if (IsAlive(pid)) continue;

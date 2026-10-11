@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- The host: HTTP endpoints, the SignalR hub, the desktop shell's token and lifetime, DI wiring. -->
+  <ItemGroup>
+    <ProjectReference Include="..\StickerSnap.Application\StickerSnap.Application.csproj" />
+    <ProjectReference Include="..\StickerSnap.Infrastructure\StickerSnap.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
+
+</Project>

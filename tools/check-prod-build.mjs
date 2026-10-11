@@ -1,18 +1,18 @@
-// The production build (npm run build → src/server/wwwroot) carries no dev tools: no MSW and
-// its service worker, no demo scenarios, no dev bar. CI runs this after the build, so the demo
+// The production build (npm run build → src/server/StickerSnap.Api/wwwroot) carries no dev tools:
+// no MSW and its service worker, no demo scenarios, no dev bar. CI runs this after the build, so the demo
 // data never reaches an installer or the Docker image.
 // Usage: node tools/check-prod-build.mjs
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = fileURLToPath(new URL("../src/server/wwwroot/", import.meta.url));
+const root = fileURLToPath(new URL("../src/server/StickerSnap.Api/wwwroot/", import.meta.url));
 
 // Words only the dev tools have: MSW's logs, the dev bar's label and link (src/web/src/dev).
 const MARKERS = ["mockServiceWorker", "[MSW]", "Режим разработки", "Витрина ДС"];
 
 if (!existsSync(join(root, "index.html"))) {
-  console.error("No build in src/server/wwwroot: run `npm run build` first.");
+  console.error("No build in src/server/StickerSnap.Api/wwwroot: run `npm run build` first.");
   process.exit(1);
 }
 

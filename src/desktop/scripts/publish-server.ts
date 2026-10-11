@@ -7,8 +7,12 @@ import { fileURLToPath } from "node:url";
 import { runtimeId } from "../src/server.js";
 
 const rid = process.argv[2] ?? runtimeId(process.platform, process.arch);
-const server = fileURLToPath(new URL("../../server/StickerSnap.Server.csproj", import.meta.url));
-const wwwroot = fileURLToPath(new URL("../../server/wwwroot/index.html", import.meta.url));
+const server = fileURLToPath(
+  new URL("../../server/StickerSnap.Api/StickerSnap.Api.csproj", import.meta.url),
+);
+const wwwroot = fileURLToPath(
+  new URL("../../server/StickerSnap.Api/wwwroot/index.html", import.meta.url),
+);
 const out = fileURLToPath(new URL(`../server-dist/${rid}`, import.meta.url));
 
 if (!existsSync(wwwroot)) {

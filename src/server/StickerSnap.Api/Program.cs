@@ -1,6 +1,14 @@
-using StickerSnap.Server.Shell;
+using StickerSnap.Api.Shell;
+using StickerSnap.Application;
+using StickerSnap.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// The composition root: the only place that knows Infrastructure. Endpoints call the Application.
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddOpenApi();
 
 // The desktop shell passes its token, the mode and its pid (src/desktop/src/server.ts).
 builder.Services.Configure<ShellOptions>(builder.Configuration.GetSection(ShellOptions.Section));
@@ -9,6 +17,9 @@ builder.Services.AddHostedService<ParentWatch>();
 var app = builder.Build();
 
 app.UseMiddleware<TokenGate>();
+
+// The server's own OpenAPI document, /openapi/v1.json, to compare with src/contract/openapi.yaml.
+if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
 // The SPA is built by Vite into wwwroot (npm run build) and served from here.
 // During development Vite serves it on 127.0.0.1:5173 and proxies /api and /hubs to this server.
@@ -24,5 +35,5 @@ app.MapFallbackToFile("index.html");
 
 app.Run();
 
-// WebApplicationFactory<Program> in tests/StickerSnap.Server.Tests starts the app from here.
+// WebApplicationFactory<Program> in StickerSnap.Tests starts the app from here.
 public partial class Program;
