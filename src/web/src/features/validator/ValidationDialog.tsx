@@ -51,19 +51,12 @@ export function ValidationDialog({
             {t("common.close")}
           </Button>
         ) : fails ? (
-          <>
-            <Button variant="ghost" onClick={onClose}>
-              {t("common.close")}
-            </Button>
-            <Button variant="primary" icon="pencil" data-autofocus onClick={onEdit}>
-              {t("validator.fix")}
-            </Button>
-          </>
+          <Button variant="primary" icon="pencil" data-autofocus onClick={onEdit}>
+            {t("validator.fix")}
+          </Button>
         ) : (
+          // Closed by its cross, Esc or a click beside it: two actions fit one line
           <>
-            <Button variant="ghost" onClick={onClose}>
-              {t("common.close")}
-            </Button>
             <Button icon="pencil" data-autofocus onClick={onEdit}>
               {t("validator.edit")}
             </Button>
