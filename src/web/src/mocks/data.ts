@@ -20,13 +20,13 @@ const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOSt
 
 export const app: AppInfo = {
   appVersion: "0.1.0",
-  ffmpegVersion: "7.1",
+  ffmpeg: { status: "ok", version: "9.0.2" },
   apiVersion: "1.0.0",
   mode: "web",
   botUsername: BOT,
   limits: {
     sticker: { maxBytes: 262144, side: 512, maxDurationSec: 3, maxFps: 30 },
-    emoji: { maxBytes: 65536, side: 100, maxDurationSec: 3, maxFps: 30 },
+    emoji: { maxBytes: 262144, side: 100, maxDurationSec: 3, maxFps: 30 },
     packCapacity: { regular: 120, custom_emoji: 200 },
   },
 };

@@ -154,6 +154,6 @@ export function estimate(db: MockDb, id: string, segment: Segment) {
 /** GET /api/v1/files/{fileId}: a rendered .webm. */
 export function file(db: MockDb, fileId: string) {
   const blob = db.files.get(fileId);
-  if (!blob) return problem("source_not_found");
+  if (!blob) return problem("file_not_found");
   return new HttpResponse(blob, { headers: { "Content-Type": "video/webm" } });
 }

@@ -170,11 +170,11 @@ export function handlers(db: MockDb) {
     route("get", "/api/v1/jobs", () => ({ status: 200, body: [...db.jobs.values()].reverse() })),
     route("get", "/api/v1/jobs/{jobId}", ({ params }) => {
       const job = db.jobs.get(params.jobId);
-      return job ? { status: 200, body: job } : problem("bad_request");
+      return job ? { status: 200, body: job } : problem("job_not_found");
     }),
     route("post", "/api/v1/jobs/{jobId}/retry", ({ params }) => {
       const job = db.jobs.get(params.jobId);
-      if (!job) return problem("bad_request");
+      if (!job) return problem("job_not_found");
       const again: Job = {
         ...job,
         progress: { ...job.progress, stage: "send", retryAt: undefined },
@@ -185,7 +185,7 @@ export function handlers(db: MockDb) {
     }),
     route("post", "/api/v1/jobs/{jobId}/cancel", ({ params }) => {
       const job = cancelJob(db, params.jobId);
-      return job ? { status: 200, body: job } : problem("bad_request");
+      return job ? { status: 200, body: job } : problem("job_not_found");
     }),
 
     // --------------------------------------------------------- Telegram-аккаунт
