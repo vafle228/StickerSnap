@@ -52,17 +52,26 @@ public sealed class TokenGateTests
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
-    [Theory]
-    [InlineData("/api/v1/projects/6f1d2c3a/media", HttpStatusCode.BadRequest)]
-    [InlineData("/hubs/events/negotiate", HttpStatusCode.NotFound)]
-    public async Task Lets_the_token_in_as_access_token_where_the_browser_loads_by_itself(string path, HttpStatusCode past)
+    [Fact]
+    public async Task Lets_the_token_in_as_access_token_where_the_browser_loads_by_itself()
     {
         using var factory = new ApiFactory(("Token", Token));
         var client = factory.CreateClient();
 
-        var response = await client.GetAsync($"{path}?access_token={Token}", Cancel);
+        var response = await client.GetAsync($"/api/v1/projects/6f1d2c3a/media?access_token={Token}", Cancel);
 
-        response.StatusCode.Should().Be(past);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Lets_the_hub_s_negotiation_in_with_access_token()
+    {
+        using var factory = new ApiFactory(("Token", Token));
+        var client = factory.CreateClient();
+
+        var response = await client.PostAsync($"/hubs/events/negotiate?negotiateVersion=1&access_token={Token}", null, Cancel);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
