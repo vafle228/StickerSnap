@@ -15,7 +15,7 @@ import { overlays } from "../shared/overlays";
 /* Shared setup of component tests (*.test.tsx, happy-dom): the demo server behind msw/node, a fresh
    QueryClient per render and clean global stores. Import it before the code under test. */
 
-const server = setupServer();
+export const server = setupServer();
 // openapi-fetch keeps the fetch it finds when the client is made, so MSW goes first.
 server.listen({ onUnhandledRequest: "error" });
 
@@ -32,7 +32,9 @@ afterEach(() => {
   useEditor.setState(initial.editor, true);
   useImport.setState({ reading: undefined });
   useToasts.setState({ toasts: [] });
+  server.events.removeAllListeners();
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 afterAll(() => server.close());
