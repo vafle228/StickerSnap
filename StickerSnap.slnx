@@ -3,4 +3,7 @@
   <Folder Name="/src/server/">
     <Project Path="src/server/StickerSnap.Server.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/StickerSnap.Server.Tests/StickerSnap.Server.Tests.csproj" />
+  </Folder>
 </Solution>

@@ -41,7 +41,8 @@ export default defineConfig({
     emptyOutDir: true,
   },
   test: {
-    // Unit tests cover logic without a DOM: stores, key matching, event wiring.
+    // Unit tests cover logic without a DOM: stores, key matching, event wiring. Component tests
+    // (*.test.tsx) opt into a DOM with `// @vitest-environment happy-dom` at the top of the file.
     include: ["src/**/*.test.{ts,tsx}"],
   },
 });

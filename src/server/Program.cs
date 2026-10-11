@@ -14,3 +14,6 @@ app.MapFallback("/hubs/{**path}", () => Results.NotFound());
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+// WebApplicationFactory<Program> in tests/StickerSnap.Server.Tests starts the app from here.
+public partial class Program;

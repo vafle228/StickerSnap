@@ -31,6 +31,10 @@ out/
 release/
 coverage/
 .nyc_output/
+# Playwright output
+test-results/
+playwright-report/
+blob-report/
 
 # ---- .NET / ASP.NET Core ----
 [Bb]in/
