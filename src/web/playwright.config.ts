@@ -16,6 +16,7 @@ export default defineConfig({
     baseURL,
     locale: "ru-RU",
     trace: "retain-on-failure",
+    actionTimeout: 10_000,
   },
   projects: [
     {
