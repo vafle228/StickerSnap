@@ -2,7 +2,8 @@
   "name": "stickersnap",
   "private": true,
   "workspaces": [
-    "src/web"
+    "src/web",
+    "src/desktop"
   ],
   "scripts": {
     "dev": "npm run dev -w src/web",
