@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from "react";
 import { cx } from "../cx";
-import { useClickOutside, useControlled } from "../hooks";
+import { useClickOutside, useControlled, usePresence } from "../hooks";
 import { useLayer } from "../layers";
 import { itemsOf, type Item } from "../types";
 import { Icon } from "./Icon";
@@ -43,6 +43,7 @@ export function Select<V extends string = string>({
   };
   useLayer(open, "popover", () => close(true));
   useClickOutside(rootRef, open, () => close(false));
+  const pop = usePresence(open);
 
   const chosen = list.find((it) => it.value === current);
   return (
@@ -71,18 +72,20 @@ export function Select<V extends string = string>({
         </span>
         <Icon name={open ? "chevron-up" : "chevron-down"} size={18} />
       </button>
-      {open && (
-        <Menu
-          items={list}
-          selectable
-          autoFocus
-          value={current}
-          label={label}
-          onSelect={(v) => {
-            setCurrent(v);
-            close(true);
-          }}
-        />
+      {pop.mounted && (
+        <div ref={pop.ref} className="ss-select-pop ss-pop" data-state={pop.state}>
+          <Menu
+            items={list}
+            selectable
+            autoFocus
+            value={current}
+            label={label}
+            onSelect={(v) => {
+              setCurrent(v);
+              close(true);
+            }}
+          />
+        </div>
       )}
     </div>
   );

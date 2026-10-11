@@ -6,10 +6,11 @@ import {
   useFloating,
   type Placement,
 } from "@floating-ui/react-dom";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { useLayer } from "../../ds";
+import { useLayer, usePresence } from "../../ds";
 import { useLatest } from "../../ds/hooks";
+import { originOf } from "./origin";
 import styles from "./Popover.module.css";
 
 export interface PopoverProps {
@@ -31,9 +32,16 @@ export function Popover({
   placement = "bottom-end",
   children,
 }: PopoverProps) {
-  const { refs, floatingStyles } = useFloating({
-    open,
+  const presence = usePresence(open);
+  // top/left instead of a transform: the transform is the entry's scale.
+  const {
+    refs,
+    floatingStyles,
+    placement: placed,
+  } = useFloating({
+    open: presence.mounted,
     placement,
+    transform: false,
     elements: { reference: anchor },
     middleware: [offset(6), flip({ padding: 8 }), shift({ padding: 8 })],
     whileElementsMounted: autoUpdate,
@@ -58,9 +66,17 @@ export function Popover({
     return () => document.removeEventListener("mousedown", onDown);
   }, [open, anchor, refs.floating, close]);
 
-  if (!open) return null;
+  if (!presence.mounted) return null;
   return createPortal(
-    <div ref={refs.setFloating} className={`ss-root ${styles.popover}`} style={floatingStyles}>
+    <div
+      ref={(el) => {
+        refs.setFloating(el);
+        presence.ref(el);
+      }}
+      className={`ss-root ss-pop ${styles.popover}`}
+      data-state={presence.state}
+      style={{ ...floatingStyles, "--ss-origin": originOf(placed) } as CSSProperties}
+    >
       {children}
     </div>,
     document.body,

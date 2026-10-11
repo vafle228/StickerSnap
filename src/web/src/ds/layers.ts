@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { createContext, useEffect } from "react";
 import { useLatest } from "./hooks";
 
 /* Overlay layers (artboard «12 · Окна и попапы»):
@@ -54,3 +54,9 @@ export function useLayer(open: boolean, kind: LayerKind, close: () => void) {
     };
   }, [open, kind, latest]);
 }
+
+/** Set by a host that keeps a closed window mounted for its exit (OverlayHost): the window is
+ *  open while the host says so, and tells it when it has left. */
+export const DialogPresence = createContext<{ open: boolean; onExited?: () => void }>({
+  open: true,
+});

@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from "react";
 import { cx } from "../cx";
-import { useClickOutside } from "../hooks";
+import { useClickOutside, usePresence } from "../hooks";
 import { useLayer } from "../layers";
 import { Badge } from "./Badge";
 
@@ -32,6 +32,7 @@ export function SaveStatus({ state = "saved", detail, action, className }: SaveS
   const shown = open && canOpen;
   useLayer(shown, "popover", () => setOpen(false));
   useClickOutside(ref, shown, () => setOpen(false));
+  const pop = usePresence(shown);
 
   return (
     <span className={cx("ss-save", className)} ref={ref} role="status">
@@ -43,10 +44,18 @@ export function SaveStatus({ state = "saved", detail, action, className }: SaveS
         aria-haspopup={canOpen ? "dialog" : undefined}
         aria-expanded={canOpen ? shown : undefined}
       >
-        {LABELS[state]}
+        <span key={state} className="ss-swap">
+          {LABELS[state]}
+        </span>
       </Badge>
-      {shown && (
-        <div className="ss-save-pop" role="dialog" aria-label="Сохранение">
+      {pop.mounted && (
+        <div
+          ref={pop.ref}
+          className="ss-save-pop ss-pop"
+          data-state={pop.state}
+          role="dialog"
+          aria-label="Сохранение"
+        >
           <p>
             {detail ??
               "Нет места или нет доступа к папке. Правки держим в памяти и пробуем снова каждые 30 с."}
