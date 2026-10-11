@@ -367,6 +367,38 @@ button.stickerSrc:focus-visible {
   min-height: 176px;
   aspect-ratio: auto;
   padding: var(--space-3);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-soft);
+}
+
+.add :global(.ss-drop-icon) {
+  width: 40px;
+  height: 40px;
+}
+
+.add :global(.ss-drop-title) {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* The tile is a button: under the pointer it lifts and takes the accent, as a raised card does */
+.add:hover {
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-raised);
+}
+
+.add:hover :global(.ss-drop-line rect) {
+  stroke: var(--primary);
+}
+
+.add:hover :global(.ss-drop-icon) {
+  background: var(--primary-soft);
+  box-shadow: none;
+  color: var(--primary-ink);
+}
+
+.add:active {
+  box-shadow: var(--shadow-inset);
 }
 
 /* The sticker menu of artboard 7 is 252px wide */

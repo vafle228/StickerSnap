@@ -5,7 +5,6 @@ import {
   Button,
   Card,
   DropZone,
-  Icon,
   IconButton,
   LinkChip,
   type MenuItem,
@@ -112,10 +111,13 @@ export function PackView({ summary }: { summary: PackSummary }) {
           </p>
         </div>
         {!gone && (
-          <a className="ss-btn ss-btn-primary" href={link} target="_blank" rel="noreferrer">
-            <Icon name="send" size={18} />
+          <Button
+            variant="primary"
+            icon="external"
+            onClick={() => window.open(link, "_blank", "noopener,noreferrer")}
+          >
             {t("packs.openTelegram")}
-          </a>
+          </Button>
         )}
       </div>
 

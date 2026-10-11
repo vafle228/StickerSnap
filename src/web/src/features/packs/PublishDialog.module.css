@@ -81,12 +81,16 @@
 }
 
 /* Question 1: a row per segment */
+/* Three and a half rows, then the list scrolls: a long project must not stretch the window */
 .rows {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  max-height: 292px;
   margin: 0;
-  padding: 0;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   list-style: none;
 }
 

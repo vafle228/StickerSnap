@@ -320,7 +320,7 @@ export function handlers(db: MockDb) {
               durationSec: (s.outFrame - s.inFrame + 1) / 30 / s.speed,
               preset: s.preset,
               export: {
-                bytes: fails ? 277_504 : 151_552 + i * 65_536,
+                bytes: fails ? 277_504 : 151_552 + (i % 3) * 32_768,
                 verdict: fails ? ("fail" as const) : ("pass" as const),
                 stale: false,
               },
