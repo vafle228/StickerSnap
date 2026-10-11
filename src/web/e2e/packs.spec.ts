@@ -76,7 +76,9 @@ test("fills the publish window: emoji per segment and a pack; sending waits for 
 
 test("offers no full pack in the publish window", async ({ page }) => {
   const packs = await openPacks(page, "pack-full");
-  await expect(packs.getByRole("button", { name: /^Кот и диван Заполнен · 120 из 120/ })).toBeVisible();
+  await expect(
+    packs.getByRole("button", { name: /^Кот и диван Заполнен · 120 из 120/ }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Добавить стикер из любого проекта" }).click();
   const where = page
     .getByRole("dialog", { name: "Опубликовать в Telegram" })
