@@ -18,6 +18,8 @@ export interface ToastOptions {
   tone?: Tone;
   /** What happened */
   title: string;
+  /** A mark beside the title: «с уступками» on a finished export (artboard 8) */
+  badge?: { tone: Tone; label: string };
   /** What to do */
   description?: string;
   icon?: IconName;
@@ -33,6 +35,8 @@ export interface ToastOptions {
   timeout?: number | null;
   /** One toast per key: another with the same key replaces it in place («Не сохранено» once) */
   key?: string;
+  /** The user closed it, or it timed out: a running task then reports its result anew */
+  onClose?: () => void;
 }
 
 export interface ToastEntry extends ToastOptions {

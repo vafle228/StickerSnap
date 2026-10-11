@@ -14,6 +14,10 @@ export const SCENARIOS = {
   "short-gif": "Короткий GIF",
   "no-segments": "Без отрезков",
   desktop: "Десктоп",
+  "import-broken": "Битый файл",
+  "too-big": "Не влезет",
+  "export-fails": "Экспорт не удался",
+  "webm-bad": "Чужой .webm",
 } as const;
 
 export type Scenario = keyof typeof SCENARIOS;

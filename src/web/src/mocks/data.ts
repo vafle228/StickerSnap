@@ -49,6 +49,7 @@ function segment(
     loop: "normal",
     preset,
     longSticker: false,
+    autoFit: true,
   };
 }
 
@@ -198,6 +199,10 @@ export interface MockDb {
   /** What a new project is made of: demo data has no video to read */
   template: Project;
   jobs: Map<string, Job>;
+  /** Files the browser uploaded, by uploadId */
+  uploads: Map<string, File>;
+  /** Rendered .webm files of previews and exports, by fileId */
+  files: Map<string, Blob>;
   account: AccountLink;
   packs: Pack[];
 }
@@ -345,6 +350,8 @@ export function createDb(scenario: Scenario): MockDb {
     forgotten: [],
     template,
     jobs: new Map(scenario === "publish-errors" ? [[PUBLISH_JOB, waitingPublish()]] : []),
+    uploads: new Map(),
+    files: new Map(),
     account,
     packs,
   };

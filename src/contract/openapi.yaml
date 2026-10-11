@@ -1332,7 +1332,7 @@ components:
 
     Segment:
       type: object
-      required: [id, name, inFrame, outFrame, excludedFrames, frame, speed, loop, preset, longSticker]
+      required: [id, name, inFrame, outFrame, excludedFrames, frame, speed, loop, preset, longSticker, autoFit]
       properties:
         id:
           type: string
@@ -1370,6 +1370,11 @@ components:
         longSticker:
           type: boolean
           description: R19, только если спайк подтвердил
+        autoFit:
+          type: boolean
+          description: |
+            R7: подгонка под лимит лестницей отката, по умолчанию true. false — экспорт как есть,
+            без уступок; файл может выйти больше лимита и не пройти проверку Telegram.
 
     SegmentPreset:
       type: string

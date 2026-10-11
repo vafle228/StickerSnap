@@ -1,17 +1,46 @@
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { create } from "zustand";
 import { useApp } from "../../app/store";
 import { api, call } from "../../shared/api/client";
 import { keys } from "../../shared/api/queries";
 import type { Project, ProjectSummary, SourceRef } from "../../shared/api/types";
 import { confirm, notify, notifyProblem, toProblem } from "../../shared/notify";
-import { platform } from "../../shared/platform";
+import { platform, type LocalFile } from "../../shared/platform";
 import { t } from "../../shared/strings/ru";
 import { useEditor } from "../editor/model/store";
+import { checkWebm } from "../validator/check";
+import { readFile, useImport } from "./reading";
 
-/** A video is being read into a new project: the import zones say «Читаю файл…» and wait. */
-export const useImport = create<{ reading: boolean }>()(() => ({ reading: false }));
+/** A video that cannot become a project (artboard 3c, B and C): the popup names the file and
+ *  offers another one. The open project and the start screen stay as they were. */
+function notifyImportProblem(error: unknown, file: LocalFile, pickAnother: () => void) {
+  const problem = toProblem(error);
+  const another = { label: t("import.another"), onClick: pickAnother };
+  if (problem.code === "source_unreadable") {
+    notify.toast({
+      key: "import",
+      tone: "danger",
+      title: t("import.unreadable.title", { name: file.name }),
+      description: t("import.unreadable.text"),
+      action: another,
+      details: { log: problem.log, traceId: problem.traceId || undefined },
+    });
+  } else if (problem.code === "format_unsupported") {
+    const ext = problem.params?.ext ?? file.name.split(".").pop() ?? "";
+    notify.toast({
+      key: "import",
+      tone: "warning",
+      title: t("import.unsupported.title", { ext }),
+      description: t("import.unsupported.text"),
+      action: another,
+    });
+  } else {
+    notifyProblem(error, { key: "import" });
+  }
+}
+
+/** A .webm dropped on the window is a finished sticker to check (R8); anything else is a video. */
+export const isWebm = (name: string) => /\.webm$/i.test(name);
 
 type Summary = Pick<ProjectSummary, "id" | "name" | "path">;
 
@@ -50,20 +79,26 @@ export function useProjectActions() {
       useApp.getState().openProject(project.id);
     };
 
-    /** «Новый проект»: a picked or dropped video becomes a project and opens in the editor. */
-    const create = async (file?: File) => {
+    /** «Новый проект», «Импорт видео»: a picked or dropped video becomes a project and opens in
+     *  the editor. `source` skips the upload when the server already has the file. */
+    const create = async (picked?: LocalFile, source?: SourceRef) => {
       if (useImport.getState().reading) return;
-      let source: SourceRef | null = null;
-      try {
-        useImport.setState({ reading: true });
-        source = file ? await platform.sourceOf(file) : await platform.pickVideo();
-        if (!source) return;
-        opened(await call(api.POST("/api/v1/projects", { body: { source } })));
-      } catch (error) {
-        notifyProblem(error, { key: "import" });
-      } finally {
-        useImport.setState({ reading: false });
-      }
+      const file = picked ?? (await platform.pickVideo());
+      if (!file) return;
+      const result = await readFile(file, "video", async (signal) => {
+        const body = { source: source ?? (await platform.sourceOf(file, signal)) };
+        return call(api.POST("/api/v1/projects", { body, signal }));
+      });
+      if (!result) return;
+      if ("error" in result) notifyImportProblem(result.error, file, () => void create());
+      else opened(result.value);
+    };
+
+    /** A file dropped on the window or an import zone. */
+    const openDropped = (dropped: File) => {
+      const file = platform.dropped(dropped);
+      if (isWebm(file.name)) void checkWebm(file, (source) => void create(file, source));
+      else void create(file);
     };
 
     /** «Открыть файл…»: a .ssproj from disk, desktop only. */
@@ -171,8 +206,9 @@ export function useProjectActions() {
      *  end of a shorter video stay, with a warning that leads to them. */
     const replaceSource = async (id: string) => {
       try {
-        const source = await platform.pickVideo();
-        if (!source) return;
+        const file = await platform.pickVideo();
+        if (!file) return;
+        const source = await platform.sourceOf(file);
         const { project, segmentsOutOfRange } = await call(
           api.PUT("/api/v1/projects/{id}/source", { params: { path: { id } }, body: { source } }),
         );
@@ -203,6 +239,6 @@ export function useProjectActions() {
       }
     };
 
-    return { create, openFile, rename, forget, trash, replaceSource };
+    return { create, openDropped, openFile, rename, forget, trash, replaceSource };
   }, [client]);
 }

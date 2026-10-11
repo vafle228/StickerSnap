@@ -45,9 +45,10 @@ export function sourceStretch(source: Size): Stretch {
   };
 }
 
-/** «Сплющить в 1:1». */
-export function squashStretch(): Stretch {
-  return { mode: "stretch", preset: "squash", aspect: { width: 1, height: 1 } };
+/** «Сплющить в 1:1»: the longer side squeezed down to the shorter one. */
+export function squashStretch(source: Size): Stretch {
+  const side = Math.min(source.width, source.height);
+  return { mode: "stretch", preset: "squash", aspect: { width: side, height: side } };
 }
 
 /** The frame a mode starts with when the user switches to it. */
