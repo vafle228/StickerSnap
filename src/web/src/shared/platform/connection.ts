@@ -6,9 +6,13 @@ export interface ServerConnection {
   token?: string;
 }
 
-/* Stage 1a runs in the browser: the server itself (or Vite's dev proxy) serves the SPA, so the
-   API is on the same origin. Electron (1b) will take the port and the token from the preload's
-   window.stickersnap here, and nothing else in the SPA changes. */
+/* In the browser the server itself (or Vite's dev proxy) serves the SPA, so the API is on the
+   same origin and needs no token. The desktop shell hands the server's origin and the launch's
+   token to the preload's window.stickersnap; in its development mode over Vite it has neither. */
 export function serverConnection(): ServerConnection {
-  return { baseUrl: globalThis.location?.origin ?? "http://127.0.0.1:5180" };
+  const desktop = globalThis.stickersnap?.server;
+  return {
+    baseUrl: desktop?.baseUrl ?? globalThis.location?.origin ?? "http://127.0.0.1:5180",
+    token: desktop?.token,
+  };
 }

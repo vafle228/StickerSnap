@@ -4,6 +4,7 @@ import { persist } from "zustand/middleware";
 import type { AccentName } from "../../ds/accents";
 import { freezeMotion } from "../../ds/hooks";
 import { useSettings, useUpdateSettings } from "../api/queries";
+import { platform } from "../platform";
 import type { Accent, Theme } from "../api/types";
 
 export type ThemeMode = Theme;
@@ -52,6 +53,9 @@ export function useApplyTheme() {
   useEffect(() => {
     if (settings) useTheme.setState({ mode: settings.theme, accent: settings.accent });
   }, [settings]);
+
+  // The desktop window's title bar follows the setting, and the next launch opens in it.
+  useEffect(() => platform.themeChanged(mode), [mode]);
 
   useEffect(() => {
     applyTheme(mode, accent);

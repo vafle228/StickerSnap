@@ -1,15 +1,18 @@
-import { api, call, fetchFile } from "../api/client";
-import type { SourceRef } from "../api/types";
+import { fetchFile } from "../api/client";
+import type { SourceRef, Theme } from "../api/types";
+import { serverConnection } from "./connection";
+import { electronPlatform } from "./electron";
+import { upload } from "./upload";
 
 /* Everything that touches the OS and files goes through Platform (plan, «Браузер в 1a,
    Electron в 1b»). The browser uploads a file to the local server and downloads the .webm;
-   Electron (1b) will pass paths and open system dialogs. Screens never ask which one runs. */
+   Electron passes paths and opens system dialogs (electron.ts). Screens never ask which one runs. */
 
 /** A file the user picked or dropped, before the server has seen it. Its name is known at once,
  *  so «Читаю «cat.gif»» can say which file is read while it is still uploading. */
 export interface LocalFile {
   name: string;
-  /** The browser's file; Electron (1b) has a path instead */
+  /** The browser's file; Electron has a path instead */
   file?: File;
   path?: string;
 }
@@ -40,6 +43,8 @@ export interface Platform {
   openFolder(path: string): void;
   /** «Показать в папке» of a project: the file manager with the file selected. Only with paths. */
   showInFolder(path: string): void;
+  /** The theme setting changed: Electron's title bar and next launch follow it */
+  themeChanged(mode: Theme): void;
 }
 
 const VIDEO_TYPES = ".mp4,.mov,.webm,.gif,.webp,video/*,image/gif,image/webp";
@@ -54,25 +59,6 @@ function chooseFile(accept: string): Promise<File | null> {
     input.addEventListener("cancel", () => resolve(null), { once: true });
     input.click();
   });
-}
-
-/** POST /api/v1/uploads: the bytes go to the local server, the scene keeps only the uploadId. */
-async function upload({ file, path }: LocalFile, signal?: AbortSignal): Promise<SourceRef> {
-  if (path) return { kind: "path", path };
-  if (!file) throw new Error("A local file has neither bytes nor a path");
-  const { uploadId } = await call(
-    api.POST("/api/v1/uploads", {
-      signal,
-      // schema.d.ts types the binary part as a string; the serializer sends the File itself
-      body: { file: file as unknown as string },
-      bodySerializer: () => {
-        const form = new FormData();
-        form.append("file", file);
-        return form;
-      },
-    }),
-  );
-  return { kind: "upload", uploadId };
 }
 
 async function pick(accept: string): Promise<LocalFile | null> {
@@ -103,7 +89,10 @@ export const browserPlatform: Platform = {
   pickFolder: () => Promise.resolve(null),
   openFolder: () => {},
   showInFolder: () => {},
+  themeChanged: () => {},
 };
 
-/** The platform this SPA runs on. Stage 1a has only the browser. */
-export const platform: Platform = browserPlatform;
+/** The platform this SPA runs on: Electron's when the desktop shell's preload is there. */
+export const platform: Platform = globalThis.stickersnap
+  ? electronPlatform(globalThis.stickersnap, serverConnection().baseUrl)
+  : browserPlatform;
