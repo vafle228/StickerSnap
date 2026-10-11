@@ -12,6 +12,7 @@ import { cx } from "../../../ds/cx";
 import { mediaSrc } from "../../../shared/api/client";
 import { t } from "../../../shared/strings/ru";
 import { seconds, timecode } from "../format";
+import { useGlide } from "../glide";
 import { frameCount } from "../model/frame";
 import { useEditor } from "../model/store";
 import {
@@ -109,6 +110,11 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
 
   // The stop hint itself lives under the strip (TimelineSlot); here the pushed handle turns yellow.
   const shown = drag ? drag.moved : segment;
+  // Another tab, «Вписать целиком», «Ускорить»: the window glides there; a drag never does.
+  const gliding = useGlide(
+    shown ? `${segment?.id}:${shown.inFrame}:${shown.outFrame}` : "",
+    drag !== null,
+  );
   const pushedEdge = drag?.edge && drag.moved.limited ? drag.edge : stopShown(info, stop)?.edge;
   const over = segment !== undefined && frameCount(segment) > bounds.max;
   const warnEdge = pushedEdge ?? (over ? "out" : undefined);
@@ -297,7 +303,12 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
       aria-valuemax={total - 1}
       aria-valuenow={edge === "in" ? shown?.inFrame : shown?.outFrame}
       aria-valuetext={timecode(edgeX(edge) / px / fps)}
-      className={cx(styles.handle, styles[edge], warnEdge === edge && styles.limit)}
+      className={cx(
+        styles.handle,
+        styles[edge],
+        warnEdge === edge && styles.limit,
+        gliding && styles.gliding,
+      )}
       style={{ left: edgeX(edge) }}
       onKeyDown={onHandleKey(edge)}
     />
@@ -363,7 +374,11 @@ export function FrameStrip({ info }: { info: TimelineInfo }) {
               <>
                 <div
                   data-segment={segment.id}
-                  className={cx(styles.trim, drag && !drag.edge && styles.moving)}
+                  className={cx(
+                    styles.trim,
+                    drag && !drag.edge && styles.moving,
+                    gliding && styles.gliding,
+                  )}
                   style={{
                     left: shown.inFrame * px,
                     width: (shown.outFrame - shown.inFrame + 1) * px,

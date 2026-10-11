@@ -2,6 +2,7 @@ import { Button, IconButton } from "../../../ds";
 import { t } from "../../../shared/strings/ru";
 import { num } from "../format";
 import { useEditor, useSegment } from "../model/store";
+import { glideNext } from "../glide";
 import { ZOOM_MAX, ZOOM_MIN, zoomIn, zoomOut } from "../model/zoom";
 import { useRender } from "../render/store";
 import styles from "./VideoStage.module.css";
@@ -64,14 +65,20 @@ export function GlassBar({ scale, comparing }: { scale: number; comparing: boole
         flat
         className={styles.round}
         disabled={scale <= ZOOM_MIN + 1e-6}
-        onClick={() => setZoom(zoomOut(scale))}
+        onClick={() => {
+          glideNext();
+          setZoom(zoomOut(scale));
+        }}
       />
       <button
         type="button"
         className={styles.zoomValue}
         aria-label={t("editor.zoomReset", { value: zoomValue })}
         disabled={zoom === "fit"}
-        onClick={() => setZoom("fit")}
+        onClick={() => {
+          glideNext();
+          setZoom("fit");
+        }}
       >
         {zoomValue}
       </button>
@@ -82,7 +89,10 @@ export function GlassBar({ scale, comparing }: { scale: number; comparing: boole
         flat
         className={styles.round}
         disabled={scale >= ZOOM_MAX - 1e-6}
-        onClick={() => setZoom(zoomIn(scale))}
+        onClick={() => {
+          glideNext();
+          setZoom(zoomIn(scale));
+        }}
       />
       <span className={styles.divider} aria-hidden />
       <Button

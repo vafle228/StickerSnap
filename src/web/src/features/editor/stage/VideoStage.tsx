@@ -1,9 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cx } from "../../../ds/cx";
+import { EXIT_FALLBACK_MS, prefersReducedMotion } from "../../../ds/hooks";
 import { mediaSrc } from "../../../shared/api/client";
 import { useAppInfo } from "../../../shared/api/queries";
 import { t } from "../../../shared/strings/ru";
 import { frameBox, type Rect } from "../model/crop";
+import { useGlide } from "../glide";
 import { fpsOf, type Size } from "../model/frame";
 import { useEditor, useSegment } from "../model/store";
 import { fitScale } from "../model/zoom";
@@ -41,7 +43,11 @@ export function VideoStage({ className }: { className?: string }) {
   const result = useFreshResult(segment);
 
   const viewportRef = useRef<HTMLDivElement>(null);
+  const mediaRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const shot = useRef<Shot | null>(null);
+  const layout = useRef<Layout | null>(null);
+  const zoomGlide = useGlide(String(zoom));
   const [box, setBox] = useState({ width: 0, height: 0 });
   const [usable, setUsable] = useState(false);
 
@@ -74,6 +80,24 @@ export function VideoStage({ className }: { className?: string }) {
     fps,
   );
 
+  const ok = source !== undefined;
+  const editingNow = cropTool && segment !== undefined;
+  // «Рамка» on or off, and the zoom buttons, move the canvas as a camera (FLIP): the sticker's
+  // rectangle starts where it was on screen and settles where it is now. Wheel zoom: at once.
+  useLayoutEffect(() => {
+    const el = mediaRef.current;
+    const viewport = viewportRef.current;
+    if (!ok || !el || !viewport || !layout.current) return;
+    const now: Shot = { at: anchorOn(el, viewport, layout.current), editing: editingNow, zoom };
+    const before = shot.current;
+    shot.current = now;
+    if (!before || prefersReducedMotion()) return;
+    if (before.editing !== now.editing) flip(el, viewport, before.at, now.at, "--duration-slow");
+    else if (before.zoom !== now.zoom && zoomGlide) {
+      flip(el, viewport, before.at, now.at, "--duration-fast");
+    }
+  });
+
   if (!source) return null;
 
   const present = source.status === "ok" && mediaUrl !== undefined;
@@ -105,9 +129,17 @@ export function VideoStage({ className }: { className?: string }) {
   const ready = draftOn && previewFile?.of === signature(segment);
   const rendering = draftOn && !ready;
   const size = { width: view.width * scale, height: view.height * scale };
+  const anchor = segment ? frameBox(segment.frame, source) : whole;
+  layout.current = {
+    x: (anchor.x - view.x) * scale,
+    y: (anchor.y - view.y) * scale,
+    width: anchor.width * scale,
+    height: anchor.height * scale,
+  };
 
   const media = (
     <div
+      ref={mediaRef}
       className={cx(styles.media, !editing && frame && styles.result, rendering && styles.dimmed)}
       style={size}
     >
@@ -186,4 +218,54 @@ function span(a: Rect, b: Rect): Size {
     width: Math.max(a.x + a.width, b.x + b.width) - Math.min(a.x, b.x),
     height: Math.max(a.y + a.height, b.y + b.height) - Math.min(a.y, b.y),
   };
+}
+
+/** Where the sticker's rectangle is drawn inside the media box, in display px. */
+type Layout = Rect;
+
+/** The sticker's rectangle in viewport coordinates, with the state that put it there. */
+interface Shot {
+  at: Rect;
+  editing: boolean;
+  zoom: unknown;
+}
+
+/** The sticker's rectangle on screen, in the viewport's frame. Offsets ignore a running
+ *  transform, so a FLIP started mid-FLIP starts from the true layout. */
+function anchorOn(el: HTMLElement, viewport: HTMLElement, layout: Layout): Rect {
+  return {
+    x: el.offsetLeft - viewport.scrollLeft + layout.x,
+    y: el.offsetTop - viewport.scrollTop + layout.y,
+    width: layout.width,
+    height: layout.height,
+  };
+}
+
+/** Puts the media box back so that its sticker rectangle covers `from`, then lets it settle
+ *  at `to` over `duration` (a token name). Overflow is held while it runs, so no scrollbar
+ *  flashes under the grown canvas. */
+function flip(el: HTMLElement, viewport: HTMLElement, from: Rect, to: Rect, duration: string) {
+  if (!(to.width > 0) || !(from.width > 0)) return;
+  const s = from.width / to.width;
+  const origin = { x: el.offsetLeft - viewport.scrollLeft, y: el.offsetTop - viewport.scrollTop };
+  const dx = from.x - origin.x - s * (to.x - origin.x);
+  const dy = from.y - origin.y - s * (to.y - origin.y);
+  el.style.transition = "none";
+  el.style.transformOrigin = "0 0";
+  el.style.transform = `translate(${dx}px, ${dy}px) scale(${s})`;
+  viewport.style.overflow = "hidden";
+  void el.offsetWidth;
+  el.style.transition = `transform var(${duration}) var(--ease-soft)`;
+  el.style.transform = "";
+  // Ends on its own transitionend, or after the fallback when no frame ran (a hidden window).
+  const done = (e?: TransitionEvent) => {
+    if (e && (e.target !== el || e.propertyName !== "transform")) return;
+    el.removeEventListener("transitionend", done);
+    window.clearTimeout(timer);
+    el.style.transition = "";
+    el.style.transformOrigin = "";
+    viewport.style.overflow = "";
+  };
+  const timer = window.setTimeout(done, EXIT_FALLBACK_MS);
+  el.addEventListener("transitionend", done);
 }

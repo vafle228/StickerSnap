@@ -287,3 +287,39 @@
   );
   pointer-events: none;
 }
+
+/* Motion (docs/ui-motion.md, 4.5). A jump by a click glides the window and its handles; a
+   drag, an arrow key or an undo lands at once. The playhead never glides. */
+.gliding {
+  transition:
+    left var(--duration-base) var(--ease-soft),
+    width var(--duration-base) var(--ease-soft);
+}
+
+/* An edge pushed against the limit gives a little: 2px outward and back. */
+.handle.limit.in {
+  animation: bump-in var(--duration-fast) var(--ease-soft);
+}
+
+.handle.limit.out {
+  animation: bump-out var(--duration-fast) var(--ease-soft);
+}
+
+@keyframes bump-in {
+  50% {
+    translate: -2px 0;
+  }
+}
+
+@keyframes bump-out {
+  50% {
+    translate: 2px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .handle.limit.in,
+  .handle.limit.out {
+    animation: none;
+  }
+}

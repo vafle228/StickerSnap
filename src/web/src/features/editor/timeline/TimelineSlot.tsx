@@ -3,6 +3,7 @@ import { Button, Card, Icon, IconButton, TONE_ICON } from "../../../ds";
 import { useHotkey } from "../../../shared/hotkeys";
 import { plural, t } from "../../../shared/strings/ru";
 import { num, speed as speedText, timecode } from "../format";
+import { glideNext } from "../glide";
 import { frameCount, segmentDuration } from "../model/frame";
 import { useEditor } from "../model/store";
 import { frameAt, timeOf } from "../model/timeline";
@@ -31,6 +32,7 @@ export function TimelineSlot({ active }: { active: boolean }) {
   const playing = useEditor((s) => s.playing);
   const setPlaying = useEditor((s) => s.setPlaying);
   const stop = useEditor((s) => s.stop);
+  const projectId = useEditor((s) => s.projectId);
 
   const on = active && info !== undefined;
   useHotkey("prevFrame", () => info && stepFrame(info, -1), on);
@@ -48,7 +50,8 @@ export function TimelineSlot({ active }: { active: boolean }) {
   return (
     <Card variant="sunken" className={styles.timeline} aria-label={t("editor.timeline")}>
       <div className={styles.head}>
-        <SegmentTabs info={info} />
+        {/* Another project: its tabs are on screen from the start, they do not slide in */}
+        <SegmentTabs key={projectId} info={info} />
         <Scale info={info} />
         <Timecode fps={fps} />
       </div>
@@ -151,7 +154,11 @@ function Note({ info }: { info: TimelineInfo }) {
             size="sm"
             variant="ghost"
             className={styles.noteAction}
-            onClick={() => over.speed !== undefined && speedUp(over.speed)}
+            onClick={() => {
+              if (over.speed === undefined) return;
+              glideNext();
+              speedUp(over.speed);
+            }}
           >
             {t("editor.over.speedUp", { speed: speedText(over.speed) })}
           </Button>
@@ -160,7 +167,10 @@ function Note({ info }: { info: TimelineInfo }) {
           size="sm"
           variant="ghost"
           className={styles.noteAction}
-          onClick={() => setEdges(segment, over.range)}
+          onClick={() => {
+            glideNext();
+            setEdges(segment, over.range);
+          }}
         >
           {t("editor.over.shorten", {
             duration: num(segmentDuration({ ...segment, ...over.range }, fps), 2),
@@ -181,7 +191,10 @@ function Note({ info }: { info: TimelineInfo }) {
           size="sm"
           variant="ghost"
           className={styles.noteAction}
-          onClick={() => fitStop(info)}
+          onClick={() => {
+            glideNext();
+            fitStop(info);
+          }}
         >
           {t("editor.limit.fit")}
         </Button>
