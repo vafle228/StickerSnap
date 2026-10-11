@@ -41,6 +41,20 @@ export function mediaSrc(path: string): string {
   return url.href;
 }
 
+/** A file the server rendered (GET /api/v1/files/{fileId}), fetched with the Bearer header:
+ *  the exact preview plays it from memory and the browser downloads it (R9). */
+export async function fetchFile(path: string, signal?: AbortSignal): Promise<Blob> {
+  const response = await fetch(new URL(path, connection.baseUrl), {
+    headers: connection.token ? { Authorization: `Bearer ${connection.token}` } : undefined,
+    signal,
+  });
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => undefined);
+    throw new ApiError(response.status, isProblem(body) ? body : undefined);
+  }
+  return response.blob();
+}
+
 /** The response body, or an ApiError: `await call(api.GET("/api/v1/settings"))`. */
 export async function call<D, E>(
   request: Promise<{ data?: D; error?: E; response: Response }>,

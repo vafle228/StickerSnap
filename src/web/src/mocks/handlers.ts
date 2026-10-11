@@ -1,27 +1,12 @@
-import type { Estimate, PackNameCheck, Settings, ValidationReport } from "../shared/api/types";
+import type { PackNameCheck, Settings } from "../shared/api/types";
 import { app, packSummary, summaryOf, type MockDb } from "./data";
 import { fakeHub } from "./fakeHub";
 import { frameSprite } from "./frames";
 import { cancelJob, startJob } from "./jobs";
+import { createProject, estimate, file, upload, validate } from "./media";
 import { noContent, problem, route, webp } from "./route";
 
 const BOT_TAIL = `_by_${app.botUsername}`;
-
-const report: ValidationReport = {
-  fileName: "sticker.webm",
-  bytes: 186_000,
-  verdict: "pass",
-  checks: [
-    { rule: "container", status: "pass", expected: "webm", actual: "webm" },
-    { rule: "codec", status: "pass", expected: "vp9", actual: "vp9" },
-    { rule: "size", status: "pass", expected: "≤ 262144", actual: "186000" },
-    { rule: "dimensions", status: "pass", expected: "512", actual: "512×512" },
-    { rule: "duration", status: "pass", expected: "≤ 3", actual: "2.97" },
-    { rule: "fps", status: "pass", expected: "≤ 30", actual: "30" },
-    { rule: "audio", status: "pass", expected: "none", actual: "none" },
-    { rule: "alpha", status: "pass", expected: "any", actual: "none" },
-  ],
-};
 
 /** Handlers for the requests of the contract that demo data can answer. Video streams and
  *  rendered files stay unanswered: there is no video to serve without the server. */
@@ -53,31 +38,17 @@ export function handlers(db: MockDb) {
     }),
 
     // ------------------------------------------------------- Источники и проверка
-    route("post", "/api/v1/uploads", () => ({
-      status: 201,
-      body: { uploadId: crypto.randomUUID() },
-    })),
-    route("post", "/api/v1/validate", () => ({ status: 200, body: report })),
+    route("post", "/api/v1/uploads", ({ request }) => upload(db, request)),
+    route("post", "/api/v1/validate", ({ body }) => validate(db, body.source)),
 
     // ---------------------------------------------------------------- Проекты
     route("get", "/api/v1/projects", () => ({
       status: 200,
       body: [...db.projects].sort((a, b) => b.savedAt.localeCompare(a.savedAt)).map(summaryOf),
     })),
-    route("post", "/api/v1/projects", () => {
-      const project = {
-        ...structuredClone(db.template),
-        id: crypto.randomUUID(),
-        name: "Новый проект",
-        revision: 1,
-        savedAt: new Date().toISOString(),
-      };
-      project.source.status = "ok";
-      project.scene.segments = project.scene.segments.slice(0, 1);
-      db.projects.unshift(project);
-      fakeHub.emit("projectChanged", summaryOf(project));
-      return { status: 201, body: project };
-    }),
+    route("post", "/api/v1/projects", ({ body, request }) =>
+      createProject(db, body.source, request),
+    ),
     route("post", "/api/v1/projects/open", ({ body }) => {
       const listed = db.projects.find((p) => p.path === body.path);
       if (listed) return { status: 200, body: listed };
@@ -158,26 +129,10 @@ export function handlers(db: MockDb) {
         ? problem("source_not_found")
         : problem("source_unreadable", { detail: "Demo data has no video" }),
     ),
-    route("post", "/api/v1/projects/{id}/estimate", ({ body }) => {
-      const frames = body.segment.outFrame - body.segment.inFrame + 1;
-      const bytes = Math.round(frames * 2400);
-      const durationSec = frames / 30 / body.segment.speed;
-      const estimate: Estimate = {
-        bytes,
-        limitBytes: app.limits.sticker.maxBytes,
-        fits: bytes <= app.limits.sticker.maxBytes,
-        output: { width: 512, height: 512, fps: 30, durationSec },
-        likelyConcessions: bytes > 200_000 ? [{ kind: "fps", from: 30, to: 24 }] : [],
-        suggestions:
-          durationSec > 3
-            ? [
-                { kind: "trim", outFrame: body.segment.inFrame + 89, durationSec: 3 },
-                { kind: "speed", speed: durationSec / 3 },
-              ]
-            : [],
-      };
-      return { status: 200, body: estimate };
-    }),
+    route("post", "/api/v1/projects/{id}/estimate", ({ params, body }) =>
+      estimate(db, params.id, body.segment),
+    ),
+    route("get", "/api/v1/files/{fileId}", ({ params }) => file(db, params.fileId)),
 
     // ---------------------------------------------------------- Фоновые задачи
     route("post", "/api/v1/jobs", ({ body }) => {

@@ -1,6 +1,7 @@
 import { Button, NavRail, type NavRailItem } from "../ds";
-import { useEffect } from "react";
 import { EditorScreen } from "../features/editor/EditorScreen";
+import { useProjectActions } from "../features/projects/actions";
+import { useWindowDrop } from "../features/projects/drop";
 import { ProjectsScreen } from "../features/projects/ProjectsScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { t, type StringKey } from "../shared/strings/ru";
@@ -38,7 +39,8 @@ export function App() {
   const setSection = useApp((s) => s.setSection);
   const mode = useTheme((s) => s.mode);
   const setTheme = useSetTheme();
-  useNoStrayDrops();
+  // A video dropped anywhere becomes a project, a .webm opens its check (R1, R8).
+  useWindowDrop(useProjectActions().openDropped);
 
   return (
     <div className={`ss-root ${styles.shell}`}>
@@ -82,17 +84,4 @@ export function App() {
       <NotifyHost />
     </div>
   );
-}
-
-/** A file dropped beside a drop zone must not make the browser leave the app to show it. */
-function useNoStrayDrops() {
-  useEffect(() => {
-    const stop = (e: DragEvent) => e.preventDefault();
-    window.addEventListener("dragover", stop);
-    window.addEventListener("drop", stop);
-    return () => {
-      window.removeEventListener("dragover", stop);
-      window.removeEventListener("drop", stop);
-    };
-  }, []);
 }

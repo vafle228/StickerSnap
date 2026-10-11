@@ -818,6 +818,11 @@ export interface components {
             preset: components["schemas"]["SegmentPreset"];
             /** @description R19, только если спайк подтвердил */
             longSticker: boolean;
+            /**
+             * @description R7: подгонка под лимит лестницей отката, по умолчанию true. false — экспорт как есть,
+             *     без уступок; файл может выйти больше лимита и не пройти проверку Telegram.
+             */
+            autoFit: boolean;
         };
         /**
          * @description 512 px или 100×100 (R17)

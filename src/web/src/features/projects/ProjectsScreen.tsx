@@ -8,9 +8,12 @@ import { notifyProblem } from "../../shared/notify";
 import { MenuPopover } from "../../shared/overlays";
 import { platform } from "../../shared/platform";
 import { t } from "../../shared/strings/ru";
-import { useImport, useProjectActions } from "./actions";
+import { useProjectActions } from "./actions";
+import { useFileDrag } from "./drop";
 import { durationChip, projectMeta } from "./format";
 import styles from "./ProjectsScreen.module.css";
+import { ReadingFile } from "./ReadingFile";
+import { useImport } from "./reading";
 import { RenameField } from "./RenameField";
 
 type Action = "publish" | "rename" | "reveal" | "forget" | "trash";
@@ -24,6 +27,7 @@ export function ProjectsScreen() {
   const folder = useSettings().data?.folders.projects;
   const { mutate: updateSettings } = useUpdateSettings();
   const reading = useImport((s) => s.reading);
+  const over = useFileDrag((s) => s.over);
   const actions = useProjectActions();
   const openProject = useApp((s) => s.openProject);
   const [menu, setMenu] = useState<{ id: string; anchor: HTMLElement } | null>(null);
@@ -135,16 +139,21 @@ export function ProjectsScreen() {
             </p>
             <ul className={styles.grid} aria-label={t("projects.list")}>
               <li>
-                <DropZone
-                  variant="tile"
-                  className={styles.tile}
-                  title={reading ? t("start.reading") : t("projects.new")}
-                  hint={reading ? null : t("projects.newHint")}
-                  dropTitle={t("start.drop")}
-                  busy={reading}
-                  onClick={() => void actions.create()}
-                  onFiles={(files) => files[0] && void actions.create(files[0])}
-                />
+                {reading?.slow ? (
+                  <ReadingFile className={styles.tile} />
+                ) : (
+                  <DropZone
+                    variant="tile"
+                    className={styles.tile}
+                    title={t("projects.new")}
+                    hint={t("projects.newHint")}
+                    dropTitle={t("start.drop")}
+                    busy={reading !== undefined}
+                    dragging={over}
+                    onClick={() => void actions.create()}
+                    onFiles={(files) => files[0] && actions.openDropped(files[0])}
+                  />
+                )}
               </li>
               {list.map((p) => (
                 <li key={p.id}>

@@ -278,6 +278,7 @@ button.ss-badge:focus-visible { outline: 2px solid var(--focus); outline-offset:
 .ss-drop-hint { margin: 0; font: 500 12px/16px var(--font-sans); color: var(--ink-muted); }
 .ss-drop-tile { min-height: 0; aspect-ratio: 4 / 3; }
 .ss-drop-action { margin-top: var(--space-1); pointer-events: none; }
+.ss-drop-note { margin: 0; font: 500 13px/18px var(--font-sans); color: var(--ink-muted); }
 .ss-drop[aria-busy="true"] { cursor: progress; }
 
 /* EmojiChips */

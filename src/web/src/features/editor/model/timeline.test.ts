@@ -187,6 +187,7 @@ describe("new segments", () => {
       loop: "pingpong" as const,
       preset: "emoji" as const,
       longSticker: false,
+      autoFit: true,
     };
     const size = { width: 640, height: 360 };
     const segment = newSegment(base, size, { inFrame: 10, outFrame: 20 }, "seg-2", "Стикер 2");

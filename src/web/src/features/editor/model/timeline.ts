@@ -184,6 +184,7 @@ export function newSegment(
     loop: base?.loop ?? "normal",
     preset: base?.preset ?? "sticker",
     longSticker: false,
+    autoFit: true,
   };
 }
 

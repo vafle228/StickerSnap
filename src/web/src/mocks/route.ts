@@ -27,6 +27,8 @@ export interface MockRequest<P extends keyof paths, M extends Method> {
   params: PathParams<P, M>;
   body: Body<P, M>;
   url: URL;
+  /** The request itself: its multipart body, its abort signal */
+  request: Request;
 }
 
 type Resolver<P extends keyof paths, M extends Method> = (
@@ -41,11 +43,12 @@ export function route<P extends keyof paths, M extends Method>(
   const pattern = path.replace(/\{(\w+)\}/g, ":$1");
   return http[method](pattern, async ({ request, params }) => {
     const json = request.headers.get("content-type")?.includes("application/json");
-    const body = (json ? await request.json() : undefined) as Body<P, M>;
+    const body = (json ? await request.clone().json() : undefined) as Body<P, M>;
     const reply = await resolve({
       params: params as PathParams<P, M>,
       body,
       url: new URL(request.url),
+      request,
     });
     if (reply instanceof Response) return reply;
     return HttpResponse.json(reply.body as never, { status: reply.status });
