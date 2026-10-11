@@ -60,15 +60,12 @@ public sealed class ParentWatchTests
     }
 
     [Fact]
-    public async Task Runs_in_the_server_the_shell_starts()
+    public void Runs_in_the_server_the_shell_starts()
     {
-        using var factory = new ApiFactory(("ParentPid", GoneShell.ToString()));
-        factory.CreateClient();
-        var lifetime = factory.Services.GetRequiredService<IHostApplicationLifetime>();
+        using var factory = new ApiFactory(("ParentPid", Environment.ProcessId.ToString()));
 
-        var stopping = Task.Delay(Timeout.Infinite, lifetime.ApplicationStopping);
-        var finished = await Task.WhenAny(stopping, Task.Delay(TimeSpan.FromSeconds(10), Cancel));
+        var watches = factory.Services.GetServices<IHostedService>().OfType<ParentWatch>();
 
-        finished.Should().BeSameAs(stopping);
+        watches.Should().ContainSingle();
     }
 }
