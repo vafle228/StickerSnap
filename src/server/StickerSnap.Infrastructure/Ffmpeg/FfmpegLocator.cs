@@ -16,8 +16,6 @@ internal sealed class FfmpegLocator(
     IFfmpegVersionReader reader,
     ILogger<FfmpegLocator> logger) : IFfmpegLocator
 {
-    private static readonly string Executable = OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg";
-
     private readonly SemaphoreSlim _gate = new(1, 1);
     private FfmpegLookup? _found;
 
@@ -57,7 +55,7 @@ internal sealed class FfmpegLocator(
 
         foreach (var directory in directories)
         {
-            var executable = Path.Combine(directory, Executable);
+            var executable = Path.Combine(directory, FfmpegProcess.Ffmpeg);
             if (!File.Exists(executable)) continue;
 
             var output = await reader.ReadAsync(executable, cancellationToken);

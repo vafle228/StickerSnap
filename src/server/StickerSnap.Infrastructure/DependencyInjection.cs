@@ -24,6 +24,8 @@ public static class DependencyInjection
         services.Configure<FfmpegOptions>(configuration.GetSection(FfmpegOptions.Section));
         services.AddSingleton<IFfmpegVersionReader, CliFfmpegVersionReader>();
         services.AddSingleton<IFfmpegLocator, FfmpegLocator>();
+        services.AddSingleton<IFfmpeg, CliFfmpeg>();
+        services.AddSingleton<IMediaProbe, FfprobeMediaProbe>();
 
         return services;
     }
