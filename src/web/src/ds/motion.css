@@ -227,13 +227,15 @@
 }
 
 /* Added emoji chip; the blue dot of a running send on «Мои паки». Neither pulses. */
-.ss-emoji {
+.ss-emoji,
+.ss-chip-in {
   transition:
     opacity var(--duration-fast) var(--ease-soft),
     transform var(--duration-fast) var(--ease-soft);
 }
 @starting-style {
-  .ss-emoji {
+  .ss-emoji,
+  .ss-chip-in {
     opacity: 0;
     transform: scale(calc(1 - (1 - var(--motion-scale)) * 5));
   }

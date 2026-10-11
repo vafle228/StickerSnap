@@ -424,7 +424,7 @@ function SegmentRow({
       ) : (
         <span className={styles.rowEmoji}>
           {emoji.map((e) => (
-            <span key={e} className={styles.emojiChip}>
+            <span key={e} className={`${styles.emojiChip} ss-chip-in`}>
               {e}
               <button
                 type="button"

@@ -25,7 +25,7 @@ export function EmojiChips({
   return (
     <div className={cx("ss-emojis", className)} role="group" aria-label={label}>
       {value.map((emoji, i) => (
-        <span key={`${emoji}-${i}`} className="ss-emoji">
+        <span key={emoji} className="ss-emoji">
           {emoji}
           {value.length > 1 && onRemove && (
             <button type="button" aria-label={`Убрать ${emoji}`} onClick={() => onRemove(i)}>

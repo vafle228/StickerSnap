@@ -37,7 +37,9 @@ export function LinkChip({ href, label, onCopy, className }: LinkChipProps) {
       onClick={copy}
     >
       <Icon name={copied ? "check" : "link"} size={16} />
-      <span>{copied ? "Скопировано" : (label ?? href.replace(/^https?:\/\//, ""))}</span>
+      <span key={String(copied)} className="ss-swap">
+        {copied ? "Скопировано" : (label ?? href.replace(/^https?:\/\//, ""))}
+      </span>
     </button>
   );
 }
