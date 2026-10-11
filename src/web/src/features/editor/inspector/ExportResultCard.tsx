@@ -116,13 +116,19 @@ export function ExportResultCard() {
           <ol className={styles.ladder}>
             {result.ladder.map((step, i) => {
               const fits = i === result.ladder.length - 1;
+              const { what, size } = ladderText(step, result);
               return (
-                <li key={i} className={cx(styles.rung, fits && styles.fits)}>
+                <li
+                  key={i}
+                  className={cx(styles.rung, fits && styles.fits)}
+                  aria-label={t("result.ladderAttempt", { n: i + 1 })}
+                >
                   <Icon name={fits ? "check" : "close"} size={14} strokeWidth={2.25} />
-                  <span className="ss-visually-hidden">
+                  <span className={styles.rungWhat}>{what}</span>
+                  <span className={styles.rungSize}>{size}</span>
+                  <span className={styles.rungVerdict}>
                     {t(fits ? "result.fits" : "result.tooBig")}
                   </span>
-                  {ladderText(step, result)}
                 </li>
               );
             })}

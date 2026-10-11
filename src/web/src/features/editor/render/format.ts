@@ -98,12 +98,12 @@ function baseFps(result: ExportResult): number {
   return result.concessions.find((c) => c.kind === "fps")?.from ?? result.output.fps;
 }
 
-/** One chip of «Как подбирали»: «20 fps + CRF 37 · 251 КБ». */
-export function ladderText(step: LadderStep, result: ExportResult): string {
+/** One rung of «Как подбирали»: what was tried («20 fps + CRF 37») and what it weighed. */
+export function ladderText(step: LadderStep, result: ExportResult): { what: string; size: string } {
   const fps = step.label.find((c) => c.kind === "fps")?.to ?? baseFps(result);
   const rest = step.label.filter((c) => c.kind !== "fps").map(concessionText);
   const what = [t("result.ladderFps", { fps: num(fps) }), ...rest].join(" + ");
-  return t("result.ladderStep", { what, size: kilobytes(step.bytes) });
+  return { what, size: kilobytes(step.bytes) };
 }
 
 /** The side was never cut: the ladder's last rung shows as «не понадобилось». */

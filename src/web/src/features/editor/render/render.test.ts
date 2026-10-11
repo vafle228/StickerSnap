@@ -148,11 +148,11 @@ describe("what was given up (3c, H)", () => {
   });
 
   it("names every rung of the ladder from its first fps", () => {
-    expect(result.ladder.map((step) => ladderText(step, result))).toEqual([
-      "30 fps · 330 КБ",
-      "24 fps · 291 КБ",
-      "20 fps · 268 КБ",
-      "20 fps + CRF 37 · 251 КБ",
+    expect(result.ladder.map((step) => Object.values(ladderText(step, result)))).toEqual([
+      ["30 fps", "330 КБ"],
+      ["24 fps", "291 КБ"],
+      ["20 fps", "268 КБ"],
+      ["20 fps + CRF 37", "251 КБ"],
     ]);
     expect(sideUntouched(result)).toBe(true);
   });
