@@ -23,6 +23,8 @@ builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(options => ContractJson.Apply(options.SerializerOptions));
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = Problem.Complete);
 builder.Services.AddExceptionHandler<ProblemExceptionHandler>();
+// A body that does not bind (bad JSON, an unknown enum value or field) throws, so it gets the Problem too
+builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 
 // The hub only sends events, with the same JSON as REST.
 builder.Services.AddSignalR().AddJsonProtocol(options => ContractJson.Apply(options.PayloadSerializerOptions));
