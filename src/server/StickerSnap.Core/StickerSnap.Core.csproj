@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The domain: entities, value objects and their rules. References nothing of ours and no packages. -->
+
+</Project>
