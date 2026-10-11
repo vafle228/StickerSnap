@@ -180,7 +180,7 @@
   }
 }
 
-/* Motion (docs/ui-motion.md, 4.5). The note under the strip drops in like a field hint. */
+/* Motion («Движение в интерфейсе», 4.5). The note under the strip drops in like a field hint. */
 .note {
   transition:
     opacity var(--duration-fast) var(--ease-soft),

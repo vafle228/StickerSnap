@@ -3,7 +3,7 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EXIT_FALLBACK_MS, usePresence } from "./hooks";
 
-/* docs/ui-motion.md, section 5: a closing element stays until its exit has run, and gets out of
+/* «Движение в интерфейсе», section 5: a closing element stays until its exit has run, and gets out of
    the way of clicks, focus and screen readers at once. */
 
 function Panel({ open, onExited }: { open: boolean; onExited?: () => void }) {

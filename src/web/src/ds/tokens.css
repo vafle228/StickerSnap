@@ -191,7 +191,7 @@
   --shadow-primary: 0 6px 14px rgba(143, 136, 255, 0.26);
 }
 
-/* Reduced motion: no shifts or scaling, only short fades (docs/ui-motion.md, section 3). */
+/* Reduced motion: no shifts or scaling, only short fades («Движение в интерфейсе», section 3). */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration-slow: var(--duration-base);

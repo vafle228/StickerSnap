@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-/* Motion (docs/ui-motion.md): an animation never blocks. Esc in the middle of a window's entry
+/* Motion («Движение в интерфейсе»): an animation never blocks. Esc in the middle of a window's entry
    closes it, and the focus is back on its button at once, not after the fade. */
 
 test.use({ reducedMotion: "no-preference" });

@@ -288,7 +288,7 @@
   pointer-events: none;
 }
 
-/* Motion (docs/ui-motion.md, 4.5). A jump by a click glides the window and its handles; a
+/* Motion («Движение в интерфейсе», 4.5). A jump by a click glides the window and its handles; a
    drag, an arrow key or an undo lands at once. The playhead never glides. */
 .gliding {
   transition:

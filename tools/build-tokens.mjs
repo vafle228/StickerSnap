@@ -75,7 +75,7 @@ ${themeIds
   )
   .join("\n\n")}
 
-/* Reduced motion: no shifts or scaling, only short fades (docs/ui-motion.md, section 3). */
+/* Reduced motion: no shifts or scaling, only short fades («Движение в интерфейсе», section 3). */
 @media (prefers-reduced-motion: reduce) {
   :root {
 ${reduced.map((t) => `  ${decl(t.name, t.reduced)}`).join("\n")}

@@ -1,4 +1,4 @@
-/* Motion (docs/ui-motion.md, «Движение в интерфейсе»). Local addition to the design system.
+/* Motion (plan «Движение в интерфейсе»). Local addition to the design system.
    Durations and curves come only from the tokens; tokens.css drops the shifts and the scale
    under prefers-reduced-motion, so nothing here needs its own media query except the loops.
    Entry: @starting-style, the element mounts already open. Exit: data-state="closed" from

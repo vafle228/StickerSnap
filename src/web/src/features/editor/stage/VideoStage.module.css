@@ -432,7 +432,7 @@
   color: var(--ink-muted);
 }
 
-/* Motion (docs/ui-motion.md, 4.4). A jump by a click glides the frame and its hole; a drag,
+/* Motion («Движение в интерфейсе», 4.4). A jump by a click glides the frame and its hole; a drag,
    an arrow key or an undo never does (glide.ts). The dimming fades in with «Рамка». */
 .gliding {
   transition:

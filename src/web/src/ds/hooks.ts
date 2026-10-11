@@ -64,7 +64,7 @@ export interface Presence {
   /** data-state for the CSS: "closed" while the exit transition runs */
   state: PresenceState;
   /** False when the element was open from the first render: it is already on screen, no entry
-   *  (principle 5 of docs/ui-motion.md). Put it on the element as data-appear. */
+   *  (principle 5 of «Движение в интерфейсе»). Put it on the element as data-appear. */
   appear: boolean;
   ref: RefCallback<HTMLElement>;
 }

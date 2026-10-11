@@ -3,7 +3,7 @@ import { prefersReducedMotion } from "../../ds/hooks";
 
 /* Jumps made by a click glide: a frame preset, «Скопировать кадр во все стикеры», another
    segment tab, «Вписать целиком», the zoom buttons. Drags, keys and undo land at once
-   (docs/ui-motion.md, principle 4). The store does not know where a change came from, so the
+   («Движение в интерфейсе», principle 4). The store does not know where a change came from, so the
    button says so right before it edits, and the moved element glides if it changes soon after. */
 
 /** A change this soon after glideNext() came from that click */

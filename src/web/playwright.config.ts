@@ -16,7 +16,7 @@ export default defineConfig({
     baseURL,
     locale: "ru-RU",
     trace: "retain-on-failure",
-    // Calm motion: no camera moves or glides under a click (docs/ui-motion.md, 6).
+    // Calm motion: no camera moves or glides under a click («Движение в интерфейсе», 6).
     // e2e/motion.spec.ts turns it back on to check the motion itself.
     reducedMotion: "reduce",
     actionTimeout: 10_000,

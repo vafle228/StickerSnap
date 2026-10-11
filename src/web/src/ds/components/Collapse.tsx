@@ -11,7 +11,7 @@ export interface CollapseProps {
 }
 
 /** Opens and closes its height (a banner, a warning row) instead of pushing the content at once.
- *  Open from the first render means it was already on screen: no entry (docs/ui-motion.md, 5).
+ *  Open from the first render means it was already on screen: no entry («Движение в интерфейсе», 5).
  *  While closing it shows what it held last. */
 export function Collapse({ open, children, onExited, className }: CollapseProps) {
   const { mounted, state, appear, ref } = usePresence(open, onExited);

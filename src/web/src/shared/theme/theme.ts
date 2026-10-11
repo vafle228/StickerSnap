@@ -39,7 +39,7 @@ function applyTheme(mode: ThemeMode, accent: AccentName) {
   if (root.dataset.theme === theme && root.classList.contains(className)) return;
   root.dataset.theme = theme;
   root.className = className;
-  // The whole window repaints at once: no button may follow late (docs/ui-motion.md, 4.3).
+  // The whole window repaints at once: no button may follow late («Движение в интерфейсе», 4.3).
   freezeMotion(root);
 }
 

@@ -3,7 +3,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { glideNext, useGlide } from "./glide";
 
-/* docs/ui-motion.md, principle 4: a jump by a click glides, a drag, a key or an undo does not. */
+/* «Движение в интерфейсе», principle 4: a jump by a click glides, a drag, a key or an undo does not. */
 
 function frame(initial: string, held = false) {
   return renderHook(({ key, held: h }) => useGlide(key, h), {
