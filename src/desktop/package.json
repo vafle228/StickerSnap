@@ -20,7 +20,7 @@
     "server": "tsx scripts/publish-server.ts",
     "start": "npm run build && electron .",
     "dev": "npm run build && electron . --dev-url=http://127.0.0.1:5176/?mock=desktop",
-    "pack": "npm run build && electron-builder --dir",
+    "package": "tsx scripts/package.ts",
     "dist": "npm run build && electron-builder",
     "e2e": "playwright test"
   },

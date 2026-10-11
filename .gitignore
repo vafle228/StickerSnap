@@ -8,6 +8,7 @@ desktop.ini
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+!.vscode/tasks.json
 *.sln.iml
 
 # ---- Node / Electron / React (TypeScript) ----
