@@ -59,12 +59,15 @@ function grain(): HTMLCanvasElement {
   return tile;
 }
 
-/** The source frame shown at output frame `k`: speed, then ping-pong's way back. */
+/** The source frame shown at output frame `k`: speed, and ping-pong's way back fitted into the
+ *  same length (see stickerDuration). */
 function frameAt(k: number, task: RenderTask): number {
   const { segment } = task;
   const span = segment.outFrame - segment.inFrame + 1;
-  const step = Math.floor((k / task.fps) * sourceFps(task.source) * segment.speed);
-  if (segment.loop !== "pingpong" || span < 2) return segment.inFrame + (step % span);
+  const pingpong = segment.loop === "pingpong" && span > 1;
+  const pace = (pingpong ? 2 : 1) * segment.speed;
+  const step = Math.floor((k / task.fps) * sourceFps(task.source) * pace);
+  if (!pingpong) return segment.inFrame + (step % span);
   const cycle = 2 * span - 2;
   const at = step % cycle;
   return segment.inFrame + (at < span ? at : cycle - at);

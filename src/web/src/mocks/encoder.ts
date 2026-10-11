@@ -37,11 +37,12 @@ export function sourceFps(source: Pick<SourceInfo, "fps">): number {
   return source.fps.num / source.fps.den;
 }
 
-/** Seconds the sticker plays: speed, and ping-pong running the frames back. */
+/** Seconds the sticker plays, speed included, as the editor counts them (format.ts). How
+ *  ping-pong meets the 3 s limit is an open question of the plan; the demo keeps the length
+ *  and runs the way back inside it. */
 export function stickerDuration(segment: Segment, fps: number): number {
   const frames = Math.max(1, segment.outFrame - segment.inFrame + 1);
-  const played = segment.loop === "pingpong" ? Math.max(1, 2 * frames - 2) : frames;
-  return played / fps / segment.speed;
+  return frames / fps / segment.speed;
 }
 
 /** The output size: the longer side is the preset's, an emoji is a square (R3, R17). */

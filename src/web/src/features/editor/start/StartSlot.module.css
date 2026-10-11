@@ -12,7 +12,8 @@
 
 .zone {
   width: min(640px, 100%);
-  min-height: 300px;
+  /* The zone's own height, so «Читаю файл» in its place does not move the recent projects */
+  min-height: 324px;
   padding: var(--space-7) var(--space-5);
   gap: var(--space-3);
 }
