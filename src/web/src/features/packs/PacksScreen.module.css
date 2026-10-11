@@ -287,8 +287,30 @@
   border-radius: 16px;
 }
 
+/* Under the pointer, with focus inside or with its menu open the sticker is marked as the one
+   its «⋯» belongs to; the art lifts a little, as Telegram's sticker panel does */
+.sticker {
+  transition: background var(--duration-fast) var(--ease-soft);
+}
+
+.sticker:hover,
+.sticker:focus-within,
 .sticker[data-menu="true"] {
   background: var(--surface-sunken);
+}
+
+.stickerShape {
+  transition: transform var(--duration-base) var(--ease-soft);
+}
+
+.sticker:hover .stickerShape {
+  transform: translateY(-2px) scale(1.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sticker:hover .stickerShape {
+    transform: none;
+  }
 }
 
 .stickerArt {
@@ -316,6 +338,7 @@
   border-radius: var(--radius-pill);
 }
 
+.sticker:hover .stickerMenu,
 .sticker[data-menu="true"] .stickerMenu {
   background: var(--surface-raised);
 }
