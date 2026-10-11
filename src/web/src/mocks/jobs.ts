@@ -113,8 +113,8 @@ function drawFiles(project: Project, plans: ItemPlan[]) {
       segment: plan.segment,
       fps: rung.fps,
       side: rung.side,
-      // Under the limit with room for the container
-      bitsPerSecond: Math.round((Math.min(rung.bytes, 250_000) * 8 * 0.8) / duration),
+      // About the forecast's size, under the limit with room for the container
+      bitsPerSecond: Math.round((Math.min(rung.bytes, 248_000) * 8 * 0.92) / duration),
     };
     const file = previous.then(() => render(task, () => {}).catch(() => undefined));
     previous = file;

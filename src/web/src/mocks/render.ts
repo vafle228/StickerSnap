@@ -39,6 +39,26 @@ function sourceFrame(
   ctx.fillText(String(frame), source.width / 2, source.height / 2);
 }
 
+/** A tile of film grain. Flat gradients cost VP9 next to nothing; with grain the encoder
+ *  spends about the rate it is given, so the file weighs what the forecast said. */
+function grain(): HTMLCanvasElement {
+  const tile = document.createElement("canvas");
+  tile.width = 128;
+  tile.height = 128;
+  const ctx = tile.getContext("2d");
+  if (!ctx) return tile;
+  const image = ctx.createImageData(128, 128);
+  for (let i = 0; i < image.data.length; i += 4) {
+    const v = Math.random() * 255;
+    image.data[i] = v;
+    image.data[i + 1] = v;
+    image.data[i + 2] = v;
+    image.data[i + 3] = 255;
+  }
+  ctx.putImageData(image, 0, 0);
+  return tile;
+}
+
 /** The source frame shown at output frame `k`: speed, then ping-pong's way back. */
 function frameAt(k: number, task: RenderTask): number {
   const { segment } = task;
@@ -81,6 +101,7 @@ export const browserRenderer: Renderer = (task, onProgress) =>
     recorder.onstop = () => resolve(new Blob(chunks, { type: "video/webm" }));
     recorder.onerror = () => reject(new Error("MediaRecorder failed"));
 
+    const noise = ctx.createPattern(grain(), "repeat");
     const fps = sourceFps(source);
     const count = Math.max(1, Math.round(stickerDuration(segment, fps) * task.fps));
     let k = 0;
@@ -96,6 +117,15 @@ export const browserRenderer: Renderer = (task, onProgress) =>
         ctx.drawImage(raw, x, y, width, height, 0, 0, out.width, out.height);
       } else {
         ctx.drawImage(raw, 0, 0, out.width, out.height);
+      }
+      if (noise) {
+        // A new offset every frame: the grain moves, as in a filmed video.
+        ctx.save();
+        ctx.globalAlpha = 0.07;
+        ctx.translate(Math.random() * -128, Math.random() * -128);
+        ctx.fillStyle = noise;
+        ctx.fillRect(0, 0, out.width + 128, out.height + 128);
+        ctx.restore();
       }
       track?.requestFrame();
       k += 1;

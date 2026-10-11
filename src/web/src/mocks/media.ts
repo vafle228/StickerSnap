@@ -131,7 +131,8 @@ export async function validate(db: MockDb, source: SourceRef) {
       codec: "vp9",
       width: probed?.width ?? 512,
       height: probed?.height ?? 512,
-      durationSec: probed?.durationSec ?? 3,
+      // Whole frames at 30 fps, as ffprobe counts them: a recorder's last frame runs a little over
+      durationSec: probed ? Math.floor(probed.durationSec * 30 + 1e-6) / 30 : 3,
       fps: 30,
       audio: "none",
       alpha: "none",

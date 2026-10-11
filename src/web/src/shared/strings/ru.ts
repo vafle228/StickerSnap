@@ -150,6 +150,7 @@ export const ru = {
   "validator.upTo": "до {value}",
   "validator.side": "сторона {side}",
   "validator.none": "нет",
+  "validator.silent": "без звука",
   "validator.any": "любая",
   "validator.present": "есть",
   "validator.makeSticker": "Сделать стикер из этого видео",

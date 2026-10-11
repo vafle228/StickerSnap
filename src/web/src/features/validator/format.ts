@@ -19,7 +19,11 @@ const NONE = new Set(["none", "no", "false"]);
 
 /** One side of a check as the server sends it («≤ 262144», «2.97», «none») in plain Russian:
  *  «до 256 КБ», «2,97 с», «нет». An unknown value is shown as it came. */
-export function checkValue(rule: Rule, raw: string): string {
+export function checkValue(
+  rule: Rule,
+  raw: string,
+  side: "actual" | "expected" = "actual",
+): string {
   const limit = /^\s*≤\s*/.exec(raw);
   const value = limit ? raw.slice(limit[0].length) : raw;
   const number = Number(value);
@@ -40,7 +44,8 @@ export function checkValue(rule: Rule, raw: string): string {
         ? t("validator.side", { side: num(number) })
         : value.replace(/\s*[x×]\s*/i, " × ");
     case "audio":
-      return NONE.has(value) ? t("validator.none") : value;
+      if (!NONE.has(value)) return value;
+      return t(side === "expected" ? "validator.silent" : "validator.none");
     case "alpha":
       if (value === "any") return t("validator.any");
       return NONE.has(value) ? t("validator.none") : t("validator.present");

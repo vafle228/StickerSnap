@@ -76,7 +76,9 @@ export function ValidationDialog({
                 <span className={styles.actual}>{checkValue(check.rule, check.actual)}</span>
                 {check.status !== "pass" && (
                   <span className={styles.expected}>
-                    {t("validator.expected", { value: checkValue(check.rule, check.expected) })}
+                    {t("validator.expected", {
+                      value: checkValue(check.rule, check.expected, "expected"),
+                    })}
                   </span>
                 )}
               </span>

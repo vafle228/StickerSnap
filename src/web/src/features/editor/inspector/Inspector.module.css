@@ -352,7 +352,7 @@
   margin: 0;
 }
 
-/* «Чем пожертвовали»: a row per quality; amber where it was given up, sunken where not. */
+/* «Чем пожертвовали»: amber where it was given up, sunken where not. */
 .lost {
   display: flex;
   flex-direction: column;
@@ -360,11 +360,11 @@
   margin: 0;
 }
 
+/* Each quality as the artboard's tile: the name over its value, so «без изменений» fits. */
 .lostRow {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
+  flex-direction: column;
+  gap: 2px;
   padding: 10px var(--space-4);
   border-radius: var(--radius-md);
   background: var(--surface-sunken);
@@ -379,7 +379,6 @@
   margin: 0;
   font: 500 14px/20px var(--font-mono);
   color: var(--ink);
-  text-align: right;
 }
 
 .lostRow.given {
