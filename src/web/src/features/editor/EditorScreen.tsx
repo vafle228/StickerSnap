@@ -8,6 +8,7 @@ import { EditorHeader } from "./EditorHeader";
 import styles from "./EditorScreen.module.css";
 import { Inspector } from "./inspector/Inspector";
 import { useEditor } from "./model/store";
+import { useRenderJobs } from "./render/useRenderJobs";
 import { MissingSource } from "./stage/MissingSource";
 import { VideoStage } from "./stage/VideoStage";
 import { StartSlot } from "./start/StartSlot";
@@ -23,6 +24,7 @@ export function EditorScreen({ hidden }: { hidden: boolean }) {
   const load = useEditor((s) => s.load);
   const unload = useEditor((s) => s.unload);
   const setPlaying = useEditor((s) => s.setPlaying);
+  useRenderJobs(project.data);
 
   useEffect(() => {
     if (project.data && project.data.id !== loadedId) load(project.data);

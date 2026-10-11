@@ -150,3 +150,293 @@
   font: var(--type-caption);
   color: var(--ink-muted);
 }
+
+/* 3c, G: the forecast over the limit. The amber is the bar of the artboard in both themes
+   (the dark theme's --warning); the mark stands where the limit falls on the full bar. */
+.forecastHead b.over {
+  color: var(--warning);
+}
+
+.meter {
+  position: relative;
+}
+
+.overFill {
+  background: #f0b44c;
+}
+
+.limitMark {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 16px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: var(--ink);
+}
+
+.warn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-inset);
+}
+
+.warnBody {
+  flex: 1;
+  min-width: 0;
+  padding-top: 6px;
+}
+
+.warnTitle {
+  margin: 0;
+  font: 600 14px/20px var(--font-sans);
+  color: var(--ink);
+}
+
+.warnText {
+  margin: 2px 0 0;
+  font: var(--type-caption);
+  color: var(--ink-muted);
+}
+
+.warnActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: 10px;
+}
+
+/* 3c, E: the export running in place of the card's controls. */
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.progressHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.progressHead b {
+  font: var(--type-title-3);
+  color: var(--ink);
+}
+
+.progressHead span {
+  font: var(--type-timecode);
+  color: var(--ink);
+}
+
+.note {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-inset);
+  font: 500 13px/18px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.note svg {
+  flex: none;
+  color: var(--info);
+}
+
+/* 3c, H: the last export of the segment. */
+.resultHead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+.thumb video {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.resultText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.resultTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: var(--type-title-3);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.resultBadge {
+  flex: none;
+}
+
+/* The check's line: a link to the checklist in the tone of its verdict. */
+.valid {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: var(--type-caption);
+  text-align: left;
+  cursor: pointer;
+}
+
+.valid:global(.ss-tone-success) {
+  color: var(--success);
+}
+
+.valid:global(.ss-tone-danger) {
+  color: var(--danger);
+}
+
+.valid:global(.ss-tone-warning) {
+  color: var(--warning);
+}
+
+.valid:hover {
+  text-decoration: underline;
+}
+
+.valid:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.resultActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.reveal {
+  color: var(--primary-ink);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.sectionTitle {
+  margin: 0;
+}
+
+/* «Чем пожертвовали»: a row per quality; amber where it was given up, sunken where not. */
+.lost {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.lostRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 10px var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.lostRow dt {
+  font: var(--type-caption);
+  color: var(--ink-muted);
+}
+
+.lostRow dd {
+  margin: 0;
+  font: 500 14px/20px var(--font-mono);
+  color: var(--ink);
+  text-align: right;
+}
+
+.lostRow.given {
+  background: var(--warning-soft);
+}
+
+.lostRow.given dd {
+  color: var(--warning);
+}
+
+/* «Как подбирали»: the rungs tried in order, the fitting one green. */
+.ladder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rung {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  font: 500 12px/16px var(--font-mono);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.rung svg {
+  color: var(--danger);
+}
+
+.rung + .rung::before {
+  position: absolute;
+  left: calc(-1 * var(--space-5) + 4px);
+  color: var(--ink-subtle);
+  content: "→";
+}
+
+.rung.fits {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.rung.fits svg {
+  color: inherit;
+}
+
+.rung.skipped {
+  border: 1px dashed var(--border-strong);
+  background: none;
+  color: var(--ink-muted);
+}

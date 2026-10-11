@@ -84,6 +84,26 @@ export function useProject(id: string | undefined) {
   });
 }
 
+/** Running and recently finished jobs: after F5 they bring back their popups (artboard 8).
+ *  jobUpdated adds to it; while the hub is down, the running ones in it are polled. */
+export function useJobs() {
+  return useQuery({
+    queryKey: keys.jobs,
+    queryFn: () => call(api.GET("/api/v1/jobs")),
+    staleTime: Infinity,
+  });
+}
+
+/** One background job; jobUpdated keeps it fresh. */
+export function useJob(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.job(id ?? ""),
+    queryFn: () => call(api.GET("/api/v1/jobs/{jobId}", { params: { path: { jobId: id ?? "" } } })),
+    enabled: id !== undefined,
+    staleTime: Infinity,
+  });
+}
+
 /** Size forecast of a segment that may not be saved yet (artboard 3a «Экспорт»). */
 export function useEstimate(projectId: string | undefined, segment: Segment | undefined) {
   return useQuery({

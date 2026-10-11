@@ -2,6 +2,7 @@ import { Button, Card } from "../../../ds";
 import { t } from "../../../shared/strings/ru";
 import { useSegment } from "../model/store";
 import { ExportCard } from "./ExportCard";
+import { ExportResultCard } from "./ExportResultCard";
 import { FrameCard } from "./FrameCard";
 import styles from "./Inspector.module.css";
 import { SpeedLoopCard } from "./SpeedLoopCard";
@@ -25,6 +26,7 @@ export function Inspector() {
       <FrameCard />
       <SpeedLoopCard />
       <ExportCard />
+      <ExportResultCard />
     </>
   );
 }

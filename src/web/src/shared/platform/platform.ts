@@ -1,6 +1,5 @@
-import { api, ApiError, call, isProblem } from "../api/client";
+import { api, call, fetchFile } from "../api/client";
 import type { SourceRef } from "../api/types";
-import { serverConnection } from "./connection";
 
 /* Everything that touches the OS and files goes through Platform (plan, «Браузер в 1a,
    Electron в 1b»). The browser uploads a file to the local server and downloads the .webm;
@@ -91,15 +90,7 @@ export const browserPlatform: Platform = {
   sourceOf: upload,
   async saveFile(fileUrl, fileName) {
     // The token goes in a header, so the file is fetched first and then handed to the browser.
-    const { baseUrl, token } = serverConnection();
-    const response = await fetch(new URL(fileUrl, baseUrl), {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    });
-    if (!response.ok) {
-      const body: unknown = await response.json().catch(() => undefined);
-      throw new ApiError(response.status, isProblem(body) ? body : undefined);
-    }
-    const href = URL.createObjectURL(await response.blob());
+    const href = URL.createObjectURL(await fetchFile(fileUrl));
     const link = document.createElement("a");
     link.href = href;
     link.download = fileName;

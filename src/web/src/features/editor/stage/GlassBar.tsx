@@ -1,20 +1,27 @@
 import { Button, IconButton } from "../../../ds";
 import { t } from "../../../shared/strings/ru";
 import { num } from "../format";
-import { useEditor } from "../model/store";
+import { useEditor, useSegment } from "../model/store";
 import { ZOOM_MAX, ZOOM_MIN, zoomIn, zoomOut } from "../model/zoom";
+import { useRender } from "../render/store";
 import styles from "./VideoStage.module.css";
 
 /** The glass bar over the video (artboard 3a): the frame tool, zoom and the exact preview.
  *  «Рамка» opens the whole source with the frame's handles; «Готово» goes back to the sticker
  *  as it comes out (the edits themselves land as they are made).
- *  «Точное превью» is a draft render, part of the import/export task; its place is kept. */
-export function GlassBar({ scale }: { scale: number }) {
+ *  «Точное превью» stays pressed: every settled edit renders a draft by the export's own
+ *  pipeline (3c, D). During «Сравнить» the bar leads with the way back. */
+export function GlassBar({ scale, comparing }: { scale: number; comparing: boolean }) {
   const zoom = useEditor((s) => s.zoom);
   const setZoom = useEditor((s) => s.setZoom);
   const cropTool = useEditor((s) => s.cropTool);
   const setCropTool = useEditor((s) => s.setCropTool);
   const zoomValue = zoom === "fit" ? t("editor.zoomFit") : `${num(zoom * 100)}%`;
+  const segment = useSegment();
+  const missing = useEditor((s) => s.source?.status === "missing");
+  const exact = useRender((s) => s.exact);
+  const setExact = useRender((s) => s.setExact);
+  const setCompare = useRender((s) => s.setCompare);
 
   return (
     <div
@@ -22,13 +29,30 @@ export function GlassBar({ scale }: { scale: number }) {
       role="toolbar"
       aria-label={t("editor.tools")}
     >
+      {comparing && (
+        <>
+          <Button
+            size="sm"
+            variant="ghost"
+            icon="close"
+            className={styles.ink}
+            onClick={() => setCompare(false)}
+          >
+            {t("editor.compare.done")}
+          </Button>
+          <span className={styles.divider} aria-hidden />
+        </>
+      )}
       <Button
         size="sm"
         variant="ghost"
         icon={cropTool ? "check" : "crop"}
         className={styles.toggle}
         aria-pressed={cropTool}
-        onClick={() => setCropTool(!cropTool)}
+        onClick={() => {
+          setCompare(false);
+          setCropTool(!cropTool);
+        }}
       >
         {t(cropTool ? "editor.cropDone" : "editor.crop")}
       </Button>
@@ -61,7 +85,18 @@ export function GlassBar({ scale }: { scale: number }) {
         onClick={() => setZoom(zoomIn(scale))}
       />
       <span className={styles.divider} aria-hidden />
-      <Button size="sm" variant="ghost" icon="clock" className={styles.ink} disabled>
+      <Button
+        size="sm"
+        variant="ghost"
+        icon="clock"
+        className={styles.toggle}
+        aria-pressed={exact}
+        disabled={!segment || missing}
+        onClick={() => {
+          setCompare(false);
+          setExact(!exact);
+        }}
+      >
         {t("editor.exactPreview")}
       </Button>
     </div>
