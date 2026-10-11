@@ -61,8 +61,11 @@ jobs:
 
       - run: npm ci
 
-      # The SPA into the server's wwwroot, then the self-contained server into server-dist
+      # The production SPA into the server's wwwroot (never the dev build with the demo data),
+      # then the self-contained server into server-dist
       - run: npm run build
+
+      - run: npm run check:prod-build
 
       - run: npm run server -w src/desktop -- ${{ matrix.rid }}
 

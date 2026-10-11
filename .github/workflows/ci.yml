@@ -54,6 +54,9 @@ jobs:
       # tsc -b (strict) + vite build into src/server/wwwroot
       - run: npm run build
 
+      # the production build carries no demo data, dev bar or showcase
+      - run: npm run check:prod-build
+
   desktop:
     name: Desktop shell
     runs-on: ubuntu-latest

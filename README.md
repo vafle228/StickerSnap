@@ -96,23 +96,30 @@ Unit tests run with `npm test`.
 
 ### Desktop app
 
-The Electron shell lives in `src/desktop` (TypeScript, Electron 44) and needs Node.js 22.12 or newer.
+The Electron shell lives in `src/desktop` (TypeScript, Electron 44); Electron and electron-builder
+need Node.js 22.12 or newer.
 It starts the local server on 127.0.0.1 with a one-time token, shows the SPA the server serves and
 gives it `window.stickersnap` for system dialogs, paths and the file manager.
 
 ```sh
 npm run dev -w src/web -- --port 5176   # Vite for the window below
 npm run dev -w src/desktop              # in another terminal: the window over Vite and the demo data, no server
-npm run build                           # the SPA into src/server/wwwroot
-npm run server -w src/desktop           # the self-contained server into src/desktop/server-dist
-npm run start -w src/desktop            # the real app: the shell starts that server
-npm run dist -w src/desktop             # installers into src/desktop/release (NSIS; AppImage and deb)
+npm run package -w src/desktop          # the production app, unpacked, in src/desktop/release
+npm run package -w src/desktop -- --dev # «StickerSnap Dev» with the dev bar and demo scenarios, in release/dev
+npm run package -w src/desktop -- --installer   # installers: NSIS on Windows, AppImage and deb on Linux
 ```
 
+VS Code has the same four builds in Terminal → Run Task («Приложение: прод», «Приложение: dev»,
+«Установщик: прод», «Установщик: dev»). `npm run package` builds the SPA (`npm run build`, or
+`npm run build:dev` with `--dev`), publishes the self-contained server and runs electron-builder,
+taking a Node 22 from npx when the installed one is older. The production SPA never carries the demo
+data or the dev bar: `npm run check:prod-build` checks `src/server/wwwroot`, and CI runs it after
+every build. CI packages only production; the workflow «Desktop» builds the installers for both
+systems on every PR that touches the app.
+
 The development window opens `http://127.0.0.1:5176/?mock=desktop`; F12 opens the developer tools
-outside the installed app. Without `server-dist` the shell runs the server with
-`dotnet run`. The workflow «Desktop» builds the installers for both systems on every PR that touches
-the app.
+outside the installed app. `npm run start -w src/desktop` runs the shell from the repository over the
+server in `server-dist` (`npm run server -w src/desktop`), or over `dotnet run` without it.
 
 ## Roadmap
 
