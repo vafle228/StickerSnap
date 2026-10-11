@@ -1,0 +1,62 @@
+name: E2E
+
+# A few whole user paths in Chromium against Vite on demo data (src/web/e2e).
+# Its own workflow, so the fast checks in CI never wait for a browser and a red
+# run here does not block a merge: the PR shows it, the report says why.
+
+on:
+  pull_request:
+    paths:
+      - "src/web/**"
+      - "src/contract/**"
+      - "package-lock.json"
+      - ".github/workflows/e2e.yml"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: E2E (Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      # The browser comes from the cache; the system libraries are installed every time
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - run: npx playwright install --with-deps chromium
+        working-directory: src/web
+
+      - run: npm run e2e
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            src/web/playwright-report
+            src/web/test-results
+          retention-days: 7
