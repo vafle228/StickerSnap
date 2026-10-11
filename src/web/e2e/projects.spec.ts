@@ -49,3 +49,9 @@ test("deletes a project from disk only after the confirmation", async ({ page })
   await (await trash()).getByRole("button", { name: "Удалить" }).click();
   await expect(open).toHaveCount(0);
 });
+
+test("opens a project by a click on its cover", async ({ page }) => {
+  const cover = card(page, "Пёс на диване").locator(".ss-checker");
+  await cover.click({ force: true });
+  await expect(page.getByRole("heading", { level: 1, name: "Пёс на диване" })).toBeVisible();
+});
