@@ -58,6 +58,8 @@ describe("demo server", () => {
 
     it("makes a new project with one segment at the top of the list", async () => {
       use("ok");
+      // An upload refers to a file the browser sent first
+      db.uploads.set("u-1", new File(["video"], "Кот прыгает.mp4", { type: "video/mp4" }));
       const source = { kind: "upload" as const, uploadId: "u-1" };
       const project = await call(api.POST("/api/v1/projects", { body: { source } }));
 

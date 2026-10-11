@@ -121,3 +121,35 @@ export function useEstimate(projectId: string | undefined, segment: Segment | un
     placeholderData: (previous) => previous,
   });
 }
+
+/** «Мои паки»: what the app knows about its packs, without asking Telegram (artboard 7). */
+export function usePacks() {
+  return useQuery({
+    queryKey: keys.packs,
+    queryFn: () => call(api.GET("/api/v1/packs")),
+  });
+}
+
+/** The open pack with its stickers; packChanged reads it again. */
+export function usePack(name: string | undefined) {
+  return useQuery({
+    queryKey: keys.pack(name ?? ""),
+    queryFn: () =>
+      call(api.GET("/api/v1/packs/{pack}", { params: { path: { pack: name ?? "" } } })),
+    enabled: name !== undefined,
+  });
+}
+
+/** Everything the publish window asks about one project (artboard 7, six ways in). */
+export function usePublishDraft(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ["publish-draft", projectId],
+    queryFn: () =>
+      call(
+        api.GET("/api/v1/projects/{id}/publish-draft", {
+          params: { path: { id: projectId ?? "" } },
+        }),
+      ),
+    enabled: projectId !== undefined,
+  });
+}

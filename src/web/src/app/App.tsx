@@ -1,20 +1,17 @@
-import { Button, NavRail, type NavRailItem } from "../ds";
+import { NavRail, type NavRailItem } from "../ds";
 import { EditorScreen } from "../features/editor/EditorScreen";
+import { PacksScreen } from "../features/packs/PacksScreen";
+import { PublishWatch } from "../features/packs/PublishWatch";
 import { useProjectActions } from "../features/projects/actions";
 import { useWindowDrop } from "../features/projects/drop";
 import { ProjectsScreen } from "../features/projects/ProjectsScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
-import { t, type StringKey } from "../shared/strings/ru";
+import { t } from "../shared/strings/ru";
 import { useLiveUpdates } from "../shared/api/live";
+import { useJobs } from "../shared/api/queries";
 import { NotifyHost } from "../shared/notify";
 import { OverlayHost } from "../shared/overlays";
-import {
-  THEME_MODES,
-  useApplyTheme,
-  useSetTheme,
-  useTheme,
-  type ThemeMode,
-} from "../shared/theme/theme";
+import { useApplyTheme } from "../shared/theme/theme";
 import styles from "./App.module.css";
 import { useApp, type Section } from "./store";
 
@@ -26,21 +23,18 @@ const MAIN: NavRailItem<Section>[] = [
 const BOTTOM: NavRailItem<Section>[] = [
   { value: "settings", label: t("nav.settings"), icon: "settings" },
 ];
-const MODE_LABELS: Record<ThemeMode, StringKey> = {
-  system: "theme.system",
-  light: "theme.light",
-  dark: "theme.dark",
-};
 
 export function App() {
   useApplyTheme();
   useLiveUpdates();
   const section = useApp((s) => s.section);
   const setSection = useApp((s) => s.setSection);
-  const mode = useTheme((s) => s.mode);
-  const setTheme = useSetTheme();
   // A video dropped anywhere becomes a project, a .webm opens its check (R1, R8).
   useWindowDrop(useProjectActions().openDropped);
+  // A send to a pack runs: a dot on «Мои паки» until it ends (artboard 12)
+  const sending = (useJobs().data ?? []).some(
+    (j) => j.kind === "publish" && (j.state === "running" || j.state === "queued"),
+  );
 
   return (
     <div className={`ss-root ${styles.shell}`}>
@@ -48,7 +42,7 @@ export function App() {
         className={styles.rail}
         narrow
         label={t("nav.label")}
-        items={MAIN}
+        items={MAIN.map((item) => (item.value === "packs" ? { ...item, dot: sending } : item))}
         bottomItems={BOTTOM}
         value={section}
         onChange={setSection}
@@ -58,28 +52,9 @@ export function App() {
         <EditorScreen hidden={section !== "editor"} />
         {section === "settings" && <SettingsScreen />}
         {section === "projects" && <ProjectsScreen />}
-        {section === "packs" && (
-          <>
-            <header className={styles.header}>
-              <h1 className={styles.title}>{t("nav.packs")}</h1>
-              <div className={styles.themes} role="group" aria-label={t("theme.label")}>
-                {THEME_MODES.map((m) => (
-                  <Button
-                    key={m}
-                    size="sm"
-                    variant={m === mode ? "primary" : "ghost"}
-                    aria-pressed={m === mode}
-                    onClick={() => setTheme({ theme: m })}
-                  >
-                    {t(MODE_LABELS[m])}
-                  </Button>
-                ))}
-              </div>
-            </header>
-            <p className={styles.empty}>{t("shell.empty")}</p>
-          </>
-        )}
+        {section === "packs" && <PacksScreen />}
       </main>
+      <PublishWatch />
       <OverlayHost />
       <NotifyHost />
     </div>

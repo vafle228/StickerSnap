@@ -1,4 +1,4 @@
-import type { PackNameCheck, Settings } from "../shared/api/types";
+import type { Job, PackNameCheck, Settings } from "../shared/api/types";
 import { app, packSummary, summaryOf, type MockDb } from "./data";
 import { fakeHub } from "./fakeHub";
 import { frameSprite } from "./frames";
@@ -7,6 +7,22 @@ import { createProject, estimate, file, upload, validate } from "./media";
 import { noContent, problem, route, webp } from "./route";
 
 const BOT_TAIL = `_by_${app.botUsername}`;
+const CAT = "6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e51";
+
+const LATIN: Record<string, string> = Object.fromEntries(
+  "а:a б:b в:v г:g д:d е:e ё:e ж:zh з:z и:i й:y к:k л:l м:m н:n о:o п:p р:r с:s т:t у:u ф:f х:h ц:ts ч:ch ш:sh щ:sch ъ: ы:y ь: э:e ю:yu я:ya"
+    .split(" ")
+    .map((pair) => pair.split(":") as [string, string]),
+);
+
+/** «Кот и все-все-все» → «kot_i_vse_vse_vse»: the server's suggestion of a link from the title. */
+function linkOf(title: string): string {
+  const latin = [...title.toLowerCase()].map((ch) => LATIN[ch] ?? ch).join("");
+  return latin
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^[_0-9]+|_+$/g, "")
+    .slice(0, 64 - BOT_TAIL.length);
+}
 
 /** Handlers for the requests of the contract that demo data can answer. Video streams and
  *  rendered files stay unanswered: there is no video to serve without the server. */
@@ -149,6 +165,17 @@ export function handlers(db: MockDb) {
       const job = db.jobs.get(params.jobId);
       return job ? { status: 200, body: job } : problem("bad_request");
     }),
+    route("post", "/api/v1/jobs/{jobId}/retry", ({ params }) => {
+      const job = db.jobs.get(params.jobId);
+      if (!job) return problem("bad_request");
+      const again: Job = {
+        ...job,
+        progress: { ...job.progress, stage: "send", retryAt: undefined },
+      };
+      db.jobs.set(again.id, again);
+      fakeHub.emit("jobUpdated", again);
+      return { status: 202, body: again };
+    }),
     route("post", "/api/v1/jobs/{jobId}/cancel", ({ params }) => {
       const job = cancelJob(db, params.jobId);
       return job ? { status: 200, body: job } : problem("bad_request");
@@ -201,15 +228,30 @@ export function handlers(db: MockDb) {
     }),
     route("post", "/api/v1/packs/name-check", ({ body }) => {
       if (offline) return problem("network_unavailable");
-      const name = body.name ?? "kot_divan";
-      const taken = Boolean(findPack(`${name}${BOT_TAIL}`));
+      const name = body.name ?? linkOf(body.title);
+      const problems: PackNameCheck["problems"] = [];
+      if (!name) problems.push("empty");
+      if (name.length > 64 - BOT_TAIL.length) problems.push("too_long");
+      if (/[^a-z0-9_]/i.test(name)) problems.push("bad_chars");
+      if (name && !/^[a-z]/i.test(name)) problems.push("bad_start");
+      const taken = problems.length === 0 && Boolean(findPack(`${name}${BOT_TAIL}`));
+      if (taken) problems.push("taken");
       const check: PackNameCheck = {
         name,
         fullName: `${name}${BOT_TAIL}`,
-        problems: taken ? ["taken"] : [],
+        problems,
         suggestion: taken ? `${name}_2` : undefined,
       };
       return { status: 200, body: check };
+    }),
+    route("delete", "/api/v1/packs/{pack}/stickers/{stickerId}", ({ params }) => {
+      if (offline) return problem("network_unavailable");
+      const pack = findPack(params.pack);
+      if (!pack) return problem("pack_not_found");
+      pack.stickers = pack.stickers.filter((s) => s.id !== params.stickerId);
+      pack.count = pack.stickers.length;
+      fakeHub.emit("packChanged", packSummary(pack));
+      return noContent();
     }),
     route("delete", "/api/v1/packs/{pack}", ({ params }) => {
       db.packs = db.packs.filter((p) => p.name !== params.pack);
@@ -224,17 +266,43 @@ export function handlers(db: MockDb) {
         status: 200,
         body: {
           account: db.account,
-          segments: project.scene.segments.map((s) => ({
-            segmentId: s.id,
-            name: s.name,
-            durationSec: (s.outFrame - s.inFrame + 1) / 30 / s.speed,
-            preset: s.preset,
-            publishedIn: [],
-          })),
+          segments: project.scene.segments.map((s, i) => {
+            // «Ошибки отправки»: the second segment of «Кот и клавиатура» is over 256 КБ
+            const fails = db.scenario === "publish-errors" && i === 1 && project.id === CAT;
+            return {
+              segmentId: s.id,
+              name: s.name,
+              durationSec: (s.outFrame - s.inFrame + 1) / 30 / s.speed,
+              preset: s.preset,
+              export: {
+                bytes: fails ? 277_504 : 151_552 + (i % 3) * 32_768,
+                verdict: fails ? ("fail" as const) : ("pass" as const),
+                stale: false,
+              },
+              publishedIn: db.packs.flatMap((p) =>
+                p.stickers
+                  .filter(
+                    (st) => st.origin?.projectId === project.id && st.origin.segmentId === s.id,
+                  )
+                  .slice(0, 1)
+                  .map((st) => ({ pack: p.name, stickerId: st.id })),
+              ),
+            };
+          }),
+          lastPack: db.packs.find((p) =>
+            p.stickers.some((st) => st.origin?.projectId === project.id),
+          )?.name,
           packs: db.packs.map((p) => ({
             ...packSummary(p),
-            selectable: p.count < p.limit,
-            reason: p.count < p.limit ? undefined : ("full" as const),
+            selectable: p.count < p.limit && p.type === "regular" && p.status === "ok",
+            reason:
+              p.status === "missing"
+                ? ("missing" as const)
+                : p.type !== "regular"
+                  ? ("wrong_type" as const)
+                  : p.count < p.limit
+                    ? undefined
+                    : ("full" as const),
           })),
           recentEmoji: db.settings.recentEmoji,
         },
