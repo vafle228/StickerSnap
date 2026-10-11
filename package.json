@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "npm run dev -w src/web",
     "build": "npm run build -w src/web",
+    "build:dev": "npm run build:dev -w src/web",
+    "check:prod-build": "node tools/check-prod-build.mjs",
     "lint": "npm run lint -w src/web",
     "typecheck": "npm run typecheck -w src/web",
     "test": "npm run test -w src/web",

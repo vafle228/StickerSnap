@@ -11,7 +11,7 @@ if (!root) throw new Error("#root is missing in index.html");
 const render = (node: ReactNode) => createRoot(root).render(<StrictMode>{node}</StrictMode>);
 const params = new URLSearchParams(location.search);
 
-// Dev only, all of it is dropped from production builds: /?showcase opens the design system
+// Dev tools, dropped from the production build (vite.config.ts): /?showcase opens the design system
 // showcase, /?mock runs the SPA on demo data (/?mock=offline and the other scenarios of
 // mocks/scenarios.ts), and the dev bar on top switches between the server and the scenarios.
 async function startDev() {
@@ -39,7 +39,7 @@ async function startDev() {
   );
 }
 
-if (import.meta.env.DEV) {
+if (import.meta.env.DEV_TOOLS) {
   void startDev();
 } else {
   render(
