@@ -27,7 +27,11 @@ function mockWorker(): Plugin {
       });
     },
     generateBundle() {
-      this.emitFile({ type: "asset", fileName: "mockServiceWorker.js", source: readFileSync(file) });
+      this.emitFile({
+        type: "asset",
+        fileName: "mockServiceWorker.js",
+        source: readFileSync(file),
+      });
     },
   };
 }
