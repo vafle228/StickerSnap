@@ -21,16 +21,19 @@ const VERDICT: Record<ValidationReport["verdict"], Tone> = {
 
 /** The check of a .webm (R8): every rule of Telegram's table with what the file has, the rule's
  *  bound under a broken one. Read-only, so a click beside it closes it (artboard 12). A long
- *  sticker (R19) is «экспериментальный», not an error. */
+ *  sticker (R19) is «экспериментальный», not an error.
+ *  A dropped file (`onEdit`) goes on from here: one that passes can go to a pack as it is
+ *  (stage 1c, off until then) or be edited; one that fails is fixed in the editor. */
 export function ValidationDialog({
   report,
   onClose,
-  onMakeSticker,
+  onEdit,
 }: {
   report: ValidationReport;
   onClose: () => void;
-  onMakeSticker?: () => void;
+  onEdit?: () => void;
 }) {
+  const fails = report.verdict === "fail";
   const failed = failedCount(report);
   const verdict =
     report.verdict === "fail"
@@ -43,16 +46,33 @@ export function ValidationDialog({
       dismissible
       onClose={onClose}
       actions={
-        <>
-          {onMakeSticker && (
-            <Button variant="ghost" onClick={onMakeSticker}>
-              {t("validator.makeSticker")}
-            </Button>
-          )}
+        !onEdit ? (
           <Button data-autofocus onClick={onClose}>
             {t("common.close")}
           </Button>
-        </>
+        ) : fails ? (
+          <>
+            <Button variant="ghost" onClick={onClose}>
+              {t("common.close")}
+            </Button>
+            <Button variant="primary" icon="pencil" data-autofocus onClick={onEdit}>
+              {t("validator.fix")}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="ghost" onClick={onClose}>
+              {t("common.close")}
+            </Button>
+            <Button icon="pencil" data-autofocus onClick={onEdit}>
+              {t("validator.edit")}
+            </Button>
+            {/* Publishing is stage 1c: off here, as the rainbow button in the editor's header is */}
+            <Button variant="prism" icon="send" disabled>
+              {t("validator.toPack")}
+            </Button>
+          </>
+        )
       }
     >
       <div className={styles.summary}>
@@ -61,7 +81,10 @@ export function ValidationDialog({
         </Badge>
         <span className={styles.bytes}>{kilobytes(report.bytes)}</span>
       </div>
-      <p className={styles.verdict}>{verdict}</p>
+      <p className={styles.verdict}>
+        {verdict}
+        {fails && onEdit && ` ${t("validator.fixHint")}`}
+      </p>
       <ul className={styles.list} aria-label={t("validator.rules")}>
         {report.checks.map((check) => {
           const { tone, icon } = STATUS[check.status];

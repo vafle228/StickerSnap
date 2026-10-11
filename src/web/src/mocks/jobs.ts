@@ -74,6 +74,8 @@ interface ItemPlan {
 function planItem(db: MockDb, project: Project, segment: Segment, preview: boolean): ItemPlan {
   const limits = app.limits[segment.preset];
   const rungs = ladder(project.source, segment, limits, bytesPerFrame(db.scenario));
+  // Fitting switched off: the first rung as it is, over the limit or not.
+  if (!segment.autoFit) return { segment, tried: rungs.slice(0, 1), fits: true };
   const { tried, fits } = climb(rungs, limits.maxBytes);
   // A draft is drawn once, at the rung that will fit: it shows what the export will give.
   return { segment, tried: preview ? tried.slice(-1) : tried, fits: preview || fits };
@@ -113,8 +115,10 @@ function drawFiles(project: Project, plans: ItemPlan[]) {
       segment: plan.segment,
       fps: rung.fps,
       side: rung.side,
-      // About the forecast's size, under the limit with room for the container
-      bitsPerSecond: Math.round((Math.min(rung.bytes, 248_000) * 8 * 0.92) / duration),
+      // About the forecast's size; when fitting, under the limit with room for the container
+      bitsPerSecond: Math.round(
+        ((plan.segment.autoFit ? Math.min(rung.bytes, 248_000) : rung.bytes) * 8 * 0.92) / duration,
+      ),
     };
     const file = previous.then(() => render(task, () => {}).catch(() => undefined));
     previous = file;
@@ -131,7 +135,9 @@ function exportResult(
 ): ExportResult {
   const rung = plan.tried.at(-1) as Rung;
   const limits = app.limits[plan.segment.preset];
-  const bytes = blob?.size ?? rung.bytes;
+  // The encoder model's size, so the ladder, the result and the forecast agree; the demo file
+  // itself is a recording and weighs what MediaRecorder made of it.
+  const bytes = rung.bytes;
   const fileId = crypto.randomUUID();
   if (blob) db.files.set(fileId, blob);
   const output = {
@@ -141,8 +147,6 @@ function exportResult(
   };
   const fileName = `${plan.segment.name}.webm`;
   const steps = ladderSteps(plan.tried);
-  const last = steps.at(-1);
-  if (last) last.bytes = bytes;
   return {
     segmentId: plan.segment.id,
     sceneRevision: revision,

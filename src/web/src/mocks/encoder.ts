@@ -127,7 +127,7 @@ export function estimateOf(
   const rungs = ladder(source, segment, limits, perFrame);
   const first = rungs[0] as Rung;
   const { tried, fits } = climb(rungs, limits.maxBytes);
-  const fitting = fits ? tried.at(-1) : undefined;
+  const fitting = !segment.autoFit ? first : fits ? tried.at(-1) : undefined;
   const srcFps = sourceFps(source);
   const out = outputOf(segment, first.side);
   const suggestions: Estimate["suggestions"] = [];

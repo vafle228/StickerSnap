@@ -44,7 +44,8 @@ export function exportToast(job: Job, segments: Segment[]): ExportToast | undefi
     const badge = given ? { tone: "warning" as const, label: t("export.concessions") } : undefined;
     if (results.length === 1) {
       return {
-        tone: "success",
+        // Made as asked, but Telegram will not take it: a result with a caveat (artboard 8)
+        tone: first.validation.verdict === "fail" ? "warning" : "success",
         title: t("export.done.one", { file: `${nameOf(segments, first.segmentId)}.webm` }),
         badge,
         description: t(`export.done.${first.validation.verdict}`, { size: kilobytes(first.bytes) }),
@@ -52,7 +53,7 @@ export function exportToast(job: Job, segments: Segment[]): ExportToast | undefi
     }
     const failed = results.some((r) => r.validation.verdict === "fail");
     return {
-      tone: "success",
+      tone: failed ? "warning" : "success",
       title: t(`export.done.many.${plural(results.length)}`, { n: results.length }),
       badge,
       description: t(failed ? "export.done.someFail" : "export.done.allPass"),

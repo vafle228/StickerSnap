@@ -130,6 +130,11 @@
   color: var(--ink-muted);
 }
 
+/* The fitting switched off: the file may not pass, said as a caveat, not an error. */
+.longText .risky {
+  color: var(--warning);
+}
+
 .link {
   align-self: center;
   padding: 0;
@@ -389,40 +394,52 @@
   color: var(--warning);
 }
 
-/* «Как подбирали»: the rungs tried in order, the fitting one green. */
+/* «Как подбирали»: the attempts top to bottom, one row each, the fitting one green; what was
+   never needed is a dashed row. The order is the list's own, no arrows. */
 .ladder {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-5);
+  flex-direction: column;
+  gap: var(--space-1);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .rung {
-  position: relative;
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
   align-items: center;
-  gap: 6px;
-  height: 32px;
+  column-gap: var(--space-2);
+  min-height: 36px;
   padding: 0 var(--space-3);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-md);
   background: var(--surface-sunken);
-  font: 500 12px/16px var(--font-mono);
   color: var(--ink-muted);
-  white-space: nowrap;
 }
 
 .rung svg {
   color: var(--danger);
 }
 
-.rung + .rung::before {
-  position: absolute;
-  left: calc(-1 * var(--space-5) + 4px);
-  color: var(--ink-subtle);
-  content: "→";
+.rungWhat {
+  font: 500 13px/18px var(--font-mono);
+  color: var(--ink);
+}
+
+.rungSize {
+  font: 500 13px/18px var(--font-mono);
+  text-align: right;
+}
+
+.rungVerdict {
+  grid-column: 2 / -1;
+  margin-top: -2px;
+  padding-bottom: 6px;
+  font: 500 12px/16px var(--font-sans);
+}
+
+.rung:not(.skipped) {
+  padding-top: 6px;
 }
 
 .rung.fits {
@@ -430,12 +447,14 @@
   color: var(--success);
 }
 
-.rung.fits svg {
+.rung.fits svg,
+.rung.fits .rungWhat {
   color: inherit;
 }
 
 .rung.skipped {
+  display: flex;
   border: 1px dashed var(--border-strong);
   background: none;
-  color: var(--ink-muted);
+  font: 500 12px/16px var(--font-sans);
 }

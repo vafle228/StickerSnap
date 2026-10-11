@@ -106,7 +106,27 @@ function ExportSettings({ segment }: { segment: Segment }) {
         )}
       </div>
 
-      {forecast && !forecast.fits && <OverLimit forecast={forecast} />}
+      {forecast && !forecast.fits && <OverLimit forecast={forecast} asIs={!segment.autoFit} />}
+
+      {limits && (
+        <Switch
+          className={styles.long}
+          checked={segment.autoFit}
+          onChange={(on) => editSegment((s) => void (s.autoFit = on))}
+          label={
+            <span className={styles.longText}>
+              <b>{t("inspector.autoFit", { size: kilobytes(limits[segment.preset].maxBytes) })}</b>
+              <span className={segment.autoFit ? styles.quiet : styles.risky}>
+                {segment.autoFit
+                  ? t("inspector.autoFitOn")
+                  : t("inspector.autoFitOff", {
+                      size: kilobytes(limits[segment.preset].maxBytes),
+                    })}
+              </span>
+            </span>
+          }
+        />
+      )}
 
       {limits && (
         <Switch
@@ -170,12 +190,22 @@ function Forecast({ forecast }: { forecast: Estimate }) {
 }
 
 /** 3c, G: a warning, not a ban. The export will walk the ladder itself; the buttons make the
- *  sticker shorter in one click instead, as an ordinary edit. */
-function OverLimit({ forecast }: { forecast: Estimate }) {
+ *  sticker shorter in one click instead, as an ordinary edit. With the fitting switched off
+ *  (`asIs`) nothing is given up, and the file comes out over the limit as the user chose. */
+function OverLimit({ forecast, asIs }: { forecast: Estimate; asIs: boolean }) {
   const likely = forecast.likelyConcessions[0];
-  const title = likely
-    ? t(`inspector.likely.${likely.kind}`, { to: num(likely.to) })
-    : t("inspector.likely.none");
+  const limit = kilobytes(forecast.limitBytes);
+  const fixes = forecast.suggestions.length > 0;
+  const title = asIs
+    ? t("inspector.asIs.title", { size: kilobytes(forecast.bytes) })
+    : likely
+      ? t(`inspector.likely.${likely.kind}`, { to: num(likely.to) })
+      : t("inspector.likely.none");
+  const text = asIs
+    ? t(fixes ? "inspector.asIs.text" : "inspector.asIs.textNoFix", { limit })
+    : fixes
+      ? t("inspector.keepQuality")
+      : undefined;
   return (
     <div className={`ss-tone-warning ${styles.warn}`} role="status">
       <span className="ss-tone-icon">
@@ -183,9 +213,9 @@ function OverLimit({ forecast }: { forecast: Estimate }) {
       </span>
       <div className={styles.warnBody}>
         <p className={styles.warnTitle}>{title}</p>
-        {forecast.suggestions.length > 0 && (
+        {text && <p className={styles.warnText}>{text}</p>}
+        {fixes && (
           <>
-            <p className={styles.warnText}>{t("inspector.keepQuality")}</p>
             <div className={styles.warnActions}>
               {forecast.suggestions.map((s) =>
                 s.kind === "trim" ? (
