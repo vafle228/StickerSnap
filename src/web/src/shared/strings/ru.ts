@@ -27,6 +27,7 @@ export const ru = {
   "editor.inspector": "Инспектор",
   "editor.undo": "Отменить (Ctrl+Z)",
   "editor.redo": "Повторить (Ctrl+Shift+Z)",
+  "editor.save.retry": "Правки держим в памяти и пробуем снова каждые 30 секунд.",
   "editor.import": "Импорт видео",
   "editor.publish": "Опубликовать в Telegram",
   "editor.tools": "Инструменты холста",
