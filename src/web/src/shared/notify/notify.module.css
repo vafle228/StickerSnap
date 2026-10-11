@@ -10,3 +10,9 @@
   word-break: break-word;
   user-select: text;
 }
+
+/* «с уступками» beside a toast's title */
+.badge {
+  margin-left: var(--space-1);
+  vertical-align: 1px;
+}

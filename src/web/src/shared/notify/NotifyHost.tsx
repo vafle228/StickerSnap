@@ -1,7 +1,8 @@
 import { createPortal } from "react-dom";
-import { Button, Toast, ToastStack } from "../../ds";
+import { Badge, Button, Toast, ToastStack } from "../../ds";
 import { t } from "../strings/ru";
 import { notify, useToasts } from "./notify";
+import styles from "./notify.module.css";
 
 /** Mounted once at the root. Portaled to <body> so it lies above window scrims (artboard 12). */
 export function NotifyHost() {
@@ -12,14 +13,28 @@ export function NotifyHost() {
         <Toast
           key={toast.id}
           tone={toast.tone}
-          title={toast.title}
+          title={
+            toast.badge ? (
+              <>
+                {toast.title}{" "}
+                <Badge tone={toast.badge.tone} className={styles.badge}>
+                  {toast.badge.label}
+                </Badge>
+              </>
+            ) : (
+              toast.title
+            )
+          }
           description={toast.description}
           icon={toast.icon}
           progress={toast.progress}
           progressLabel={toast.progressLabel}
           progressVariant={toast.progressVariant}
           timeout={toast.timeout}
-          onClose={() => notify.close(toast.id)}
+          onClose={() => {
+            notify.close(toast.id);
+            toast.onClose?.();
+          }}
           action={
             toast.action && (
               <Button
