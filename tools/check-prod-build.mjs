@@ -1,5 +1,5 @@
-// The production build (npm run build → src/server/StickerSnap.Api/wwwroot) carries no dev tools: no MSW and
-// its service worker, no demo scenarios, no dev bar. CI runs this after the build, so the demo
+// The production build (npm run build → src/server/StickerSnap.Api/wwwroot) carries no dev tools:
+// no MSW and its service worker, no demo scenarios, no dev bar. CI runs this after the build, so the demo
 // data never reaches an installer or the Docker image.
 // Usage: node tools/check-prod-build.mjs
 import { existsSync, readdirSync, readFileSync } from "node:fs";
