@@ -57,3 +57,40 @@ test("fails a foreign .webm with the rules it misses and offers the editor", asy
   await expect(check).toContainText("не выполнено 4 правила");
   await expect(check.getByRole("button", { name: "Исправить в редакторе" })).toBeVisible();
 });
+
+test.describe("before and after the export", () => {
+  async function openCat(page: Page, scenario: string) {
+    await page.goto(`/?mock=${scenario}`);
+    await page.getByRole("button", { name: /^Кот и клавиатура/ }).click();
+    return page.getByRole("complementary", { name: "Инспектор" });
+  }
+
+  test("forecasts a sticker over 256 КБ with what it will give up, and shortens it", async ({
+    page,
+  }) => {
+    const inspector = await openCat(page, "too-big");
+    const forecast = inspector.getByRole("status");
+    await expect(forecast).toContainText("Скорее всего, снизим fps до 20");
+
+    await forecast.getByRole("button", { name: "Укоротить до 2,3 с" }).click();
+    await expect(
+      page.getByRole("group", { name: "Отрезки" }).locator("[aria-pressed=true]"),
+    ).toHaveText(/^Стикер 1 · 2,3\d с$/);
+    await expect(inspector.getByText("Скорее всего, снизим fps до 20")).toHaveCount(0);
+  });
+
+  test("reports a failed export with «Повторить» and its details", async ({ page }) => {
+    const inspector = await openCat(page, "export-fails");
+    await inspector.getByRole("button", { name: "Экспорт WEBM" }).click();
+    const failed = page.getByRole("alert").filter({ hasText: "Экспорт не удался" });
+    await expect(failed).toContainText("Не хватает места на диске", { timeout: 15_000 });
+    await expect(failed.getByRole("button", { name: "Повторить" })).toBeVisible();
+    await expect(failed.getByRole("button", { name: "Подробности" })).toBeVisible();
+  });
+
+  test("waits for a segment before it can export", async ({ page }) => {
+    const inspector = await openCat(page, "no-segments");
+    await expect(inspector.getByRole("button", { name: "Экспорт WEBM" })).toBeDisabled();
+    await expect(inspector).toContainText("Нет отрезка");
+  });
+});

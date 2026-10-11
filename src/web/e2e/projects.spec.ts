@@ -55,3 +55,14 @@ test("opens a project by a click on its cover", async ({ page }) => {
   await cover.click({ force: true });
   await expect(page.getByRole("heading", { level: 1, name: "Пёс на диване" })).toBeVisible();
 });
+
+test("shows the save folder and «Открыть файл…» only in the desktop app", async ({ page }) => {
+  await expect(page.getByRole("button", { name: "Открыть файл…" })).toHaveCount(0);
+
+  await page.goto("/?mock=desktop");
+  await page.getByRole("button", { name: "Проекты", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Открыть файл…" })).toBeVisible();
+  await expect(page.getByRole("main")).toContainText(
+    "Сохраняются сами в C:/Users/demo/StickerSnap",
+  );
+});
