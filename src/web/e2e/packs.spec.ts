@@ -37,6 +37,20 @@ test("removes a sticker from the pack only after the confirmation", async ({ pag
   await expect(pack).toContainText("Стикеры · 11 из 120");
 });
 
+test("closes the publish window by its cross and by «Отмена»", async ({ page }) => {
+  await openPacks(page, "ok");
+  const open = page.getByRole("button", { name: "Добавить стикер из любого проекта" });
+  const publish = page.getByRole("dialog", { name: "Опубликовать в Telegram" });
+
+  await open.click();
+  await publish.getByRole("button", { name: "Закрыть" }).click();
+  await expect(publish).toHaveCount(0);
+
+  await open.click();
+  await publish.getByRole("button", { name: "Отмена" }).click();
+  await expect(publish).toHaveCount(0);
+});
+
 test("fills the publish window: emoji per segment and a pack; sending waits for stage 1c", async ({
   page,
 }) => {

@@ -56,7 +56,7 @@ export function PublishDialog() {
 
   return (
     <Dialog
-      open={start !== undefined}
+      open={start !== null}
       wide
       className={styles.dialog}
       title={t("publish.title")}
