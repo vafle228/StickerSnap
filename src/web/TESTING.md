@@ -69,6 +69,18 @@ Playwright с трейсом.
 не нужен. Сценарий — путь, который пользователь проходит целиком; мелкие ветки остаются юнит- и
 компонентным тестам. Перед новым сценарием проверяем, нельзя ли поймать то же ниже по пирамиде.
 
+## Десктоп
+
+`src/desktop`: логика оболочки (порт, запуск сервера, сохранённое состояние, что окну можно
+открыть) — юнит-тесты на Vitest в node рядом с кодом, `npm test -w src/desktop`, job «Desktop
+shell» в CI. Сервер в них подменяет node-скрипт, Electron не нужен.
+
+Смоук-e2e `src/desktop/e2e` запускает настоящее приложение через `_electron` Playwright: окно,
+сервер, токен, выход. Нужны собранные SPA и сервер (`npm run build`, `npm run server -w
+src/desktop`); `STICKERSNAP_APP` указывает на собранный exe, без него запускается `electron .`.
+В CI это отдельный workflow «Desktop» на Windows и Linux, он же собирает установщики.
+Platform для Electron проверяется в SPA (`shared/platform/electron.test.ts`) на поддельном мосте.
+
 ## Сервер
 
 `tests/StickerSnap.Server.Tests`: xUnit v3 на Microsoft.Testing.Platform (включён в `global.json`)
