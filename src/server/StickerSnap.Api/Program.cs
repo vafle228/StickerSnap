@@ -1,6 +1,13 @@
+using System.Runtime.InteropServices;
+using StickerSnap.Api.Endpoints;
+using StickerSnap.Api.Json;
+using StickerSnap.Api.Problems;
 using StickerSnap.Api.Shell;
 using StickerSnap.Application;
+using StickerSnap.Application.App;
+using StickerSnap.Core.Errors;
 using StickerSnap.Infrastructure;
+using StickerSnap.Infrastructure.Ffmpeg;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,12 +17,24 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddOpenApi();
 
+// The contract's JSON and its errors: Problem Details with a code and a trace id.
+builder.Services.ConfigureHttpJsonOptions(options => ContractJson.Apply(options.SerializerOptions));
+builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = Problem.Complete);
+builder.Services.AddExceptionHandler<ProblemExceptionHandler>();
+
 // The desktop shell passes its token, the mode and its pid (src/desktop/src/server.ts).
 builder.Services.Configure<ShellOptions>(builder.Configuration.GetSection(ShellOptions.Section));
+builder.Services.AddSingleton<IHostInfo, ShellHostInfo>();
 builder.Services.AddHostedService<ParentWatch>();
+
+// In development FFmpeg comes from tools/ffmpeg/<rid>, where npm run fetch:ffmpeg puts it.
+if (builder.Environment.IsDevelopment())
+    builder.Services.PostConfigure<FfmpegOptions>(options => options.FfmpegDir ??= Path.Combine(
+        builder.Environment.ContentRootPath, "..", "..", "..", "tools", "ffmpeg", RuntimeInformation.RuntimeIdentifier));
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
 app.UseMiddleware<TokenGate>();
 
 // The server's own OpenAPI document, /openapi/v1.json, to compare with src/contract/openapi.yaml.
@@ -26,8 +45,12 @@ if (app.Environment.IsDevelopment()) app.MapOpenApi();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-// Unknown API or hub paths are 404, never the SPA page.
-app.MapFallback("/api/{**path}", () => Results.NotFound());
+app.MapGroup("/api/v1").MapApp();
+
+// An API path without a handler is a mistake of the SPA: bad_request, never the SPA page.
+// An unknown hub is a plain 404, as SignalR answers.
+app.MapFallback("/api/{**path}", (HttpRequest request) =>
+    TypedResults.Problem(Problem.Of(ErrorCode.BadRequest, $"No endpoint for {request.Method} {request.Path}")));
 app.MapFallback("/hubs/{**path}", () => Results.NotFound());
 
 // No router in the SPA: every other path gets index.html.
