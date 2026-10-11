@@ -47,6 +47,8 @@ export function EditorScreen({ hidden }: { hidden: boolean }) {
 
   const ready = projectId !== undefined && loadedId === projectId;
   useHotkey("playPause", () => setPlaying(!useEditor.getState().playing), ready && !hidden);
+  useHotkey("undo", () => useEditor.getState().undo(), ready && !hidden);
+  useHotkey("redo", () => useEditor.getState().redo(), ready && !hidden);
 
   return (
     <div className={styles.editor} hidden={hidden}>

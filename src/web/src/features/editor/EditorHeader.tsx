@@ -10,6 +10,8 @@ import { useEditor } from "./model/store";
  *  own tasks; their controls wait here. */
 export function EditorHeader({ ready }: { ready: boolean }) {
   const name = useEditor((s) => s.name);
+  const canUndo = useEditor((s) => s.past.length > 0);
+  const canRedo = useEditor((s) => s.future.length > 0);
   const reading = useImport((s) => s.reading !== undefined);
   const { create } = useProjectActions();
   return (
@@ -19,8 +21,20 @@ export function EditorHeader({ ready }: { ready: boolean }) {
       <span className={styles.spacer} />
       {ready && (
         <div className={styles.history}>
-          <IconButton icon="undo" label={t("editor.undo")} flat disabled />
-          <IconButton icon="redo" label={t("editor.redo")} flat disabled />
+          <IconButton
+            icon="undo"
+            label={t("editor.undo")}
+            flat
+            disabled={!canUndo}
+            onClick={() => useEditor.getState().undo()}
+          />
+          <IconButton
+            icon="redo"
+            label={t("editor.redo")}
+            flat
+            disabled={!canRedo}
+            onClick={() => useEditor.getState().redo()}
+          />
         </div>
       )}
       <Button icon="upload" disabled={reading} onClick={() => void create()}>
