@@ -1056,7 +1056,7 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     NotFound:
-      description: '`source_not_found`, `project_not_found`, `pack_not_found`'
+      description: '`source_not_found`, `project_not_found`, `job_not_found`, `file_not_found`, `pack_not_found`'
       content:
         application/problem+json:
           schema:
@@ -1094,7 +1094,7 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     ServiceUnavailable:
-      description: '`network_unavailable`'
+      description: '`network_unavailable`, `ffmpeg_missing`'
       content:
         application/problem+json:
           schema:
@@ -1111,14 +1111,13 @@ components:
     AppInfo:
       type: object
       description: 'GET /api/v1/app: версии приложения и FFmpeg, apiVersion, режим, имя бота, лимиты Telegram'
-      required: [appVersion, ffmpegVersion, apiVersion, mode, botUsername, limits]
+      required: [appVersion, ffmpeg, apiVersion, mode, botUsername, limits]
       properties:
         appVersion:
           type: string
           examples: ['0.1.0']
-        ffmpegVersion:
-          type: string
-          examples: ['7.1']
+        ffmpeg:
+          $ref: '#/components/schemas/FfmpegInfo'
         apiVersion:
           type: string
           examples: ['1.0.0']
@@ -1130,6 +1129,22 @@ components:
           examples: [StickerSnapAppBot]
         limits:
           $ref: '#/components/schemas/TelegramLimits'
+
+    FfmpegInfo:
+      type: object
+      description: >-
+        FFmpeg, которым сервер рендерит: `ok` — найден, 9.0 или новее; `missing` — не найден;
+        `too_old` — найден, но старше 9.0. Пока не `ok`, запросы, которым нужен FFmpeg,
+        отвечают `ffmpeg_missing`
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, missing, too_old]
+        version:
+          type: string
+          description: Версия из `ffmpeg -version`; нет, когда FFmpeg не найден
+          examples: ['9.0.2-17-g2a571b6068']
 
     TelegramLimits:
       type: object
@@ -1155,7 +1170,7 @@ components:
       properties:
         maxBytes:
           type: integer
-          description: Для стикера 262144
+          description: 262144 и для стикера, и для эмодзи
         side:
           type: integer
           description: Сторона в px, 512 для стикера и 100 для эмодзи
@@ -2183,6 +2198,9 @@ components:
         | disk_full | 507 |
         | render_failed | 500 |
         | cannot_fit | 422 |
+        | ffmpeg_missing | 503 |
+        | job_not_found | 404 |
+        | file_not_found | 404 |
         | validation_failed | 422 |
         | account_not_linked | 409 |
         | bot_blocked | 403 |
@@ -2208,6 +2226,9 @@ components:
         - disk_full
         - render_failed
         - cannot_fit
+        - ffmpeg_missing
+        - job_not_found
+        - file_not_found
         - validation_failed
         - account_not_linked
         - bot_blocked

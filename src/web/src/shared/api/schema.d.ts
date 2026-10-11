@@ -684,8 +684,7 @@ export interface components {
         AppInfo: {
             /** @example 0.1.0 */
             appVersion: string;
-            /** @example 7.1 */
-            ffmpegVersion: string;
+            ffmpeg: components["schemas"]["FfmpegInfo"];
             /** @example 1.0.0 */
             apiVersion: string;
             /** @enum {string} */
@@ -693,6 +692,16 @@ export interface components {
             /** @example StickerSnapAppBot */
             botUsername: string;
             limits: components["schemas"]["TelegramLimits"];
+        };
+        /** @description FFmpeg, которым сервер рендерит: `ok` — найден, 9.0 или новее; `missing` — не найден; `too_old` — найден, но старше 9.0. Пока не `ok`, запросы, которым нужен FFmpeg, отвечают `ffmpeg_missing` */
+        FfmpegInfo: {
+            /** @enum {string} */
+            status: "ok" | "missing" | "too_old";
+            /**
+             * @description Версия из `ffmpeg -version`; нет, когда FFmpeg не найден
+             * @example 9.0.2-17-g2a571b6068
+             */
+            version?: string;
         };
         TelegramLimits: {
             sticker: components["schemas"]["PresetLimits"];
@@ -704,7 +713,7 @@ export interface components {
             };
         };
         PresetLimits: {
-            /** @description Для стикера 262144 */
+            /** @description 262144 и для стикера, и для эмодзи */
             maxBytes: number;
             /** @description Сторона в px, 512 для стикера и 100 для эмодзи */
             side: number;
@@ -1251,6 +1260,9 @@ export interface components {
          *     | disk_full | 507 |
          *     | render_failed | 500 |
          *     | cannot_fit | 422 |
+         *     | ffmpeg_missing | 503 |
+         *     | job_not_found | 404 |
+         *     | file_not_found | 404 |
          *     | validation_failed | 422 |
          *     | account_not_linked | 409 |
          *     | bot_blocked | 403 |
@@ -1266,7 +1278,7 @@ export interface components {
          *     | internal | 500 |
          * @enum {string}
          */
-        ErrorCode: "source_unreadable" | "format_unsupported" | "source_not_found" | "project_not_found" | "project_invalid" | "project_too_new" | "save_failed" | "revision_conflict" | "disk_full" | "render_failed" | "cannot_fit" | "validation_failed" | "account_not_linked" | "bot_blocked" | "network_unavailable" | "pack_name_invalid" | "pack_name_taken" | "pack_full" | "pack_not_found" | "not_our_pack" | "rate_limited" | "telegram_error" | "bad_request" | "internal";
+        ErrorCode: "source_unreadable" | "format_unsupported" | "source_not_found" | "project_not_found" | "project_invalid" | "project_too_new" | "save_failed" | "revision_conflict" | "disk_full" | "render_failed" | "cannot_fit" | "ffmpeg_missing" | "job_not_found" | "file_not_found" | "validation_failed" | "account_not_linked" | "bot_blocked" | "network_unavailable" | "pack_name_invalid" | "pack_name_taken" | "pack_full" | "pack_not_found" | "not_our_pack" | "rate_limited" | "telegram_error" | "bad_request" | "internal";
     };
     responses: {
         /** @description Ошибка (`bad_request`, `internal` и прочие коды из `ErrorCode`) */
@@ -1296,7 +1308,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description `source_not_found`, `project_not_found`, `pack_not_found` */
+        /** @description `source_not_found`, `project_not_found`, `job_not_found`, `file_not_found`, `pack_not_found` */
         NotFound: {
             headers: {
                 [name: string]: unknown;
@@ -1350,7 +1362,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description `network_unavailable` */
+        /** @description `network_unavailable`, `ffmpeg_missing` */
         ServiceUnavailable: {
             headers: {
                 [name: string]: unknown;
