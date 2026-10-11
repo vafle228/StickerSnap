@@ -1,0 +1,43 @@
+name: Render
+
+# The server tests tagged Category=Slow: the FFmpeg adapters on clips the pinned FFmpeg makes
+# with lavfi. They never block the fast job «Server» in ci.yml. Runs on a PR with the label
+# render-corpus, every night and by hand; the corpus of 30 clips joins this workflow in B4.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  slow:
+    name: Slow server tests
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'render-corpus')
+    runs-on: ubuntu-latest
+    env:
+      StickerSnap__FfmpegDir: ${{ github.workspace }}/tools/ffmpeg/linux-x64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The pinned build and its SHA-256 live in the script, so the script is the cache key
+      - uses: actions/cache@v4
+        with:
+          path: tools/ffmpeg/linux-x64
+          key: ffmpeg-linux-x64-${{ hashFiles('tools/fetch-ffmpeg.mjs') }}
+
+      - run: node tools/fetch-ffmpeg.mjs linux-x64
+
+      - run: dotnet build StickerSnap.slnx -c Release
+        working-directory: src/server
+
+      - run: dotnet test --solution StickerSnap.slnx -c Release --no-build --filter-trait "Category=Slow"
+        working-directory: src/server
