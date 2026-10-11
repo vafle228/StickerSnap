@@ -1,0 +1,43 @@
+{
+  "name": "@stickersnap/desktop",
+  "productName": "StickerSnap",
+  "private": true,
+  "version": "0.1.0",
+  "description": "StickerSnap: Telegram video sticker editor",
+  "author": "StickerSnap <noreply@stickersnap.app>",
+  "homepage": "https://github.com/vafle228/StickerSnap",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "dist/main.js",
+  "exports": {
+    "./bridge": "./src/bridge.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "server": "tsx scripts/publish-server.ts",
+    "start": "npm run build && electron .",
+    "dev": "npm run build && electron . --dev-url=http://127.0.0.1:5176/?mock=desktop",
+    "package": "tsx scripts/package.ts",
+    "dist": "npm run build && electron-builder",
+    "e2e": "playwright test"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^20.19.43",
+    "electron": "44.7.0",
+    "electron-builder": "^26.15.3",
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^4.1.11"
+  }
+}

@@ -5,6 +5,7 @@ import { frameSprite } from "./frames";
 import { cancelJob, startJob } from "./jobs";
 import { createProject, estimate, file, upload, validate } from "./media";
 import { noContent, problem, route, webp } from "./route";
+import { runsAsDesktop } from "./scenarios";
 
 const BOT_TAIL = `_by_${app.botUsername}`;
 const CAT = "6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e51";
@@ -40,8 +41,8 @@ export function handlers(db: MockDb) {
     // ---------------------------------------------------------------- Приложение
     route("get", "/api/v1/app", () => ({
       status: 200,
-      // «Десктоп»: the server says it runs as the desktop app (folder buttons in Settings)
-      body: db.scenario === "desktop" ? { ...app, mode: "desktop" as const } : app,
+      // «Десктоп» or the desktop shell: the server says it runs as the desktop app («Папки»)
+      body: runsAsDesktop(db.scenario) ? { ...app, mode: "desktop" as const } : app,
     })),
     route("get", "/api/v1/settings", () => ({ status: 200, body: db.settings })),
     route("patch", "/api/v1/settings", ({ body }) => {

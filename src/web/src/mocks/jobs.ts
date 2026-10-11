@@ -13,6 +13,7 @@ import {
 import { fakeHub } from "./fakeHub";
 import type { Renderer } from "./render";
 import { problemOf } from "./route";
+import { runsAsDesktop } from "./scenarios";
 import { validationOf } from "./sources";
 
 /* Background jobs played by timer: progress through the stages, then the result, each step
@@ -151,7 +152,7 @@ function exportResult(
     segmentId: plan.segment.id,
     sceneRevision: revision,
     stale: false,
-    path: db.scenario === "desktop" ? `${db.settings.folders.stickers}/${fileName}` : undefined,
+    path: runsAsDesktop(db.scenario) ? `${db.settings.folders.stickers}/${fileName}` : undefined,
     fileUrl: `/api/v1/files/${fileId}`,
     bytes,
     output,

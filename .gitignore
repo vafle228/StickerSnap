@@ -8,6 +8,7 @@ desktop.ini
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+!.vscode/tasks.json
 *.sln.iml
 
 # ---- Node / Electron / React (TypeScript) ----
@@ -81,6 +82,8 @@ tmp/
 temp/
 
 # ---- Electron packaging ----
+# the server published for the shell (npm run server -w src/desktop)
+server-dist/
 *.AppImage
 *.deb
 *.rpm

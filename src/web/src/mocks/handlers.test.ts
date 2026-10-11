@@ -42,6 +42,27 @@ describe("demo server", () => {
     vi.unstubAllGlobals();
   });
 
+  describe("app", () => {
+    const mode = async () => (await call(api.GET("/api/v1/app"))).mode;
+
+    it("runs as the web version, and as the desktop app in «Десктоп»", async () => {
+      use("ok");
+      expect(await mode()).toBe("web");
+      use("desktop");
+      expect(await mode()).toBe("desktop");
+    });
+
+    it("runs as the desktop app in every scenario inside the desktop shell", async () => {
+      vi.stubGlobal("stickersnap", { server: {} });
+      try {
+        use("ok");
+        expect(await mode()).toBe("desktop");
+      } finally {
+        vi.stubGlobal("stickersnap", undefined);
+      }
+    });
+  });
+
   describe("projects", () => {
     it("lists the recent projects newest first", async () => {
       use("ok");

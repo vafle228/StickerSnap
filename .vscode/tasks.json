@@ -1,0 +1,40 @@
+{
+  // The desktop app from VS Code: Terminal → Run Task (or Ctrl+Shift+B for the production one).
+  // Production has no demo data or dev bar; dev is «StickerSnap Dev» with the demo scenarios.
+  // Output: src/desktop/release (production) and src/desktop/release/dev.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Приложение: прод",
+      "detail": "Распакованное приложение без демо-данных: release/win-unpacked или linux-unpacked",
+      "type": "shell",
+      "command": "npm run package -w src/desktop",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Приложение: dev",
+      "detail": "StickerSnap Dev с dev-полосой и демо-сценариями: release/dev",
+      "type": "shell",
+      "command": "npm run package -w src/desktop -- --dev",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Установщик: прод",
+      "detail": "NSIS на Windows, AppImage и deb на Linux",
+      "type": "shell",
+      "command": "npm run package -w src/desktop -- --installer",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Установщик: dev",
+      "detail": "Установщик StickerSnap Dev",
+      "type": "shell",
+      "command": "npm run package -w src/desktop -- --dev --installer",
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}
