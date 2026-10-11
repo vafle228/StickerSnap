@@ -29,9 +29,15 @@
   --radius-lg: 20px;
   --radius-xl: 24px;
   --radius-pill: 999px;
+  --duration-instant: 80ms;
   --duration-fast: 120ms;
   --duration-base: 200ms;
+  --duration-slow: 280ms;
   --ease-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-linear: linear;
+  --motion-shift: 8px;
+  --motion-scale: 0.96;
   --size-control: 40px;
   --size-control-sm: 32px;
   --size-row: 48px;
@@ -183,6 +189,15 @@
   --shadow-float: 0 18px 44px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
   --shadow-inset: inset 2px 2px 6px rgba(0, 0, 0, 0.55), inset -1px -1px 0 rgba(255, 255, 255, 0.03);
   --shadow-primary: 0 6px 14px rgba(143, 136, 255, 0.26);
+}
+
+/* Reduced motion: no shifts or scaling, only short fades (docs/ui-motion.md, section 3). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-slow: var(--duration-base);
+    --motion-shift: 0px;
+    --motion-scale: 1;
+  }
 }
 
 /* Accents (R20): one class on the app root recolors primary, selection, focus and the primary glow.
