@@ -12,6 +12,7 @@ import { fitScale } from "../model/zoom";
 import { CropFrame } from "./CropFrame";
 import { FramePoster } from "./FramePoster";
 import { GlassBar } from "./GlassBar";
+import { StageDrop } from "./StageDrop";
 import { usePlayback } from "./usePlayback";
 import styles from "./VideoStage.module.css";
 
@@ -156,6 +157,7 @@ export function VideoStage({ className }: { className?: string }) {
           loop: t(segment?.loop === "pingpong" ? "editor.loop.pingpong" : "editor.loop.normal"),
         })}
       </span>
+      <StageDrop />
     </section>
   );
 }

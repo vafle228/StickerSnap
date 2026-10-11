@@ -353,3 +353,20 @@
   font: inherit;
   font-weight: 600;
 }
+
+/* A file carried over the canvas, or being read (artboard 3c, 0 and A): the canvas's own area
+   gives way to the drop zone, inside its border, above the bar and the chips. */
+.over {
+  position: absolute;
+  inset: var(--space-4);
+  z-index: 3;
+  display: flex;
+  border-radius: var(--radius-xl);
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-inset);
+}
+
+.over > .overZone {
+  flex: 1;
+  margin: var(--space-4);
+}

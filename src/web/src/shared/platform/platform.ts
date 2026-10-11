@@ -6,18 +6,30 @@ import { serverConnection } from "./connection";
    Electron в 1b»). The browser uploads a file to the local server and downloads the .webm;
    Electron (1b) will pass paths and open system dialogs. Screens never ask which one runs. */
 
+/** A file the user picked or dropped, before the server has seen it. Its name is known at once,
+ *  so «Читаю «cat.gif»» can say which file is read while it is still uploading. */
+export interface LocalFile {
+  name: string;
+  /** The browser's file; Electron (1b) has a path instead */
+  file?: File;
+  path?: string;
+}
+
 export interface Platform {
   kind: "browser" | "electron";
   /** The browser has no file paths: no «Показать в папке», no opening .ssproj by path */
   hasPaths: boolean;
   /** «Выбрать файл»: a video or a GIF for import, null when the user cancels */
-  pickVideo(): Promise<SourceRef | null>;
+  pickVideo(): Promise<LocalFile | null>;
   /** A .webm for the checker (R8) */
-  pickWebm(): Promise<SourceRef | null>;
+  pickWebm(): Promise<LocalFile | null>;
   /** «Открыть файл…» in «Проекты»: the path of a .ssproj, null on cancel. Only with paths. */
   pickProject(): Promise<string | null>;
   /** A file dropped on the window */
-  sourceOf(file: File): Promise<SourceRef>;
+  dropped(file: File): LocalFile;
+  /** What the server reads the file by: a path, or the browser's upload. `signal` stops the
+   *  upload («Отменить» while «Читаю файл»). */
+  sourceOf(file: LocalFile, signal?: AbortSignal): Promise<SourceRef>;
   /** Saves a rendered file (GET /api/v1/files/{fileId}); in the browser it is a download (R9) */
   saveFile(fileUrl: string, fileName: string): Promise<void>;
   /** A t.me link or another external page */
@@ -46,9 +58,12 @@ function chooseFile(accept: string): Promise<File | null> {
 }
 
 /** POST /api/v1/uploads: the bytes go to the local server, the scene keeps only the uploadId. */
-async function upload(file: File): Promise<SourceRef> {
+async function upload({ file, path }: LocalFile, signal?: AbortSignal): Promise<SourceRef> {
+  if (path) return { kind: "path", path };
+  if (!file) throw new Error("A local file has neither bytes nor a path");
   const { uploadId } = await call(
     api.POST("/api/v1/uploads", {
+      signal,
       // schema.d.ts types the binary part as a string; the serializer sends the File itself
       body: { file: file as unknown as string },
       bodySerializer: () => {
@@ -61,17 +76,18 @@ async function upload(file: File): Promise<SourceRef> {
   return { kind: "upload", uploadId };
 }
 
-async function pickAndUpload(accept: string) {
+async function pick(accept: string): Promise<LocalFile | null> {
   const file = await chooseFile(accept);
-  return file ? upload(file) : null;
+  return file ? { name: file.name, file } : null;
 }
 
 export const browserPlatform: Platform = {
   kind: "browser",
   hasPaths: false,
-  pickVideo: () => pickAndUpload(VIDEO_TYPES),
-  pickWebm: () => pickAndUpload(".webm,video/webm"),
+  pickVideo: () => pick(VIDEO_TYPES),
+  pickWebm: () => pick(".webm,video/webm"),
   pickProject: () => Promise.resolve(null),
+  dropped: (file) => ({ name: file.name, file }),
   sourceOf: upload,
   async saveFile(fileUrl, fileName) {
     // The token goes in a header, so the file is fetched first and then handed to the browser.

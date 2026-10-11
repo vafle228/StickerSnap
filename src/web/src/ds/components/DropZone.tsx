@@ -13,6 +13,8 @@ export interface DropZoneProps {
   variant?: "zone" | "tile";
   /** The main button drawn inside the zone («Выбрать видео…»); the whole zone is that button */
   action?: string;
+  /** A quiet line under the button («Готовый стикер .webm тоже можно бросить сюда…») */
+  note?: ReactNode;
   /** A file is being read: the zone takes no clicks or drops */
   busy?: boolean;
   /** Force the drag-over look (rainbow dashes) */
@@ -31,6 +33,7 @@ export function DropZone({
   icon,
   variant = "zone",
   action,
+  note,
   busy,
   dragging,
   onFiles,
@@ -92,6 +95,7 @@ export function DropZone({
           {action}
         </span>
       )}
+      {note && <p className="ss-drop-note">{note}</p>}
     </button>
   );
 }

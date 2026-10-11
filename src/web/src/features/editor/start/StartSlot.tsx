@@ -3,8 +3,11 @@ import { useApp } from "../../../app/store";
 import { mediaSrc } from "../../../shared/api/client";
 import { useProjects } from "../../../shared/api/queries";
 import { t } from "../../../shared/strings/ru";
-import { useImport, useProjectActions } from "../../projects/actions";
+import { useProjectActions } from "../../projects/actions";
+import { useFileDrag } from "../../projects/drop";
 import { when } from "../../projects/format";
+import { ReadingFile } from "../../projects/ReadingFile";
+import { useImport } from "../../projects/reading";
 import { RecentCover } from "./RecentCover";
 import styles from "./StartSlot.module.css";
 
@@ -18,20 +21,27 @@ export function StartSlot({ className }: { className?: string }) {
   const setSection = useApp((s) => s.setSection);
   const recent = useProjects().data?.slice(0, RECENT) ?? [];
   const reading = useImport((s) => s.reading);
-  const { create } = useProjectActions();
+  const over = useFileDrag((s) => s.over);
+  const { create, openDropped } = useProjectActions();
 
   return (
     <div className={`${styles.start} ${className ?? ""}`}>
-      <DropZone
-        className={styles.zone}
-        title={reading ? t("start.reading") : t("start.title")}
-        hint={reading ? null : t("start.hint")}
-        dropTitle={t("start.drop")}
-        action={reading ? undefined : t("start.pick")}
-        busy={reading}
-        onClick={() => void create()}
-        onFiles={(files) => files[0] && void create(files[0])}
-      />
+      {reading?.slow ? (
+        <ReadingFile className={styles.zone} />
+      ) : (
+        <DropZone
+          className={styles.zone}
+          title={t("start.title")}
+          hint={t("start.hint")}
+          dropTitle={t("start.drop")}
+          action={t("start.pick")}
+          note={t("start.webm")}
+          busy={reading !== undefined}
+          dragging={over}
+          onClick={() => void create()}
+          onFiles={(files) => files[0] && openDropped(files[0])}
+        />
+      )}
 
       {recent.length > 0 && (
         <section className={styles.recent} aria-labelledby="start-recent">
