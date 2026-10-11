@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefCallback,
+  type RefObject,
+} from "react";
 
 /** The latest value in a ref, for event handlers and timers that must not restart effects. */
 export function useLatest<T>(value: T) {
@@ -42,4 +50,84 @@ export function useClickOutside(
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [active, ref, handler]);
+}
+
+/** Longest exit (duration-fast + duration-base of a collapsing toast slot) with room to spare.
+ *  Without a transition (jsdom, display: none) the element leaves after this. */
+export const EXIT_FALLBACK_MS = 400;
+
+export type PresenceState = "open" | "closed";
+
+export interface Presence {
+  /** Render the element while this is true */
+  mounted: boolean;
+  /** data-state for the CSS: "closed" while the exit transition runs */
+  state: PresenceState;
+  /** False when the element was open from the first render: it is already on screen, no entry
+   *  (principle 5 of docs/ui-motion.md). Put it on the element as data-appear. */
+  appear: boolean;
+  ref: RefCallback<HTMLElement>;
+}
+
+/** Keeps a closing element mounted with data-state="closed" until its exit transition ends.
+ *  Entry comes from @starting-style in the CSS. While closing the element is inert: clicks and
+ *  focus go past it at once. Ends on transitionend of the element itself (not its children),
+ *  or after EXIT_FALLBACK_MS when no transition runs. */
+export function usePresence(open: boolean, onExited?: () => void): Presence {
+  const [mounted, setMounted] = useState(open);
+  const [appear, setAppear] = useState(!open);
+  const element = useRef<HTMLElement | null>(null);
+  const exited = useLatest(onExited);
+
+  if (open && !mounted) setMounted(true);
+  if (!open && !appear) setAppear(true);
+
+  useLayoutEffect(() => {
+    const el = element.current;
+    if (el) {
+      el.inert = !open;
+      // Out of the accessibility tree at once, like the focus and the clicks.
+      if (open) el.removeAttribute("aria-hidden");
+      else el.setAttribute("aria-hidden", "true");
+    }
+    if (open || !mounted) return undefined;
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      setMounted(false);
+      exited.current?.();
+    };
+    const onEnd = (e: TransitionEvent) => {
+      if (e.target === el) finish();
+    };
+    el?.addEventListener("transitionend", onEnd);
+    const timer = window.setTimeout(finish, EXIT_FALLBACK_MS);
+    return () => {
+      el?.removeEventListener("transitionend", onEnd);
+      window.clearTimeout(timer);
+    };
+  }, [open, mounted, exited]);
+
+  const ref = useCallback((el: HTMLElement | null) => {
+    element.current = el;
+  }, []);
+
+  return { mounted, state: open ? "open" : "closed", appear, ref };
+}
+
+/** The system asks for less motion («Эффекты анимации» off in Windows). For JS-driven motion
+ *  only: CSS gets the calm values from the tokens. */
+export function prefersReducedMotion() {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true
+  );
+}
+
+/** Turns off every transition for two frames, e.g. while the theme repaints the whole window:
+ *  otherwise buttons follow the new colors late and the screen smears in patches. */
+export function freezeMotion(root: HTMLElement = document.documentElement) {
+  root.classList.add("ss-no-motion");
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("ss-no-motion")));
 }

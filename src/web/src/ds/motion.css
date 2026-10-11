@@ -1,0 +1,321 @@
+/* Motion (docs/ui-motion.md, «Движение в интерфейсе»). Local addition to the design system.
+   Durations and curves come only from the tokens; tokens.css drops the shifts and the scale
+   under prefers-reduced-motion, so nothing here needs its own media query except the loops.
+   Entry: @starting-style, the element mounts already open. Exit: data-state="closed" from
+   usePresence (hooks.ts), which keeps the element until its transition ends.
+   Never animated: the focus ring, menu item highlight, sliders, the playhead, anything dragged. */
+
+/* Theme or accent change: no transitions for two frames (freezeMotion), or buttons repaint late
+   and the window smears in patches. */
+.ss-no-motion,
+.ss-no-motion *,
+.ss-no-motion *::before,
+.ss-no-motion *::after {
+  transition: none !important;
+}
+
+/* A text that changes in place (a badge, «Скопировано»): the new one fades in. */
+.ss-swap {
+  transition: opacity var(--duration-instant) var(--ease-soft);
+}
+@starting-style {
+  .ss-swap {
+    opacity: 0;
+  }
+}
+
+/* Window scrim and window: grows from the center slightly above its place. */
+.ss-overlay {
+  transition: opacity var(--duration-base) var(--ease-soft);
+}
+.ss-dialog {
+  transition:
+    opacity var(--duration-base) var(--ease-soft),
+    transform var(--duration-base) var(--ease-soft);
+}
+.ss-dialog[role="alertdialog"] {
+  transition-duration: var(--duration-fast);
+}
+.ss-overlay[data-state="closed"] {
+  opacity: 0;
+  pointer-events: none;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-exit);
+}
+.ss-overlay[data-state="closed"] .ss-dialog {
+  opacity: 0;
+  transform: scale(0.98);
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-exit);
+}
+@starting-style {
+  .ss-overlay {
+    opacity: 0;
+  }
+  .ss-dialog {
+    opacity: 0;
+    transform: translateY(calc(var(--motion-shift) / -2)) scale(var(--motion-scale));
+  }
+}
+.ss-overlay-inline,
+.ss-overlay-inline .ss-dialog {
+  transition: none;
+}
+
+/* Popover, menu, Select list: grows out of its button (--ss-origin), leaves without scaling. */
+.ss-pop {
+  transform-origin: var(--ss-origin, top right);
+  transition:
+    opacity var(--duration-fast) var(--ease-soft),
+    transform var(--duration-fast) var(--ease-soft);
+}
+.ss-pop[data-state="closed"] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-instant) var(--ease-exit);
+}
+@starting-style {
+  .ss-pop {
+    opacity: 0;
+    transform: scale(var(--motion-scale));
+  }
+}
+.ss-select-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  --ss-origin: top center;
+}
+.ss-select-pop > .ss-menu {
+  position: static;
+}
+.ss-save-pop.ss-pop {
+  --ss-origin: top right;
+}
+
+/* Height that opens and closes (banner, a warning row, a toast slot, the progress of a toast):
+   grid rows 0fr ↔ 1fr. Shadows overflow the clip a little so they are not cut while open. */
+.ss-collapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows var(--duration-base) var(--ease-soft),
+    opacity var(--duration-base) var(--ease-soft);
+}
+.ss-collapse > .ss-collapse-inner {
+  min-height: 0;
+  overflow: clip;
+  overflow-clip-margin: var(--space-4);
+}
+.ss-collapse[data-state="closed"] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition-timing-function: var(--ease-exit);
+}
+@starting-style {
+  .ss-collapse:not([data-appear="false"]) {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+/* Toasts: come up from below, leave to the right edge, then their place closes up so the stack
+   above slides down instead of jumping. The gap lives in each slot, so it closes with it. */
+.ss-toasts {
+  gap: 0;
+  pointer-events: none;
+}
+.ss-toast-slot {
+  display: grid;
+  grid-template-rows: 1fr;
+  padding-top: var(--space-3);
+  transition:
+    grid-template-rows var(--duration-base) var(--ease-soft),
+    padding-top var(--duration-base) var(--ease-soft);
+}
+.ss-toast-slot:first-child {
+  padding-top: 0;
+}
+.ss-toast-slot > .ss-toast-clip {
+  min-height: 0;
+}
+.ss-toast-slot[data-state="closed"] {
+  grid-template-rows: 0fr;
+  padding-top: 0;
+  transition-delay: var(--duration-fast);
+}
+.ss-toast {
+  pointer-events: auto;
+  transition:
+    opacity var(--duration-base) var(--ease-soft),
+    transform var(--duration-base) var(--ease-soft);
+}
+.ss-toast-slot[data-state="closed"] .ss-toast {
+  opacity: 0;
+  transform: translateX(calc(var(--motion-shift) * 2));
+  pointer-events: none;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-exit);
+}
+@starting-style {
+  .ss-toast-slot .ss-toast {
+    opacity: 0;
+    transform: translateY(var(--motion-shift));
+  }
+}
+.ss-toasts-inline .ss-toast {
+  transition: none;
+}
+/* A running task turns into its result in place: the tone icon pops in, the bar closes. */
+.ss-tone-glyph {
+  display: grid;
+  place-items: center;
+  transition:
+    opacity var(--duration-fast) var(--ease-soft),
+    transform var(--duration-fast) var(--ease-soft);
+}
+@starting-style {
+  .ss-toast .ss-tone-glyph {
+    opacity: 0;
+    transform: scale(calc(1 - (1 - var(--motion-scale)) * 5));
+  }
+}
+
+/* Progress runs evenly; the rainbow of a send to Telegram flows while it works. */
+.ss-progress-fill {
+  transition: width var(--duration-base) var(--ease-linear);
+}
+.ss-progress-rainbow .ss-progress-fill {
+  background-size: 200% 100%;
+  background-image: linear-gradient(
+    90deg,
+    var(--prism-peach),
+    var(--prism-pink),
+    var(--prism-lilac),
+    var(--prism-sky),
+    var(--prism-peach)
+  );
+  animation: ss-rainbow 2.4s var(--ease-linear) infinite;
+}
+@keyframes ss-rainbow {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ss-progress-rainbow .ss-progress-fill {
+    animation: none;
+  }
+}
+
+/* A field hint drops in under its field. */
+.ss-field-hint {
+  transition:
+    opacity var(--duration-fast) var(--ease-soft),
+    transform var(--duration-fast) var(--ease-soft);
+}
+@starting-style {
+  .ss-field-hint {
+    opacity: 0;
+    transform: translateY(calc(var(--motion-shift) / -2));
+  }
+}
+
+/* Added emoji chip; the blue dot of a running send on «Мои паки». Neither pulses. */
+.ss-emoji {
+  transition:
+    opacity var(--duration-fast) var(--ease-soft),
+    transform var(--duration-fast) var(--ease-soft);
+}
+@starting-style {
+  .ss-emoji {
+    opacity: 0;
+    transform: scale(calc(1 - (1 - var(--motion-scale)) * 5));
+  }
+}
+.ss-rail-dot {
+  transition: transform var(--duration-base) var(--ease-soft);
+}
+@starting-style {
+  .ss-rail-dot {
+    transform: scale(0);
+  }
+}
+
+/* Rail: the active item recolors, its plate does not travel. Section table of contents too. */
+.ss-rail-item {
+  transition:
+    color var(--duration-fast) var(--ease-soft),
+    background-color var(--duration-fast) var(--ease-soft),
+    box-shadow var(--duration-fast) var(--ease-soft);
+}
+.ss-secnav a,
+.ss-secnav button {
+  transition:
+    color var(--duration-fast) var(--ease-soft),
+    background-color var(--duration-fast) var(--ease-soft);
+}
+
+/* Segmented and Tabs: one plate (one underline) per group slides to the chosen item.
+   No transition on the first paint (is-ready comes after the first measure). */
+.ss-seg {
+  position: relative;
+}
+.ss-seg button {
+  position: relative;
+  z-index: 1;
+  transition: color var(--duration-fast) var(--ease-soft);
+}
+.ss-seg.has-thumb button.is-active {
+  background: transparent;
+  box-shadow: none;
+}
+.ss-seg-thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-raised);
+  pointer-events: none;
+}
+.ss-tabs {
+  position: relative;
+}
+.ss-tabs.has-thumb .ss-tab.is-active::after {
+  content: none;
+}
+.ss-tabs-bar {
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  pointer-events: none;
+}
+:is(.ss-seg-thumb, .ss-tabs-bar).is-ready {
+  transition:
+    transform var(--duration-base) var(--ease-soft),
+    width var(--duration-base) var(--ease-soft);
+}
+
+/* A section that opens fades in, also the editor coming back from hidden (display: none counts
+   as a start). The old one is gone at once: two screens at a time confuse. */
+.ss-section {
+  transition: opacity var(--duration-fast) var(--ease-soft);
+}
+.ss-section-slow {
+  transition-duration: var(--duration-base);
+}
+@starting-style {
+  .ss-section {
+    opacity: 0;
+  }
+}
