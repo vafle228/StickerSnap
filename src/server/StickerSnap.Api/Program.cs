@@ -1,10 +1,12 @@
 using System.Runtime.InteropServices;
 using StickerSnap.Api.Endpoints;
+using StickerSnap.Api.Events;
 using StickerSnap.Api.Json;
 using StickerSnap.Api.Problems;
 using StickerSnap.Api.Shell;
 using StickerSnap.Application;
 using StickerSnap.Application.App;
+using StickerSnap.Application.Events;
 using StickerSnap.Core.Errors;
 using StickerSnap.Infrastructure;
 using StickerSnap.Infrastructure.Ffmpeg;
@@ -21,6 +23,10 @@ builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(options => ContractJson.Apply(options.SerializerOptions));
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = Problem.Complete);
 builder.Services.AddExceptionHandler<ProblemExceptionHandler>();
+
+// The hub only sends events, with the same JSON as REST.
+builder.Services.AddSignalR().AddJsonProtocol(options => ContractJson.Apply(options.PayloadSerializerOptions));
+builder.Services.AddSingleton<IEventPublisher, HubEventPublisher>();
 
 // The desktop shell passes its token, the mode and its pid (src/desktop/src/server.ts).
 builder.Services.Configure<ShellOptions>(builder.Configuration.GetSection(ShellOptions.Section));
@@ -45,7 +51,8 @@ if (app.Environment.IsDevelopment()) app.MapOpenApi();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.MapGroup("/api/v1").MapApp();
+app.MapGroup("/api/v1").MapApp().MapSettings();
+app.MapHub<EventsHub>(EventsHub.Path);
 
 // An API path without a handler is a mistake of the SPA: bad_request, never the SPA page.
 // An unknown hub is a plain 404, as SignalR answers.
