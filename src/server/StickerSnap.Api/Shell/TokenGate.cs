@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 
-namespace StickerSnap.Server.Shell;
+namespace StickerSnap.Api.Shell;
 
 /// <summary>
 /// Lets into /api and /hubs only the window the shell opened: every request carries the launch's

@@ -5,9 +5,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using StickerSnap.Server.Shell;
+using StickerSnap.Api.Shell;
 
-namespace StickerSnap.Server.Tests;
+namespace StickerSnap.Tests;
 
 /// <summary>The server as the desktop shell starts it: StickerSnap__Token, __Mode and __ParentPid.</summary>
 public sealed class ShellTests

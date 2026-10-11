@@ -2,7 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
-namespace StickerSnap.Server.Tests;
+namespace StickerSnap.Tests;
 
 /// <summary>The server serves the SPA, and an unknown API path never gets the SPA page.</summary>
 public sealed class SpaHostTests : IClassFixture<SpaHostTests.Factory>

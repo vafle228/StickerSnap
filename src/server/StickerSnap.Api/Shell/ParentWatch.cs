@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Options;
 
-namespace StickerSnap.Server.Shell;
+namespace StickerSnap.Api.Shell;
 
 /// <summary>
 /// Stops the server when the shell that started it is gone. A normal quit stops the server

@@ -26,7 +26,7 @@ pnpm-debug.log*
 dist/
 dist-electron/
 # Vite builds the SPA into the server's wwwroot
-src/server/wwwroot/
+src/server/StickerSnap.Api/wwwroot/
 build/
 out/
 release/

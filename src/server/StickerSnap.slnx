@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="StickerSnap.Api/StickerSnap.Api.csproj" />
+  <Project Path="StickerSnap.Tests/StickerSnap.Tests.csproj" />
+</Solution>

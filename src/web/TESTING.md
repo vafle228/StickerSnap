@@ -9,7 +9,7 @@ npm test                  # юнит-, контрактные и компоне�
 npm test -- timeline      # только файлы, в пути которых есть «timeline»
 cd src/web && npx vitest  # режим наблюдения
 npm run e2e               # e2e в Chromium; первый раз: cd src/web && npx playwright install chromium
-dotnet test --solution StickerSnap.slnx   # тесты сервера
+cd src/server && dotnet test --solution StickerSnap.slnx   # тесты сервера
 ```
 
 CI запускает `npm test` в job «SPA» вместе с lint, проверкой форматирования и сборкой, а
@@ -83,6 +83,6 @@ Platform для Electron проверяется в SPA (`shared/platform/electro
 
 ## Сервер
 
-`tests/StickerSnap.Server.Tests`: xUnit v3 на Microsoft.Testing.Platform (включён в `global.json`)
+`src/server/StickerSnap.Tests`: xUnit v3 на Microsoft.Testing.Platform (включён в `src/server/global.json`)
 и `WebApplicationFactory<Program>`. Тест приложения поднимает его в памяти со своим `wwwroot`,
 сборка SPA не нужна. Эндпоинт приходит вместе со своими тестами.

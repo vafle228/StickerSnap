@@ -1,4 +1,4 @@
-using StickerSnap.Server.Shell;
+using StickerSnap.Api.Shell;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,5 +24,5 @@ app.MapFallbackToFile("index.html");
 
 app.Run();
 
-// WebApplicationFactory<Program> in tests/StickerSnap.Server.Tests starts the app from here.
+// WebApplicationFactory<Program> in StickerSnap.Tests starts the app from here.
 public partial class Program;

@@ -30,14 +30,14 @@ export const runtimeId = (platform: NodeJS.Platform, arch: string) =>
 /** The installed app runs its published server from resources/server. From the repository it
  *  takes the one `npm run server` published into server-dist, or builds and runs the source. */
 export function serverCommand(layout: Layout): ServerCommand {
-  const exe = layout.platform === "win32" ? "StickerSnap.Server.exe" : "StickerSnap.Server";
+  const exe = layout.platform === "win32" ? "StickerSnap.Api.exe" : "StickerSnap.Api";
   const dir = layout.packaged
     ? join(layout.resourcesPath, "server")
     : join(layout.appPath, "server-dist", runtimeId(layout.platform, layout.arch));
   if (layout.packaged || layout.exists(join(dir, exe))) {
     return { command: join(dir, exe), args: [], cwd: dir };
   }
-  const project = join(layout.appPath, "..", "server");
+  const project = join(layout.appPath, "..", "server", "StickerSnap.Api");
   return {
     command: "dotnet",
     args: ["run", "--project", project, "--no-launch-profile"],

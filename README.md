@@ -80,11 +80,11 @@ Requires Node.js 20 and the .NET 10 SDK.
 
 ```sh
 npm install
-dotnet run --project src/server   # API on http://127.0.0.1:5180
+dotnet run --project src/server/StickerSnap.Api   # API on http://127.0.0.1:5180
 npm run dev                       # SPA with HMR on http://127.0.0.1:5173, proxies /api and /hubs
 ```
 
-`npm run build` puts the SPA into `src/server/wwwroot`, and the server then serves it on its own port.
+`npm run build` puts the SPA into `src/server/StickerSnap.Api/wwwroot`, and the server then serves it on its own port.
 Design tokens come from `src/web/src/ds/tokens.json`; after changing it run `npm run gen:tokens`.
 The design system components live in `src/web/src/ds` (import them from `src/ds`); the dev server shows
 all of them in both themes and five accents at http://127.0.0.1:5173/?showcase.
@@ -113,7 +113,7 @@ VS Code has the same four builds in Terminal → Run Task («Приложени�
 «Установщик: прод», «Установщик: dev»). `npm run package` builds the SPA (`npm run build`, or
 `npm run build:dev` with `--dev`), publishes the self-contained server and runs electron-builder,
 taking a Node 22 from npx when the installed one is older. The production SPA never carries the demo
-data or the dev bar: `npm run check:prod-build` checks `src/server/wwwroot`, and CI runs it after
+data or the dev bar: `npm run check:prod-build` checks `src/server/StickerSnap.Api/wwwroot`, and CI runs it after
 every build. CI packages only production; the workflow «Desktop» builds the installers for both
 systems on every PR that touches the app.
 
