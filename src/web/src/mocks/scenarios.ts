@@ -26,3 +26,9 @@ export type Scenario = keyof typeof SCENARIOS;
 export function isScenario(value: string | null): value is Scenario {
   return value !== null && value in SCENARIOS;
 }
+
+/** Whether the demo server answers as the desktop app (mode, export paths): in «Десктоп», and in
+ *  every scenario inside the desktop shell, where the real server always says desktop. */
+export function runsAsDesktop(scenario: Scenario): boolean {
+  return scenario === "desktop" || globalThis.stickersnap !== undefined;
+}
