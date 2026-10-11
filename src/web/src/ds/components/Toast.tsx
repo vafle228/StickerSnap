@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { cx } from "../cx";
 import { useLatest } from "../hooks";
 import { TONE_ICON, type Tone } from "../types";
+import { Collapse } from "./Collapse";
 import { Icon, type IconName } from "./Icon";
 import { IconButton } from "./IconButton";
 import { Progress } from "./Progress";
@@ -26,6 +27,9 @@ export interface ToastProps {
    *  Hover pauses. */
   timeout?: number | null;
   onClose?: () => void;
+  /** Closed: ToastStack lets it leave to the right and closes its place, then calls onExited */
+  leaving?: boolean;
+  onExited?: () => void;
   className?: string;
 }
 
@@ -54,6 +58,7 @@ export function Toast(props: ToastProps) {
     progressLabel,
     progressVariant,
     onClose,
+    leaving,
     className,
   } = props;
   const timeout = toastTimeout(props);
@@ -62,7 +67,7 @@ export function Toast(props: ToastProps) {
   const closable = onClose !== undefined;
 
   useEffect(() => {
-    if (!timeout || !closable) return undefined;
+    if (!timeout || !closable || leaving) return undefined;
     let left = timeout;
     let last = Date.now();
     const timer = window.setInterval(() => {
@@ -75,9 +80,10 @@ export function Toast(props: ToastProps) {
       }
     }, 250);
     return () => window.clearInterval(timer);
-  }, [timeout, closable, close]);
+  }, [timeout, closable, leaving, close]);
 
   const running = progress != null;
+  const glyph = running ? "spinner" : (icon ?? TONE_ICON[tone]);
   return (
     <div
       className={cx("ss-toast", `ss-tone-${tone}`, className)}
@@ -86,12 +92,17 @@ export function Toast(props: ToastProps) {
       onMouseLeave={() => (paused.current = false)}
     >
       <div className="ss-tone-icon" aria-hidden>
-        <Icon name={running ? "spinner" : (icon ?? TONE_ICON[tone])} size={18} strokeWidth={2} />
+        {/* A new tone pops in: a task turned into its result in the same toast */}
+        <span key={glyph} className="ss-tone-glyph">
+          <Icon name={glyph} size={18} strokeWidth={2} />
+        </span>
       </div>
       <div className="ss-toast-body">
         <p className="ss-toast-title">{title}</p>
         {description && <p className="ss-toast-desc">{description}</p>}
-        {running && <Progress value={progress} label={progressLabel} variant={progressVariant} />}
+        <Collapse open={running}>
+          <Progress value={progress ?? 100} label={progressLabel} variant={progressVariant} />
+        </Collapse>
         {(action || secondaryAction) && (
           <div className="ss-toast-actions">
             {action}

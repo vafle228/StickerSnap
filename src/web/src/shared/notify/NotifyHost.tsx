@@ -31,6 +31,8 @@ export function NotifyHost() {
           progressLabel={toast.progressLabel}
           progressVariant={toast.progressVariant}
           timeout={toast.timeout}
+          leaving={toast.leaving}
+          onExited={() => notify.exited(toast.id)}
           onClose={() => {
             notify.close(toast.id);
             toast.onClose?.();

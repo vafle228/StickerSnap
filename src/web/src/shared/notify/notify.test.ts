@@ -1,12 +1,18 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EXIT_FALLBACK_MS } from "../../ds/hooks";
 import { ApiError } from "../api/client";
 import { notify, useToasts } from "./notify";
 import { notifyProblem, problemText, toProblem } from "./problems";
 
-const titles = () => useToasts.getState().toasts.map((t) => t.title);
+const titles = () =>
+  useToasts
+    .getState()
+    .toasts.filter((t) => !t.leaving)
+    .map((t) => t.title);
 
 describe("notify", () => {
   beforeEach(() => useToasts.setState({ toasts: [] }));
+  afterEach(() => vi.useRealTimers());
 
   it("keeps three toasts: a fourth pushes out the oldest info, never an error", () => {
     notify.toast({ tone: "danger", title: "error" });
@@ -15,6 +21,28 @@ describe("notify", () => {
     notify.toast({ tone: "info", title: "new info" });
 
     expect(titles()).toEqual(["error", "done", "new info"]);
+  });
+
+  it("lets a closed toast leave before it is gone from the store", () => {
+    vi.useFakeTimers();
+    const toast = notify.toast({ tone: "info", title: "Скопировано" });
+    toast.close();
+
+    expect(useToasts.getState().toasts).toMatchObject([{ id: toast.id, leaving: true }]);
+    vi.advanceTimersByTime(EXIT_FALLBACK_MS);
+    expect(useToasts.getState().toasts).toEqual([]);
+  });
+
+  it("does not count a leaving toast among the three", () => {
+    vi.useFakeTimers();
+    notify.toast({ tone: "info", title: "first" });
+    notify.toast({ tone: "info", title: "second" });
+    notify.toast({ tone: "info", title: "third" });
+    notify.toast({ tone: "info", title: "fourth" });
+    notify.toast({ tone: "info", title: "fifth" });
+
+    expect(titles()).toEqual(["third", "fourth", "fifth"]);
+    expect(useToasts.getState().toasts.filter((t) => t.leaving)).toHaveLength(2);
   });
 
   it("turns a running task into its result in the same toast", () => {

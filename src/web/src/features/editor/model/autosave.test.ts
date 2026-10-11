@@ -57,7 +57,7 @@ afterEach(() => {
 });
 
 const state = () => useSave.getState().state;
-const toasts = () => useToasts.getState().toasts;
+const toasts = () => useToasts.getState().toasts.filter((t) => !t.leaving);
 
 describe("autosave", () => {
   it("sends the scene a second after the last edit, with the revision it was based on", async () => {
