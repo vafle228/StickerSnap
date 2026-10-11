@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HOTKEYS } from "../../shared/hotkeys";
-import { hotkeysByScope, versionsLine } from "./model";
+import { ffmpegText, hotkeysByScope, versionsLine } from "./model";
 import { sectionAt } from "./useActiveSection";
 
 describe("sectionAt", () => {
@@ -27,21 +27,37 @@ describe("hotkeysByScope", () => {
 });
 
 describe("versionsLine", () => {
+  const app = {
+    appVersion: "0.1.0",
+    ffmpeg: { status: "ok" as const, version: "9.0.2" },
+    apiVersion: "1.0.0",
+    mode: "web" as const,
+    botUsername: "StickerSnapAppBot",
+    limits: {
+      sticker: { maxBytes: 262144, side: 512, maxDurationSec: 3, maxFps: 30 },
+      emoji: { maxBytes: 262144, side: 100, maxDurationSec: 3, maxFps: 30 },
+      packCapacity: { regular: 120, custom_emoji: 200 },
+    },
+  };
+
   it("joins the versions in one line", () => {
-    const app = {
-      appVersion: "0.1.0",
-      ffmpegVersion: "7.1",
-      apiVersion: "1.0.0",
-      mode: "web" as const,
-      botUsername: "StickerSnapAppBot",
-      limits: {
-        sticker: { maxBytes: 262144, side: 512, maxDurationSec: 3, maxFps: 30 },
-        emoji: { maxBytes: 65536, side: 100, maxDurationSec: 3, maxFps: 30 },
-        packCapacity: { regular: 120, custom_emoji: 200 },
-      },
-    };
     expect(versionsLine(app, "Windows")).toBe(
-      "StickerSnap 0.1.0 · FFmpeg 7.1 · API 1.0.0 · web · Windows",
+      "StickerSnap 0.1.0 · FFmpeg 9.0.2 · API 1.0.0 · web · Windows",
     );
+  });
+
+  it("says why FFmpeg cannot be used", () => {
+    const old = { ...app, ffmpeg: { status: "too_old" as const, version: "7.1" } };
+    const missing = { ...app, ffmpeg: { status: "missing" as const } };
+    expect(versionsLine(old, "Linux")).toContain("· FFmpeg 7.1 too_old ·");
+    expect(versionsLine(missing, "Linux")).toContain("· FFmpeg missing ·");
+  });
+});
+
+describe("ffmpegText", () => {
+  it("shows the version, or why there is no FFmpeg to render with", () => {
+    expect(ffmpegText({ status: "ok", version: "9.0.2" })).toBe("9.0.2");
+    expect(ffmpegText({ status: "too_old", version: "7.1" })).toBe("7.1, нужна 9.0 или новее");
+    expect(ffmpegText({ status: "missing" })).toBe("не найден");
   });
 });

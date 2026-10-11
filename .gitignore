@@ -72,6 +72,8 @@ secrets.json
 
 # ---- FFmpeg binaries and render output ----
 ffmpeg/
+# the server's Ffmpeg folders are code (git ignores case on Windows)
+!src/server/**/Ffmpeg/
 ffmpeg.exe
 ffprobe.exe
 ffmpeg-*/

@@ -1,17 +1,29 @@
 import { HOTKEYS, type Hotkey, type HotkeyScope } from "../../shared/hotkeys";
 import type { AppInfo } from "../../shared/api/types";
+import { t } from "../../shared/strings/ru";
 
 // What the Settings sections show, apart from the components: tested without a DOM.
 
 /** What «Скопировать версии» puts on the clipboard: one line for a bug report. */
 export function versionsLine(app: AppInfo, platform: string): string {
+  const { status, version } = app.ffmpeg;
+  const ffmpeg = status === "ok" ? version : [version, status].filter(Boolean).join(" ");
   return [
     `StickerSnap ${app.appVersion}`,
-    `FFmpeg ${app.ffmpegVersion}`,
+    `FFmpeg ${ffmpeg}`,
     `API ${app.apiVersion}`,
     app.mode,
     platform,
   ].join(" · ");
+}
+
+/** FFmpeg in «О программе»: its version, or why there is none to render with. */
+export function ffmpegText(ffmpeg: AppInfo["ffmpeg"]): string {
+  if (ffmpeg.status === "missing") return t("settings.about.ffmpegMissing");
+  if (ffmpeg.status === "too_old") {
+    return t("settings.about.ffmpegTooOld", { version: ffmpeg.version ?? "" });
+  }
+  return ffmpeg.version ?? "";
 }
 
 const SCOPES: readonly HotkeyScope[] = ["editor", "projects"];

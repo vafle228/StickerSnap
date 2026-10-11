@@ -497,6 +497,8 @@ export const ru = {
   "settings.folders.open": "Открыть",
   "settings.keys.text": "Только для справки. Назначать свои клавиши можно будет позже.",
   "settings.about.versions": "Версия {app} · FFmpeg {ffmpeg} · Windows и Linux",
+  "settings.about.ffmpegMissing": "не найден",
+  "settings.about.ffmpegTooOld": "{version}, нужна 9.0 или новее",
   "settings.about.copy": "Скопировать версии",
   "settings.about.copied": "Версии скопированы",
   "settings.about.copiedText": "Приложите их к сообщению об ошибке.",
@@ -533,6 +535,13 @@ export const ru = {
   "error.cannot_fit.title": "Стикер не влезает в лимит",
   "error.cannot_fit.text":
     "Даже с самым сильным сжатием файл больше лимита. Укоротите или ускорьте отрезок.",
+  "error.ffmpeg_missing.title": "FFmpeg не найден",
+  "error.ffmpeg_missing.text":
+    "Без FFmpeg 9.0 или новее видео не обработать. Переустановите StickerSnap.",
+  "error.job_not_found.title": "Задача не найдена",
+  "error.job_not_found.text": "Её уже нет на сервере. Запустите её ещё раз.",
+  "error.file_not_found.title": "Файл не найден",
+  "error.file_not_found.text": "Его уже нет на сервере. Сделайте экспорт ещё раз.",
   "error.validation_failed.title": "Не проходит проверку Telegram",
   "error.validation_failed.text": "Откройте проверку, чтобы увидеть, какое правило нарушено.",
   "error.account_not_linked.title": "Telegram не привязан",

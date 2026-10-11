@@ -48,21 +48,21 @@ public sealed class TokenGateTests
 
         var response = await client.GetAsync("/api/v1/nothing-here", Cancel);
 
-        // Past the gate: no endpoint yet, so the API's own 404
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        // Past the gate: the API's own answer to a path it has no handler for
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Theory]
-    [InlineData("/api/v1/projects/6f1d2c3a/media")]
-    [InlineData("/hubs/events/negotiate")]
-    public async Task Lets_the_token_in_as_access_token_where_the_browser_loads_by_itself(string path)
+    [InlineData("/api/v1/projects/6f1d2c3a/media", HttpStatusCode.BadRequest)]
+    [InlineData("/hubs/events/negotiate", HttpStatusCode.NotFound)]
+    public async Task Lets_the_token_in_as_access_token_where_the_browser_loads_by_itself(string path, HttpStatusCode past)
     {
         using var factory = new ApiFactory(("Token", Token));
         var client = factory.CreateClient();
 
         var response = await client.GetAsync($"{path}?access_token={Token}", Cancel);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        response.StatusCode.Should().Be(past);
     }
 
     [Fact]
@@ -82,8 +82,8 @@ public sealed class TokenGateTests
         using var factory = new ApiFactory();
         var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/api/v1/nothing-here", Cancel);
+        var response = await client.GetAsync("/api/v1/app", Cancel);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }

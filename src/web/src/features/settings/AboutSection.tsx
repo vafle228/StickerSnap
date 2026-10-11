@@ -6,7 +6,7 @@ import { notify } from "../../shared/notify";
 import { overlays } from "../../shared/overlays";
 import { t } from "../../shared/strings/ru";
 import { LicensesDialog } from "./LicensesDialog";
-import { versionsLine } from "./model";
+import { ffmpegText, versionsLine } from "./model";
 import { SettingsSection } from "./Section";
 import styles from "./sections.module.css";
 
@@ -40,7 +40,10 @@ export function AboutSection() {
           <span className={styles.accountName}>StickerSnap</span>
           <span className={`${styles.muted} ${styles.mono}`}>
             {app
-              ? t("settings.about.versions", { app: app.appVersion, ffmpeg: app.ffmpegVersion })
+              ? t("settings.about.versions", {
+                  app: app.appVersion,
+                  ffmpeg: ffmpegText(app.ffmpeg),
+                })
               : "…"}
           </span>
         </div>

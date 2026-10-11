@@ -14,16 +14,16 @@ public sealed class LayerTests
     private static readonly ArchUnitNET.Domain.Architecture Server = new ArchLoader()
         .LoadAssemblies(
             typeof(Program).Assembly,
-            typeof(Infrastructure.DependencyInjection).Assembly,
-            typeof(Application.DependencyInjection).Assembly,
+            typeof(global::StickerSnap.Infrastructure.DependencyInjection).Assembly,
+            typeof(global::StickerSnap.Application.DependencyInjection).Assembly,
             System.Reflection.Assembly.Load("StickerSnap.Core"))
         .Build();
 
     private static readonly IObjectProvider<IType> Core = Types().That().ResideInAssembly("StickerSnap.Core").As("Core");
     private static readonly IObjectProvider<IType> Application =
-        Types().That().ResideInAssembly(typeof(Application.DependencyInjection).Assembly).As("Application");
+        Types().That().ResideInAssembly(typeof(global::StickerSnap.Application.DependencyInjection).Assembly).As("Application");
     private static readonly IObjectProvider<IType> Infrastructure =
-        Types().That().ResideInAssembly(typeof(Infrastructure.DependencyInjection).Assembly).As("Infrastructure");
+        Types().That().ResideInAssembly(typeof(global::StickerSnap.Infrastructure.DependencyInjection).Assembly).As("Infrastructure");
     private static readonly IObjectProvider<IType> Api = Types().That().ResideInAssembly(typeof(Program).Assembly).As("Api");
 
     [Fact]
