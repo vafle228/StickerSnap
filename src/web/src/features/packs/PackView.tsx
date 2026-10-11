@@ -14,6 +14,7 @@ import { useAppInfo, usePack } from "../../shared/api/queries";
 import type { PackSticker, PackSummary } from "../../shared/api/types";
 import { MenuPopover } from "../../shared/overlays";
 import { t } from "../../shared/strings/ru";
+import { selectOnceLoaded } from "../projects/actions";
 import { when } from "../projects/format";
 import { usePackActions } from "./actions";
 import { isFull, packBadge, placeholder, shortLink } from "./format";
@@ -30,6 +31,11 @@ export function PackView({ summary }: { summary: PackSummary }) {
   const actions = usePackActions();
   const openProject = useApp((s) => s.openProject);
   const startPublish = usePacksUi((s) => s.startPublish);
+  // The sticker's own segment is picked as soon as the editor has its project
+  const openSticker = (projectId: string, segmentId: string) => {
+    openProject(projectId);
+    selectOnceLoaded(projectId, segmentId);
+  };
   const [menu, setMenu] = useState<{ id: string; anchor: HTMLElement } | null>(null);
 
   const gone = summary.status === "missing";
@@ -61,7 +67,7 @@ export function PackView({ summary }: { summary: PackSummary }) {
     const from = sticker.origin;
     if (action === "remove") void actions.removeSticker(summary.name, sticker);
     if (!from) return;
-    if (action === "open") openProject(from.projectId);
+    if (action === "open") openSticker(from.projectId, from.segmentId);
     if (action === "reveal") void actions.revealWebm(from);
     if (action === "replace") {
       startPublish({
@@ -129,7 +135,7 @@ export function PackView({ summary }: { summary: PackSummary }) {
               index={i}
               menuOpen={menu?.id === s.id}
               onMenu={(anchor) => setMenu((m) => (m?.id === s.id ? null : { id: s.id, anchor }))}
-              onOpenProject={openProject}
+              onOpenProject={openSticker}
             />
           </li>
         ))}
@@ -166,52 +172,62 @@ interface StickerCellProps {
   index: number;
   menuOpen: boolean;
   onMenu: (anchor: HTMLElement) => void;
-  onOpenProject: (id: string) => void;
+  onOpenProject: (projectId: string, segmentId: string) => void;
 }
 
-/** One sticker: its art on the checker, its emoji, and where it came from. */
+/** One sticker: its art on the checker, its emoji, and where it came from. A click on it opens
+ *  that project in the editor; one without a project only has its «⋯». */
 function StickerCell({ sticker, index, menuOpen, onMenu, onOpenProject }: StickerCellProps) {
   const art = placeholder(index);
   const origin = sticker.origin;
-  return (
-    <div className={styles.sticker} data-menu={menuOpen}>
-      <div className={styles.stickerArt}>
+  const project = origin?.projectStatus === "ok" ? origin : undefined;
+  const emoji = sticker.emoji.join(" ");
+
+  const body = (
+    <>
+      <span className={styles.stickerArt}>
         <span
           className={styles.stickerShape}
           style={{ background: art.tint, borderRadius: art.radius }}
           aria-hidden
         />
-        <IconButton
-          icon="more"
-          label={t("packs.stickerMenu")}
-          flat
-          size="sm"
-          className={styles.stickerMenu}
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          onClick={(e) => onMenu(e.currentTarget)}
-        />
-      </div>
-      <span
-        className={styles.stickerEmoji}
-        aria-label={t("packs.emoji", { emoji: sticker.emoji.join(" ") })}
-      >
-        {sticker.emoji.join(" ")}
       </span>
-      {origin?.projectStatus === "ok" ? (
+      <span className={styles.stickerEmoji} aria-label={t("packs.emoji", { emoji })}>
+        {emoji}
+      </span>
+      <span
+        className={styles.stickerSrc}
+        data-tone={project ? undefined : origin ? "warning" : "muted"}
+      >
+        {project ? project.projectName : t(origin ? "packs.projectMissing" : "packs.noProject")}
+      </span>
+    </>
+  );
+
+  return (
+    <div className={styles.sticker} data-menu={menuOpen}>
+      {project ? (
         <button
           type="button"
-          className={styles.stickerSrc}
-          title={t("packs.fromProject", { name: origin.projectName })}
-          onClick={() => onOpenProject(origin.projectId)}
+          className={styles.stickerOpen}
+          title={t("packs.fromProject", { name: project.projectName })}
+          onClick={() => onOpenProject(project.projectId, project.segmentId)}
         >
-          {origin.projectName}
+          {body}
         </button>
       ) : (
-        <span className={styles.stickerSrc} data-tone={origin ? "warning" : "muted"}>
-          {origin ? t("packs.projectMissing") : t("packs.noProject")}
-        </span>
+        <div className={styles.stickerOpen}>{body}</div>
       )}
+      <IconButton
+        icon="more"
+        label={t("packs.stickerMenu")}
+        flat
+        size="sm"
+        className={styles.stickerMenu}
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        onClick={(e) => onMenu(e.currentTarget)}
+      />
     </div>
   );
 }

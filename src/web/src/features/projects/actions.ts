@@ -26,7 +26,7 @@ function closeIfOpen(id: string) {
 }
 
 /** Picks a segment in the editor as soon as its project is there; it may still be loading. */
-function selectOnceLoaded(projectId: string, segmentId: string) {
+export function selectOnceLoaded(projectId: string, segmentId: string) {
   if (useEditor.getState().projectId === projectId) {
     useEditor.getState().select(segmentId);
     return;

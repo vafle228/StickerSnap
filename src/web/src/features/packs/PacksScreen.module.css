@@ -278,13 +278,36 @@
 }
 
 .sticker {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  border-radius: 16px;
+}
+
+/* The whole sticker is the button that opens its project; «⋯» sits over its corner */
+.stickerOpen {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
   padding: 8px;
-  border-radius: 16px;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+
+button.stickerOpen {
+  cursor: pointer;
+}
+
+button.stickerOpen:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 /* Under the pointer, with focus inside or with its menu open the sticker is marked as the one
@@ -333,8 +356,8 @@
 
 .stickerMenu {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 12px;
+  right: 12px;
   border-radius: var(--radius-pill);
 }
 
@@ -351,28 +374,11 @@
 
 .stickerSrc {
   overflow: hidden;
-  padding: 0;
-  border: 0;
-  background: none;
   color: var(--primary-ink);
   font: 500 12px/16px var(--font-sans);
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-button.stickerSrc {
-  cursor: pointer;
-}
-
-button.stickerSrc:hover {
-  text-decoration: underline;
-}
-
-button.stickerSrc:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-  border-radius: 4px;
 }
 
 .stickerSrc[data-tone="warning"] {
