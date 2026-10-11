@@ -1,0 +1,52 @@
+# Installers for Windows and Linux (plan, stage 1b): npm run dist -w src/desktop after
+# `npm run build` (the SPA into the server's wwwroot) and `npm run server -w src/desktop`.
+appId: app.stickersnap.desktop
+productName: StickerSnap
+copyright: Copyright © 2026 StickerSnap
+
+directories:
+  output: release
+  buildResources: assets
+
+# The shell has no runtime dependencies: its compiled code and the window icons are all it needs.
+files:
+  - package.json
+  - dist/**/*
+  - assets/icon.png
+  - assets/icon.ico
+
+# The self-contained server with the SPA in its wwwroot, outside the asar archive: it runs as is.
+extraResources:
+  - from: server-dist/${os}-${arch}
+    to: server
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: assets/icon.ico
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: StickerSnap
+  artifactName: StickerSnap-Setup-${version}.${ext}
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  icon: assets/icon.png
+  category: Graphics
+  executableName: stickersnap
+  synopsis: Telegram video sticker editor
+  artifactName: StickerSnap-${version}-${arch}.${ext}
+
+deb:
+  packageName: stickersnap
+
+publish: null

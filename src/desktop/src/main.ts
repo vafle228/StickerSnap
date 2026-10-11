@@ -19,6 +19,9 @@ import { createWindow } from "./window.js";
 /** `--dev-url=<vite>/?mock=desktop` shows Vite over the demo data and starts no server. */
 const devUrl = process.argv.find((a) => a.startsWith("--dev-url="))?.slice("--dev-url=".length);
 
+// Each e2e run starts as a fresh install (e2e/app.spec.ts).
+if (process.env.STICKERSNAP_USER_DATA) app.setPath("userData", process.env.STICKERSNAP_USER_DATA);
+
 const stateFile = join(app.getPath("userData"), "state.json");
 const logFile = join(app.getPath("logs"), "server.log");
 
