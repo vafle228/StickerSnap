@@ -7,6 +7,7 @@ import { t } from "../../shared/strings/ru";
 import { EditorHeader } from "./EditorHeader";
 import styles from "./EditorScreen.module.css";
 import { Inspector } from "./inspector/Inspector";
+import { useAutosave } from "./model/useAutosave";
 import { useEditor } from "./model/store";
 import { useRenderJobs } from "./render/useRenderJobs";
 import { MissingSource } from "./stage/MissingSource";
@@ -25,6 +26,7 @@ export function EditorScreen({ hidden }: { hidden: boolean }) {
   const unload = useEditor((s) => s.unload);
   const setPlaying = useEditor((s) => s.setPlaying);
   useRenderJobs(project.data);
+  useAutosave();
 
   useEffect(() => {
     if (project.data && project.data.id !== loadedId) load(project.data);

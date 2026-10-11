@@ -3,23 +3,9 @@ import { api, call } from "../../../shared/api/client";
 import { applyJob } from "../../../shared/api/live";
 import type { Segment } from "../../../shared/api/types";
 import { notifyProblem } from "../../../shared/notify";
+import { flushSave } from "../model/autosave";
 import { useEditor } from "../model/store";
 import { signature, useRender } from "./store";
-
-/** The scene as the editor has it, saved before an export: export and publish go by a saved
- *  revision (contract, «Фоновые задачи»). Autosave will mostly have done it already. */
-async function saveScene(): Promise<number> {
-  const { projectId, scene, revision } = useEditor.getState();
-  if (!projectId || !scene) throw new Error("No project is open");
-  const saved = await call(
-    api.PUT("/api/v1/projects/{id}/scene", {
-      params: { path: { id: projectId } },
-      body: { revision, scene },
-    }),
-  );
-  useEditor.setState({ revision: saved.revision });
-  return saved.revision;
-}
 
 /** «Экспорт WEBM» or «Экспортировать все отрезки»: one job for the segments given; its
  *  progress and result come as jobUpdated (useRenderJobs shows them). */
@@ -27,7 +13,10 @@ export async function exportSegments(client: QueryClient, segmentIds: string[]) 
   const { projectId } = useEditor.getState();
   if (!projectId || segmentIds.length === 0 || useRender.getState().exporting) return;
   try {
-    const revision = await saveScene();
+    // Export goes by a saved revision (contract, «Фоновые задачи»): autosave has mostly done it.
+    // A scene that cannot be saved is already told by autosave's popup and «Не сохранено».
+    const revision = await flushSave().catch(() => undefined);
+    if (revision === undefined) return;
     const job = await call(
       api.POST("/api/v1/jobs", { body: { kind: "export", projectId, revision, segmentIds } }),
     );
