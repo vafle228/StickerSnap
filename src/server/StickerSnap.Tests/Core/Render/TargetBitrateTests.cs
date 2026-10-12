@@ -16,6 +16,12 @@ public sealed class TargetBitrateTests
         TargetBitrate.BitsPerSecond(262_144, 1.5).Should().Be(1_328_196);
     }
 
+    [Fact]
+    public void Halves_the_bitrate_of_a_transparent_sticker_whose_alpha_is_a_second_stream()
+    {
+        TargetBitrate.BitsPerSecond(262_144, 3, transparent: true).Should().Be(332_049);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]

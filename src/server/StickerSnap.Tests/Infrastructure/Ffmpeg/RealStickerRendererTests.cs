@@ -51,6 +51,20 @@ public sealed class RealStickerRendererTests(RealFfmpeg ffmpeg) : IClassFixture<
         sticker.Should().BeEquivalentTo(new { Codec = "vp9", Width = 512, Height = 512, FrameCount = 60, HasAudio = false });
     }
 
+    /// <summary>The alpha is a second stream at the same bitrate: a whole budget for each overshoots.</summary>
+    [Fact]
+    public async Task Fits_a_transparent_sticker_into_256_kb_in_two_passes_on_half_the_bitrate_each()
+    {
+        var clip = await ffmpeg.MakeAsync("transparent.webm",
+            "-f", "lavfi", "-i", "testsrc2=s=640x480:r=30:d=3,format=yuva420p,geq=lum='lum(X,Y)':cb='cb(X,Y)':cr='cr(X,Y)':a='255*gt(hypot(X-320,Y-240),100+60*sin(T*4))'",
+            "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-b:v", "8M");
+
+        var (_, sticker) = await RenderAsync(clip, spec => new RateControl.TwoPass(TargetBitrate.BitsPerSecond(Sticker.MaxBytes, spec.DurationSec, spec.KeepAlpha)));
+
+        sticker.HasAlpha.Should().BeTrue();
+        StickerCheck.Problems(sticker, Sticker).Should().BeEmpty();
+    }
+
     [Fact]
     public async Task Keeps_the_alpha_of_a_transparent_vp9_source()
     {

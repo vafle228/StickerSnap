@@ -92,6 +92,17 @@ public sealed class CorpusRenderServiceTests
     }
 
     [Fact]
+    public async Task Splits_the_two_pass_budget_between_the_picture_and_the_alpha_of_a_transparent_clip()
+    {
+        _probe.ProbeAsync("corpus/cat.mp4", Arg.Any<CancellationToken>()).Returns(Media.Landscape with { HasAlpha = true });
+
+        await _service.RunAsync(["corpus/cat.mp4"], "out", [TwoPass], null, Cancel);
+
+        await _renderer.Received(1).RenderAsync(
+            Arg.Is<StickerRender>(r => r.Rate == new RateControl.TwoPass(332_049)), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Goes_on_past_a_clip_the_probe_cannot_read()
     {
         _probe.ProbeAsync("corpus/broken.mp4", Arg.Any<CancellationToken>())

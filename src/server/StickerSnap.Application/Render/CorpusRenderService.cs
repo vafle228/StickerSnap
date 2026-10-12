@@ -99,7 +99,7 @@ public sealed record RenderMode(string Name, RenderEffort Effort, int? Crf)
 {
     public RateControl RateFor(StickerSpec spec, PresetLimits limits) => Crf is { } crf
         ? new RateControl.ConstantQuality(crf)
-        : new RateControl.TwoPass(TargetBitrate.BitsPerSecond(limits.MaxBytes, spec.DurationSec));
+        : new RateControl.TwoPass(TargetBitrate.BitsPerSecond(limits.MaxBytes, spec.DurationSec, spec.KeepAlpha));
 }
 
 public sealed record CorpusReport(PresetLimits Limits, IReadOnlyList<RenderMode> Modes, IReadOnlyList<CorpusEntry> Entries);
