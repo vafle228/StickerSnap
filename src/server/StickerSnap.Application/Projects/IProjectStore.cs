@@ -15,4 +15,12 @@ public interface IProjectStore
     /// <summary>Saves the whole project: a failure leaves the previous file whole.</summary>
     /// <exception cref="Core.Errors.AppException">save_failed or disk_full</exception>
     Task WriteAsync(string path, Project project, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Saves a new project in <paramref name="folder"/> under the first of
+    /// <see cref="ProjectFileNames.Candidates"/> that no file has, creating the folder when needed.
+    /// </summary>
+    /// <returns>The path of the new .ssproj</returns>
+    /// <exception cref="Core.Errors.AppException">save_failed or disk_full</exception>
+    Task<string> CreateAsync(string folder, Project project, CancellationToken cancellationToken);
 }

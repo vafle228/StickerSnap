@@ -1,4 +1,5 @@
 using StickerSnap.Core.Errors;
+using StickerSnap.Core.Media;
 using StickerSnap.Core.Projects;
 
 namespace StickerSnap.Application.Projects;
@@ -8,6 +9,24 @@ public interface IProjectService
 {
     /// <summary>GET /projects: newest first, each with whether its source is still there.</summary>
     Task<IReadOnlyList<ProjectListItem>> ListAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// POST /projects (3c, «Читаю файл»): reads the video and makes a project of it with
+    /// <see cref="DefaultScene"/>, in a new .ssproj in the projects folder named after the video.
+    /// Cancelling while the video is read leaves nothing behind: that is «Отменить».
+    /// </summary>
+    /// <exception cref="AppException">
+    /// bad_request for a path in web mode; source_not_found, format_unsupported, source_unreadable,
+    /// ffmpeg_missing from reading it; save_failed, disk_full
+    /// </exception>
+    Task<OpenedProject> CreateAsync(SourceRef source, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// PUT /projects/{id}/source, «Указать новое видео» for «Исходник не найден»: the project keeps
+    /// its scene and its revision and takes the new video; segments past its end are named.
+    /// </summary>
+    /// <exception cref="AppException">project_not_found; what <see cref="CreateAsync"/> throws for the video</exception>
+    Task<ReplacedSource> ReplaceSourceAsync(Guid id, SourceRef source, CancellationToken cancellationToken);
 
     /// <summary>
     /// POST /projects/open, also «Вернуть» after «Убрать из списка»: reads the file and puts it on

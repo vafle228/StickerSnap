@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using StickerSnap.Application.Jobs;
 using StickerSnap.Application.Projects;
+using StickerSnap.Application.Settings;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Jobs;
 using StickerSnap.Core.Media;
@@ -34,7 +35,8 @@ public sealed class JobServiceTests : IAsyncDisposable
         _store.ReadAsync(CatPath, Arg.Any<CancellationToken>()).Returns(_ => _onDisk);
         var sources = Substitute.For<ISourcePresence>();
         sources.Of(Arg.Any<string>()).Returns(PresenceStatus.Ok);
-        var projects = new ProjectService(_registry, _store, Substitute.For<ITrash>(), sources, _events, _clock);
+        var projects = new ProjectService(
+            _registry, _store, Substitute.For<ITrash>(), sources, _events, Imports.Unused(), Substitute.For<ISettingsService>(), _clock);
         _queue = new JobQueue([_exports], _events, _clock, NullLogger<JobQueue>.Instance);
         _service = new JobService(_queue, projects);
     }

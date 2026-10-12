@@ -27,5 +27,7 @@ public static class DependencyInjection
         .AddSingleton<IRenderPlanService, RenderPlanService>()
         .AddSingleton<IProjectRenderService, ProjectRenderService>()
         .AddSingleton<SourceFiles>()
+        .AddSingleton<SourceImport>()
+        .AddSingleton<IUploadService, UploadService>()
         .AddSingleton<IValidationService, ValidationService>();
 }

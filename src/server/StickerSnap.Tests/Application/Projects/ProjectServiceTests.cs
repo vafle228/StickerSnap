@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Time.Testing;
 using StickerSnap.Application.Events;
 using StickerSnap.Application.Projects;
+using StickerSnap.Application.Settings;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Media;
 using StickerSnap.Core.Projects;
@@ -43,7 +44,8 @@ public sealed class ProjectServiceTests
                 return Task.CompletedTask;
             });
         _sources.Of(Arg.Any<string>()).Returns(PresenceStatus.Ok);
-        _service = new ProjectService(_registry, _store, _trash, _sources, _events, new FakeTimeProvider(Now));
+        _service = new ProjectService(
+            _registry, _store, _trash, _sources, _events, Imports.Unused(), Substitute.For<ISettingsService>(), new FakeTimeProvider(Now));
     }
 
     private async Task<OpenedProject> ListedAsync(Project project, string path)

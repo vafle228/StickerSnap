@@ -1,6 +1,9 @@
 using System.Collections.Concurrent;
 using StickerSnap.Application.Events;
+using StickerSnap.Application.Settings;
+using StickerSnap.Application.Sources;
 using StickerSnap.Core.Errors;
+using StickerSnap.Core.Media;
 using StickerSnap.Core.Projects;
 
 namespace StickerSnap.Application.Projects;
@@ -16,6 +19,8 @@ public sealed class ProjectService(
     ITrash trash,
     ISourcePresence sources,
     IEventPublisher events,
+    SourceImport import,
+    ISettingsService settings,
     TimeProvider clock) : IProjectService
 {
     private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _locks = new();
@@ -30,6 +35,44 @@ public sealed class ProjectService(
             .Select(ItemOf)
             .ToList();
     }
+
+    /// <inheritdoc />
+    public async Task<OpenedProject> CreateAsync(SourceRef source, CancellationToken cancellationToken)
+    {
+        var folder = (await settings.GetAsync(cancellationToken)).Folders.Projects;
+        var read = await import.ReadAsync(source, cancellationToken);
+
+        // The video is read and an upload taken: from here on the project is made whatever the request does
+        var project = new Project(
+            Guid.NewGuid(),
+            ProjectFileNames.ProjectNameOf(read.FileName),
+            Revision: 1,
+            clock.GetUtcNow(),
+            read,
+            DefaultScene.For(read.Media));
+        var path = await store.CreateAsync(folder, project, CancellationToken.None);
+
+        var item = await ChangedAsync(path, project, CancellationToken.None);
+        return new OpenedProject(project, path, item.SourceStatus);
+    }
+
+    /// <inheritdoc />
+    public Task<ReplacedSource> ReplaceSourceAsync(Guid id, SourceRef source, CancellationToken cancellationToken) =>
+        UnderLockAsync(id, async () =>
+        {
+            var (card, project) = await ReadAsync(id, cancellationToken);
+            var read = await import.ReadAsync(source, cancellationToken);
+
+            var replaced = project with { Source = read, SavedAt = clock.GetUtcNow() };
+            await store.WriteAsync(card.Path, replaced, CancellationToken.None);
+            var item = await ChangedAsync(card.Path, replaced, CancellationToken.None);
+
+            var outOfRange = replaced.Scene.Segments
+                .Where(segment => segment.InFrame >= read.Media.FrameCount || segment.OutFrame >= read.Media.FrameCount)
+                .Select(segment => segment.Id)
+                .ToList();
+            return new ReplacedSource(new OpenedProject(replaced, card.Path, item.SourceStatus), outOfRange);
+        }, cancellationToken);
 
     /// <inheritdoc />
     public async Task<OpenedProject> OpenAsync(string path, CancellationToken cancellationToken)
