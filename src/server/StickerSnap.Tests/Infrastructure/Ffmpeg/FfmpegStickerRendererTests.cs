@@ -92,4 +92,17 @@ public sealed class FfmpegStickerRendererTests : IDisposable
         error.Log.Should().Be("Error while opening encoder");
         _runs.Should().ContainSingle();
     }
+
+    [Fact]
+    public void Describes_two_passes_as_two_commands_without_running_them()
+    {
+        var render = Render(new RateControl.TwoPass(664_098)) with { SourcePath = "D:/Видео/кот 1.mp4" };
+
+        var lines = new FfmpegStickerRenderer(_ffmpeg).Describe(render).Split(Environment.NewLine);
+
+        lines.Should().HaveCount(2).And.AllSatisfy(line => line.Should().StartWith("ffmpeg -t 2.983333 -i \"D:/Видео/кот 1.mp4\" -filter_complex \"[0:v:0]"));
+        lines[0].Should().Contain("-pass 1").And.EndWith("-f null -");
+        lines[1].Should().Contain("-pass 2").And.EndWith($"-f webm -y {render.OutputPath}");
+        _runs.Should().BeEmpty();
+    }
 }
