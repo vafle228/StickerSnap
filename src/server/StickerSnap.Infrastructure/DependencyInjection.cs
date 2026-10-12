@@ -1,12 +1,15 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using StickerSnap.Application.Account;
 using StickerSnap.Application.Media;
+using StickerSnap.Application.Packs;
 using StickerSnap.Application.Projects;
 using StickerSnap.Application.Settings;
 using StickerSnap.Infrastructure.Ffmpeg;
 using StickerSnap.Infrastructure.Projects;
 using StickerSnap.Infrastructure.Settings;
 using StickerSnap.Infrastructure.Storage;
+using StickerSnap.Infrastructure.Telegram;
 
 namespace StickerSnap.Infrastructure;
 
@@ -38,6 +41,15 @@ public static class DependencyInjection
         services.AddSingleton<IMediaEngine, FfmpegEngine>();
         services.AddSingleton<IMediaProbe, FfprobeMediaProbe>();
         services.AddSingleton<IStickerRenderer, FfmpegStickerRenderer>();
+
+        services.Configure<BotOptions>(configuration.GetSection(BotOptions.Section));
+        services.AddSingleton<BotToken>();
+        services.AddHttpClient<BotApiClient>(client => client.Timeout = BotApiClient.Timeout)
+            // Every address of the Bot API holds the token, and the request log writes addresses out
+            .RemoveAllLoggers();
+        // The messenger of the Application's ports is Telegram, with the one product bot
+        services.AddTransient<IStickerPublisher, TelegramStickerPublisher>();
+        services.AddTransient<IBotChat, TelegramBotChat>();
 
         return services;
     }
