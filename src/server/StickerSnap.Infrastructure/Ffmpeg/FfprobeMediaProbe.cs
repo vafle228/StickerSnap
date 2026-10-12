@@ -28,9 +28,25 @@ internal sealed partial class FfprobeMediaProbe(IFfmpegLocator locator, IFfmpeg 
             };
 
         var media = FfprobeOutput.Parse(probe.Output, extension);
+        if (media.Format == MediaFormat.Webp) media = await WithFrameDelaysAsync(directory, path, media, cancellationToken);
         return media is { Format: MediaFormat.Gif or MediaFormat.Webp, HasAlpha: true }
             ? media with { HasAlpha = await HasTransparentPixelAsync(path, cancellationToken) }
             : media;
+    }
+
+    /// <summary>Animated WEBP keeps only a delay per frame: its length and rate come from them.</summary>
+    private static async Task<MediaInfo> WithFrameDelaysAsync(
+        string directory, string path, MediaInfo media, CancellationToken cancellationToken)
+    {
+        var frames = await FfmpegProcess.RunAsync(
+            Path.Combine(directory, FfmpegProcess.Ffprobe), [.. FfprobeOutput.FrameDelayArguments, path], null, cancellationToken);
+        if (!frames.IsSuccess)
+            throw new AppException(ErrorCode.SourceUnreadable, $"ffprobe could not read the frames of {path} (exit code {frames.ExitCode})")
+            {
+                Log = frames.Log,
+            };
+
+        return FfprobeOutput.WithFrameDelays(media, frames.Output);
     }
 
     /// <summary>

@@ -1,0 +1,39 @@
+{
+    "packets": [
+        {
+            "pts": 0,
+            "duration": 100
+        },
+        {
+            "pts": 100,
+            "duration": 100
+        },
+        {
+            "pts": 200,
+            "duration": 100
+        },
+        {
+            "pts": 300,
+            "duration": 100
+        },
+        {
+            "pts": 400,
+            "duration": 50
+        },
+        {
+            "pts": 450,
+            "duration": 100
+        }
+    ],
+    "programs": [
+
+    ],
+    "stream_groups": [
+
+    ],
+    "streams": [
+        {
+            "time_base": "1/1000"
+        }
+    ]
+}

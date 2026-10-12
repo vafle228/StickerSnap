@@ -22,6 +22,8 @@
   <ItemGroup>
     <!-- Real ffprobe output for clips made with lavfi, read by the fast tests without FFmpeg -->
     <None Include="Infrastructure\Ffmpeg\Samples\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Animated WEBP with uneven delays, from libwebp's own encoder: the pinned FFmpeg writes even ones -->
+    <None Include="Infrastructure\Ffmpeg\Samples\*.webp" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

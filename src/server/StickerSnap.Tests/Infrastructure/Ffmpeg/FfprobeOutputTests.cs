@@ -6,12 +6,15 @@ namespace StickerSnap.Tests.Infrastructure.Ffmpeg;
 
 /// <summary>
 /// Samples/ holds what the pinned ffprobe 9.0.2 printed for 1-second clips made with lavfi
-/// (testsrc2, libopenh264, libvpx-vp9, libwebp_anim); no FFmpeg runs here.
+/// (testsrc2, libopenh264, libvpx-vp9, libwebp_anim) and for animated WEBP files with uneven
+/// delays made with libwebp's own encoder (the webp-anim-*-delays files); no FFmpeg runs here.
 /// </summary>
 public sealed class FfprobeOutputTests
 {
-    private static MediaInfo Parse(string sample, string extension = "mp4") =>
-        FfprobeOutput.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Infrastructure", "Ffmpeg", "Samples", sample)), extension);
+    private static MediaInfo Parse(string sample, string extension = "mp4") => FfprobeOutput.Parse(Sample(sample), extension);
+
+    private static string Sample(string name) =>
+        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Infrastructure", "Ffmpeg", "Samples", name));
 
     [Fact]
     public void Reads_an_h264_mp4_with_sound()
@@ -67,6 +70,49 @@ public sealed class FfprobeOutputTests
         webp.FrameCount.Should().Be(10);
         webp.DurationSec.Should().Be(1);
         webp.HasAlpha.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Takes_the_length_of_an_animated_webp_from_its_frame_delays()
+    {
+        // Delays 40, 40, 200, 40, 500, 100, 20, 20, 20, 1000, 60, 60 ms: ffprobe's average rate 59/12 would make it 2,44 s
+        var webp = FfprobeOutput.WithFrameDelays(
+            Parse("webp-anim-variable-delays.json", "webp"), Sample("webp-anim-variable-delays.packets.json"));
+
+        webp.FrameCount.Should().Be(12);
+        webp.DurationSec.Should().BeApproximately(2.1, 1e-9);
+        webp.IsVariableFrameRate.Should().BeTrue();
+        webp.Fps.Should().Be(new Rational(40, 7));
+    }
+
+    [Fact]
+    public void Keeps_the_rate_of_a_webp_whose_delays_round_to_whole_milliseconds()
+    {
+        // 60 frames at 30 fps stored as 33, 33, 34 ms
+        var webp = new MediaInfo(MediaFormat.Webp, "webp", 320, 240, new Rational(30, 1), IsVariableFrameRate: false,
+            FrameCount: 60, DurationSec: 2, HasAlpha: false, HasAudio: false, SizeBytes: 262_998);
+
+        FfprobeOutput.WithFrameDelays(webp, Sample("webp-anim-30fps.packets.json")).Should().Be(webp with { DurationSec = 1.999 });
+    }
+
+    [Fact]
+    public void Plays_webp_delays_of_ten_milliseconds_and_less_as_a_tenth_of_a_second_like_browsers()
+    {
+        // The file says 0, 0, 10, 0, 50, 100 ms; FFmpeg's demuxer reads 100, 100, 100, 100, 50, 100
+        var webp = FfprobeOutput.WithFrameDelays(
+            Parse("webp-anim-short-delays.json", "webp"), Sample("webp-anim-short-delays.packets.json"));
+
+        webp.FrameCount.Should().Be(6);
+        webp.DurationSec.Should().BeApproximately(0.55, 1e-9);
+        webp.IsVariableFrameRate.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Leaves_the_media_as_it_was_when_ffprobe_lists_no_frames()
+    {
+        var webp = Parse("webp-anim-alpha.json", "webp");
+
+        FfprobeOutput.WithFrameDelays(webp, """{ "packets": [], "streams": [{ "time_base": "1/1000" }] }""").Should().Be(webp);
     }
 
     [Fact]

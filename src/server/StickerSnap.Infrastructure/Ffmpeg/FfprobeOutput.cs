@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Numerics;
 using System.Text.Json;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Media;
@@ -14,22 +15,16 @@ internal static class FfprobeOutput
     public static readonly string[] Arguments =
         ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", "-count_packets"];
 
+    /// <summary>Each frame's time and length in the first video stream, for <see cref="WithFrameDelays"/>.</summary>
+    public static readonly string[] FrameDelayArguments =
+        ["-v", "error", "-print_format", "json", "-select_streams", "v:0", "-show_entries", "stream=time_base:packet=pts,duration"];
+
     private static readonly HashSet<string> WebmCodecs = ["vp8", "vp9", "av1"];
 
     /// <param name="extension">The file's, lower case without the dot: what `format_unsupported` names</param>
     public static MediaInfo Parse(string json, string extension)
     {
-        JsonDocument document;
-        try
-        {
-            document = JsonDocument.Parse(json);
-        }
-        catch (JsonException e)
-        {
-            throw Unreadable($"ffprobe printed no JSON: {e.Message}");
-        }
-
-        using (document)
+        using (var document = Json(json))
         {
             var root = document.RootElement;
             if (!root.TryGetProperty("format", out var format) || !root.TryGetProperty("streams", out var streams))
@@ -55,7 +50,7 @@ internal static class FfprobeOutput
                 : throw Unreadable("ffprobe knows no frame rate of the video");
             var frameCount = Integer(video, "nb_frames") ?? Integer(video, "nb_read_packets");
             var duration = Number(format, "duration") ?? Number(video, "duration") ?? TagDuration(video);
-            // Animated WEBP has no duration in the container and frames that are all whole
+            // Animated WEBP has no duration in the container; the probe reads its delays (WithFrameDelays)
             frameCount ??= duration is { } seconds ? (int)Math.Round(seconds * fps.ToDouble()) : null;
             if (frameCount is not > 0) throw Unreadable("ffprobe counted no frames in the video");
             duration ??= frameCount.Value / fps.ToDouble();
@@ -73,6 +68,42 @@ internal static class FfprobeOutput
                 HasAudio: streams.EnumerateArray().Any(s => String(s, "codec_type") == "audio"),
                 SizeBytes: Integer64(format, "size") ?? 0);
         }
+    }
+
+    /// <summary>
+    /// Animated WEBP has no length in the container, only a delay per frame, and ffprobe's average
+    /// rate is a guess from the first frames: with delays of 40, 200 and 1000 ms the guess makes a
+    /// 2,1-second file 2,44 seconds long. The length is where the last frame ends. A frame rate in
+    /// whole milliseconds jitters by one tick (30 fps is 33, 33, 34 ms), which is still a constant
+    /// rate: the stream's own rate stays. Truly uneven delays give the average over the whole file.
+    /// </summary>
+    /// <param name="json">What ffprobe printed for <see cref="FrameDelayArguments"/></param>
+    public static MediaInfo WithFrameDelays(MediaInfo media, string json)
+    {
+        using var document = Json(json);
+        var root = document.RootElement;
+        var timeBase = root.TryGetProperty("streams", out var streams)
+            ? streams.EnumerateArray().Select(s => Rational.Parse(String(s, "time_base"))).FirstOrDefault()
+            : null;
+        if (timeBase is not { IsValid: true } tick || !root.TryGetProperty("packets", out var packets)) return media;
+
+        var frames = packets.EnumerateArray()
+            .Select(p => (Pts: Integer64(p, "pts"), Duration: Integer64(p, "duration")))
+            .Where(p => p is { Pts: not null, Duration: not null })
+            .Select(p => (Pts: p.Pts!.Value, Duration: p.Duration!.Value))
+            .ToList();
+        if (frames.Count == 0) return media;
+
+        var ticks = frames.Max(f => f.Pts + f.Duration) - frames.Min(f => f.Pts);
+        if (ticks <= 0) return media;
+        var isVariable = frames.Max(f => f.Duration) - frames.Min(f => f.Duration) > 1;
+        return media with
+        {
+            FrameCount = frames.Count,
+            DurationSec = (double)ticks * tick.Num / tick.Den,
+            IsVariableFrameRate = isVariable,
+            Fps = isVariable ? Reduced((long)frames.Count * tick.Den, ticks * tick.Num) : media.Fps,
+        };
     }
 
     /// <summary>A video stream that is not cover art, which MP4 and M4A carry as `attached_pic`.</summary>
@@ -166,6 +197,24 @@ internal static class FfprobeOutput
         double.TryParse(String(element, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && value > 0
             ? value
             : null;
+
+    private static JsonDocument Json(string json)
+    {
+        try
+        {
+            return JsonDocument.Parse(json);
+        }
+        catch (JsonException e)
+        {
+            throw Unreadable($"ffprobe printed no JSON: {e.Message}");
+        }
+    }
+
+    private static Rational Reduced(long num, long den)
+    {
+        var divisor = (long)BigInteger.GreatestCommonDivisor(num, den);
+        return new Rational((int)(num / divisor), (int)(den / divisor));
+    }
 
     private static AppException Unreadable(string message) => new(ErrorCode.SourceUnreadable, message) { Log = message };
 }
