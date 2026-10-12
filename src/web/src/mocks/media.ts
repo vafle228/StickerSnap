@@ -113,8 +113,9 @@ function foreignReport(fileName: string): ValidationReport {
 
 /** POST /api/v1/validate: the dropped file's size is its own, and so are its sides and length
  *  as far as the browser can read them; the codec is taken from the container. The preset is
- *  told by the size, as on the server (G4): no side over 100 px is an emoji. The browser reads the
- *  length the header declares, so here it stands for both lengths. */
+ *  told by the size, as on the server (G4): no side over 100 px is an emoji. The browser reads one
+ *  length only, so the demo takes it for the frames' and the header for within the limit: a
+ *  recorder's last frame that runs over 3 s reads as «экспериментальный», not as a failure. */
 export async function validate(db: MockDb, source: SourceRef) {
   const found = fileOf(db, source);
   if (!found) return problem("source_not_found");
@@ -128,6 +129,9 @@ export async function validate(db: MockDb, source: SourceRef) {
   const width = probed?.width ?? 512;
   const height = probed?.height ?? 512;
   const emoji = Math.max(width, height) <= app.limits.emoji.side;
+  const limits = emoji ? app.limits.emoji : app.limits.sticker;
+  // Whole frames at 30 fps, as ffprobe counts them: a recorder's last frame runs a little over
+  const length = probed ? Math.floor(probed.durationSec * 30 + 1e-6) / 30 : 3;
   const report = validationOf(
     {
       fileName: found.name,
@@ -136,13 +140,13 @@ export async function validate(db: MockDb, source: SourceRef) {
       codec: "vp9",
       width,
       height,
-      // Whole frames at 30 fps, as ffprobe counts them: a recorder's last frame runs a little over
-      durationSec: probed ? Math.floor(probed.durationSec * 30 + 1e-6) / 30 : 3,
+      durationSec: length,
+      declaredDurationSec: Math.min(length, limits.maxDurationSec),
       fps: 30,
       audio: "none",
       alpha: "none",
     },
-    emoji ? app.limits.emoji : app.limits.sticker,
+    limits,
     emoji,
   );
   return { status: 200 as const, body: report };
