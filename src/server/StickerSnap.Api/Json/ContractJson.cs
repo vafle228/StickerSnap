@@ -16,6 +16,8 @@ public static class ContractJson
         options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
         options.NumberHandling = JsonNumberHandling.Strict;
+        // A polymorphic body's `kind` may come after its other fields: `{ "path": …, "kind": "path" }`
+        options.AllowOutOfOrderMetadataProperties = true;
         options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower, allowIntegerValues: false));
         return options;
     }

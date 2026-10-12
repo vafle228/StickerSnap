@@ -22,7 +22,7 @@ public sealed partial class ContractTests
     /// </summary>
     public static readonly IReadOnlySet<string> NotYetOnServer = new HashSet<string>
     {
-        "createUpload", "validateWebm",
+        "createUpload",
         "createProject", "replaceProjectSource", "getProjectCover", "getProjectMedia", "getProjectFrames",
         "estimateSegment", "getFile",
         "createJob", "listJobs", "getJob", "cancelJob", "retryJob",
