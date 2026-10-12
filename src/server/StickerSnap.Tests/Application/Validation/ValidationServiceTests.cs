@@ -13,13 +13,15 @@ public sealed class ValidationServiceTests
 {
     private readonly IMediaProbe _probe = Substitute.For<IMediaProbe>();
     private readonly IHostInfo _host = Substitute.For<IHostInfo>();
+    private readonly IUploadStore _uploads = Substitute.For<IUploadStore>();
 
     public ValidationServiceTests()
     {
         _host.Mode.Returns(AppMode.Desktop);
+        _uploads.Find(Arg.Any<string>()).Returns((string?)null);
     }
 
-    private ValidationService Service => new(new SourceFiles(_host), _probe);
+    private ValidationService Service => new(new SourceFiles(_host, _uploads), _probe);
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -81,7 +83,20 @@ public sealed class ValidationServiceTests
     }
 
     [Fact]
-    public async Task Finds_no_upload_while_the_server_keeps_none()
+    public async Task Checks_an_upload_at_the_file_the_store_keeps()
+    {
+        var path = Path.Combine("uploads", "0f", "cat.webm");
+        _uploads.Find("u-1").Returns(path);
+        _probe.ProbeAsync(path, Arg.Any<CancellationToken>()).Returns(Samples.Sticker);
+
+        var result = await Service.ValidateAsync(new SourceRef.Upload("u-1"), Cancel);
+
+        result.FileName.Should().Be("cat.webm");
+        result.Validation.Verdict.Should().Be(ValidationVerdict.Pass);
+    }
+
+    [Fact]
+    public async Task Finds_no_upload_the_store_does_not_keep()
     {
         var validate = () => Service.ValidateAsync(new SourceRef.Upload("u-1"), Cancel);
 

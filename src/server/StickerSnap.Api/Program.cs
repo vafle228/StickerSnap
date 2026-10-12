@@ -47,6 +47,7 @@ public sealed class Program
         services.ConfigureHttpJsonOptions(options => ContractJson.Apply(options.SerializerOptions));
         services.AddOpenApi(options => options
             .AddDocumentTransformer<AbsentNullTransformer>()
+            .AddOperationTransformer<MultipartFileTransformer>()
             .AddSchemaTransformer<ConstTransformer>()
             .AddSchemaTransformer<StringOrNumberValuesTransformer>()
             .AddSchemaTransformer<DiscriminatorTransformer>());

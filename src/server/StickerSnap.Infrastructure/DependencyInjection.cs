@@ -5,9 +5,11 @@ using StickerSnap.Application.Media;
 using StickerSnap.Application.Packs;
 using StickerSnap.Application.Projects;
 using StickerSnap.Application.Settings;
+using StickerSnap.Application.Sources;
 using StickerSnap.Infrastructure.Ffmpeg;
 using StickerSnap.Infrastructure.Projects;
 using StickerSnap.Infrastructure.Settings;
+using StickerSnap.Infrastructure.Sources;
 using StickerSnap.Infrastructure.Storage;
 using StickerSnap.Infrastructure.Telegram;
 
@@ -28,6 +30,10 @@ public static class DependencyInjection
         services.AddSingleton<IProjectStore, ProjectFileStore>();
         services.AddSingleton<IProjectRegistry, JsonProjectRegistry>();
         services.AddSingleton<ISourcePresence, SourcePresence>();
+        services.AddSingleton<ISourceWatch, FileSystemSourceWatch>();
+        services.Configure<UploadOptions>(configuration.GetSection(UploadOptions.Section));
+        services.AddSingleton<IUploadStore, UploadStore>();
+        services.AddSingleton<IFileFingerprint, SampledFileFingerprint>();
         // The desktop builds are Windows and Linux; every other Unix keeps the same trash as Linux
         services.AddSingleton<ITrash>(provider => OperatingSystem.IsWindows()
             ? new WindowsRecycleBin()

@@ -61,6 +61,9 @@ export interface paths {
          * Загрузка файла, только в браузере
          * @description Артборд 3c-0. Этап 1a. Только веб-режим: десктоп передаёт путь к файлу,
          *     браузер сначала загружает файл и дальше ссылается на него через `SourceRef` с `kind: "upload"`.
+         *     Формат определяется по содержимому (GIF, WEBP, WEBM, MP4, MOV), иначе format_unsupported с `params.ext`
+         *     из имени. Больше 1 ГиБ — bad_request с `fields.file: ["too_large"]`, нет части `file` — `["required"]`.
+         *     Невостребованная загрузка хранится сутки; проект забирает её, и второй раз она не находится (source_not_found).
          */
         post: operations["createUpload"];
         delete?: never;
@@ -106,6 +109,9 @@ export interface paths {
          * Новый проект из видео
          * @description Артборды 3c A–C, 6. Этап 1a. Читает источник, создаёт .ssproj с одним отрезком.
          *     Отмена «Читаю файл» — обрыв запроса.
+         *     Отрезок «Стикер 1»: первые целые кадры не дольше 3 с (или весь ролик), центральный квадрат
+         *     (`preset: square`; у квадратного источника весь кадр, `preset: source`), скорость 1, цикл normal,
+         *     пресет sticker, autoFit. Файл — имя видео в `folders.projects`, при совпадении «имя (2)».
          */
         post: operations["createProject"];
         delete?: never;

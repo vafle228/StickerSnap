@@ -5,7 +5,7 @@ using StickerSnap.Core.Media;
 namespace StickerSnap.Application.Sources;
 
 /// <summary>The file on this machine that a <see cref="SourceRef"/> names.</summary>
-public sealed class SourceFiles(IHostInfo host)
+public sealed class SourceFiles(IHostInfo host, IUploadStore uploads)
 {
     /// <exception cref="AppException">
     /// `bad_request` for a path from a browser, which has no paths and must not read the server's
@@ -18,8 +18,8 @@ public sealed class SourceFiles(IHostInfo host)
         {
             Fields = new Dictionary<string, string[]> { ["source.kind"] = ["desktop_only"] },
         },
-        // Uploads arrive with POST /api/v1/uploads, which this server does not serve yet
-        SourceRef.Upload { UploadId: var id } => throw new AppException(ErrorCode.SourceNotFound, $"No upload {id} on this server"),
+        SourceRef.Upload { UploadId: var id } => uploads.Find(id)
+            ?? throw new AppException(ErrorCode.SourceNotFound, $"No upload {id} on this server"),
         _ => throw new ArgumentOutOfRangeException(nameof(source), source, "an unknown kind of source"),
     };
 }

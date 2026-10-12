@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using StickerSnap.Application.Projects;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Projects;
@@ -41,4 +42,16 @@ internal sealed class ProjectFileStore : IProjectStore
 
     public Task WriteAsync(string path, Project project, CancellationToken cancellationToken) =>
         AtomicFile.WriteAsync(path, ProjectFile.Current.Write(project), cancellationToken);
+
+    public async Task<string> CreateAsync(string folder, Project project, CancellationToken cancellationToken)
+    {
+        var content = ProjectFile.Current.Write(project);
+        foreach (var name in ProjectFileNames.Candidates(project.Name))
+        {
+            var path = Path.Combine(folder, name);
+            if (await AtomicFile.CreateAsync(path, content, cancellationToken)) return path;
+        }
+
+        throw new UnreachableException("The candidates never end");
+    }
 }

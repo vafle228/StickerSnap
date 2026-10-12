@@ -9,6 +9,12 @@ public sealed record ProjectListItem(ProjectCard Card, PresenceStatus SourceStat
 /// <summary>A project read from its file, with where the file is and whether its source is there.</summary>
 public sealed record OpenedProject(Project Project, string Path, PresenceStatus SourceStatus);
 
+/// <summary>
+/// What PUT …/source answers: the project with its new video, and the segments that now run past
+/// its end, which the editor warns about; the scene itself is left as it was.
+/// </summary>
+public sealed record ReplacedSource(OpenedProject Opened, IReadOnlyList<string> SegmentsOutOfRange);
+
 /// <summary>What PUT …/scene answers: the revision the SPA sends with its next save.</summary>
 public sealed record SavedScene(int Revision, DateTimeOffset SavedAt);
 

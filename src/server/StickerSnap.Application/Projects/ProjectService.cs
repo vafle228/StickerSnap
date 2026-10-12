@@ -1,6 +1,9 @@
 using System.Collections.Concurrent;
 using StickerSnap.Application.Events;
+using StickerSnap.Application.Settings;
+using StickerSnap.Application.Sources;
 using StickerSnap.Core.Errors;
+using StickerSnap.Core.Media;
 using StickerSnap.Core.Projects;
 
 namespace StickerSnap.Application.Projects;
@@ -16,6 +19,9 @@ public sealed class ProjectService(
     ITrash trash,
     ISourcePresence sources,
     IEventPublisher events,
+    SourceImport import,
+    ISettingsService settings,
+    ISourceWatch watch,
     TimeProvider clock) : IProjectService
 {
     private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _locks = new();
@@ -30,6 +36,45 @@ public sealed class ProjectService(
             .Select(ItemOf)
             .ToList();
     }
+
+    /// <inheritdoc />
+    public async Task<OpenedProject> CreateAsync(SourceRef source, CancellationToken cancellationToken)
+    {
+        var folder = (await settings.GetAsync(cancellationToken)).Folders.Projects;
+        var read = await import.ReadAsync(source, cancellationToken);
+
+        // The video is read and an upload taken: from here on the project is made whatever the request does
+        var project = new Project(
+            Guid.NewGuid(),
+            ProjectFileNames.ProjectNameOf(read.FileName),
+            Revision: 1,
+            clock.GetUtcNow(),
+            read,
+            DefaultScene.For(read.Media));
+        var path = await store.CreateAsync(folder, project, CancellationToken.None);
+
+        var item = await ChangedAsync(path, project, CancellationToken.None);
+        return new OpenedProject(project, path, item.SourceStatus);
+    }
+
+    /// <inheritdoc />
+    public Task<ReplacedSource> ReplaceSourceAsync(Guid id, SourceRef source, CancellationToken cancellationToken) =>
+        UnderLockAsync(id, async () =>
+        {
+            var (card, project) = await ReadAsync(id, cancellationToken);
+            var read = await import.ReadAsync(source, cancellationToken);
+
+            var replaced = project with { Source = read, SavedAt = clock.GetUtcNow() };
+            await store.WriteAsync(card.Path, replaced, CancellationToken.None);
+            var item = await ChangedAsync(card.Path, replaced, CancellationToken.None);
+
+            watch.Forget(id);
+            var outOfRange = replaced.Scene.Segments
+                .Where(segment => segment.InFrame >= read.Media.FrameCount || segment.OutFrame >= read.Media.FrameCount)
+                .Select(segment => segment.Id)
+                .ToList();
+            return new ReplacedSource(new OpenedProject(replaced, card.Path, item.SourceStatus), outOfRange);
+        }, cancellationToken);
 
     /// <inheritdoc />
     public async Task<OpenedProject> OpenAsync(string path, CancellationToken cancellationToken)
@@ -56,6 +101,7 @@ public sealed class ProjectService(
             }
 
             var item = await ChangedAsync(full, project, cancellationToken);
+            WatchIfMissing(project, item);
             return new OpenedProject(project, full, item.SourceStatus);
         }, cancellationToken);
     }
@@ -65,6 +111,7 @@ public sealed class ProjectService(
     {
         var (card, project) = await ReadAsync(id, cancellationToken);
         var item = await RefreshAsync(card, project, cancellationToken);
+        WatchIfMissing(project, item);
         return new OpenedProject(project, card.Path, item.SourceStatus);
     }
 
@@ -115,9 +162,34 @@ public sealed class ProjectService(
             if (mode == RemoveMode.Trash) await trash.MoveToTrashAsync(card.Path, cancellationToken);
 
             await registry.RemoveAsync(id, cancellationToken);
+            watch.Forget(id);
             await events.ProjectRemovedAsync(id, cancellationToken);
             return true;
         }, cancellationToken);
+
+    /// <summary>A project opened without its video waits for it: «Исходник не найден» clears once it is back.</summary>
+    private void WatchIfMissing(Project project, ProjectListItem item)
+    {
+        if (item.SourceStatus == PresenceStatus.Missing)
+            watch.Watch(project.Id, project.Source.Path, () => SourceAppearedAsync(project.Id));
+    }
+
+    /// <summary>Tells the windows the source is there again; a project gone meanwhile is nothing to tell.</summary>
+    private async Task SourceAppearedAsync(Guid id)
+    {
+        try
+        {
+            await UnderLockAsync(id, async () =>
+            {
+                var (card, project) = await ReadAsync(id, CancellationToken.None);
+                return await ChangedAsync(card.Path, project, CancellationToken.None);
+            }, CancellationToken.None);
+        }
+        catch (AppException exception) when (exception.Code is ErrorCode.ProjectNotFound or ErrorCode.ProjectInvalid or ErrorCode.ProjectTooNew)
+        {
+            // Removed or broken since it was opened: the next read says so
+        }
+    }
 
     private ProjectListItem ItemOf(ProjectCard card) => new(card, sources.Of(card.SourcePath));
 

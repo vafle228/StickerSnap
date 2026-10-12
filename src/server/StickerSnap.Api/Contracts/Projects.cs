@@ -228,6 +228,14 @@ public sealed record SaveSceneResponse(int Revision, DateTimeOffset SavedAt)
     public static SaveSceneResponse From(SavedScene saved) => new(saved.Revision, saved.SavedAt);
 }
 
+/// <summary>The answer to PUT …/source (schema ReplaceSourceResponse).</summary>
+/// <param name="SegmentsOutOfRange">The segments past the new video's end; empty when there is nothing to warn about</param>
+public sealed record ReplaceSourceResponse(Project Project, IReadOnlyList<string> SegmentsOutOfRange)
+{
+    public static ReplaceSourceResponse From(ReplacedSource replaced, AppMode mode) =>
+        new(Project.From(replaced.Opened, mode), replaced.SegmentsOutOfRange);
+}
+
 /// <summary>The addresses the browser loads by itself; the SPA adds the token to them.</summary>
 public static class ProjectUrls
 {
