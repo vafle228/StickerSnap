@@ -115,6 +115,40 @@ public sealed class FfprobeOutputTests
         FfprobeOutput.WithFrameDelays(webp, """{ "packets": [], "streams": [{ "time_base": "1/1000" }] }""").Should().Be(webp);
     }
 
+    /// <summary>A 6-second VP9 clip at 15 fps whose Info › Duration was patched to 2.9 s, as @fStikBot does.</summary>
+    [Fact]
+    public void Reads_a_webm_s_length_where_its_last_frame_ends_and_keeps_the_header_s_as_declared()
+    {
+        var header = Parse("webm-long-sticker.json", "webm");
+
+        var webm = FfprobeOutput.WithFrameTimes(header, Sample("webm-long-sticker.packets.json"));
+
+        header.DurationSec.Should().Be(2.9);
+        webm.Should().Be(header with { DurationSec = 5.999, DeclaredDurationSec = 2.9 });
+    }
+
+    [Fact]
+    public void Gives_a_webm_frame_without_a_length_one_frame_of_the_stream_s_rate()
+    {
+        var header = Parse("webm-vp9-opaque.json", "webm");
+
+        var webm = FfprobeOutput.WithFrameTimes(header, """
+            { "packets": [{ "pts": 0 }, { "pts": 33 }, { "pts": 967 }], "streams": [{ "time_base": "1/1000" }] }
+            """);
+
+        webm.DurationSec.Should().BeApproximately(1, 1e-9);
+        webm.DeclaredDurationSec.Should().Be(header.DurationSec);
+    }
+
+    [Fact]
+    public void Keeps_the_header_s_length_of_a_webm_whose_frames_it_cannot_read()
+    {
+        var header = Parse("webm-vp9-opaque.json", "webm");
+
+        FfprobeOutput.WithFrameTimes(header, """{ "packets": [], "streams": [{ "time_base": "1/1000" }] }""")
+            .Should().Be(header with { DeclaredDurationSec = header.DurationSec });
+    }
+
     [Fact]
     public void Tells_a_variable_frame_rate_by_the_average_rate()
     {

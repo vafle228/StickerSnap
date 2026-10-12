@@ -106,6 +106,36 @@ internal static class FfprobeOutput
         };
     }
 
+    /// <summary>
+    /// WEBM declares its length in the header (Segment › Info › Duration), which is what ffprobe
+    /// gives as the container's duration and what Telegram reads, while a player plays every frame.
+    /// A long sticker (R19) declares 2.9 s over 20 s of frames, so the length is taken where the last
+    /// frame ends and the header's stays as the declared one. A frame without a length of its own
+    /// (no DefaultDuration in the track) lasts one frame of the stream's rate.
+    /// </summary>
+    /// <param name="json">What ffprobe printed for <see cref="FrameDelayArguments"/></param>
+    public static MediaInfo WithFrameTimes(MediaInfo media, string json)
+    {
+        var declared = media with { DeclaredDurationSec = media.DurationSec };
+        using var document = Json(json);
+        var root = document.RootElement;
+        var timeBase = root.TryGetProperty("streams", out var streams)
+            ? streams.EnumerateArray().Select(s => Rational.Parse(String(s, "time_base"))).FirstOrDefault()
+            : null;
+        if (timeBase is not { IsValid: true } tick || !root.TryGetProperty("packets", out var packets)) return declared;
+
+        var frameTicks = (long)Math.Round(tick.Den / (media.Fps.ToDouble() * tick.Num));
+        var frames = packets.EnumerateArray()
+            .Select(p => (Pts: Integer64(p, "pts"), Duration: Integer64(p, "duration")))
+            .Where(p => p.Pts is not null)
+            .Select(p => (Start: p.Pts!.Value, End: p.Pts!.Value + (p.Duration is > 0 ? p.Duration.Value : frameTicks)))
+            .ToList();
+        if (frames.Count == 0) return declared;
+
+        var ticks = frames.Max(f => f.End) - frames.Min(f => f.Start);
+        return ticks > 0 ? declared with { DurationSec = (double)ticks * tick.Num / tick.Den } : declared;
+    }
+
     /// <summary>A video stream that is not cover art, which MP4 and M4A carry as `attached_pic`.</summary>
     private static bool IsPicture(JsonElement stream) =>
         String(stream, "codec_type") == "video"
