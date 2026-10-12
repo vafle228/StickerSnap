@@ -1,0 +1,55 @@
+# A trimmed openapi.yaml for ContractComparerTests: getSettings with recentEmoji renamed to
+# recent, a listProjects the server does not serve, and no getApp or patchSettings at all.
+openapi: 3.1.0
+info:
+  title: StickerSnap API, trimmed
+  version: 1.0.0
+paths:
+  /api/v1/settings:
+    get:
+      operationId: getSettings
+      responses:
+        '200':
+          description: Настройки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+        default:
+          description: Ошибка
+  /api/v1/projects:
+    get:
+      operationId: listProjects
+      responses:
+        '200':
+          description: Проекты
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+components:
+  schemas:
+    Settings:
+      type: object
+      required: [theme, accent, folders, recent]
+      properties:
+        theme:
+          type: string
+          enum: [light, dark, system]
+        accent:
+          type: string
+          enum: [indigo, violet, raspberry, teal, graphite]
+        folders:
+          type: object
+          required: [projects, stickers]
+          properties:
+            projects:
+              type: string
+            stickers:
+              type: string
+        recent:
+          type: array
+          items:
+            type: string
