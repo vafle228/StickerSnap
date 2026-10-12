@@ -36,8 +36,10 @@ public sealed class UploadsController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status415UnsupportedMediaType, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status507InsufficientStorage, "application/problem+json")]
     [ProducesDefaultResponseType(typeof(ProblemDetails))]
-    public async Task<IActionResult> Create(CancellationToken cancellationToken)
+    public async Task<IActionResult> Create()
     {
+        // No parameters at all: binding one would make MVC read the whole form before the action runs
+        var cancellationToken = HttpContext.RequestAborted;
         if (!MediaTypeHeaderValue.TryParse(Request.ContentType, out var type) ||
             !type.MediaType.Equals("multipart/form-data", StringComparison.OrdinalIgnoreCase) ||
             HeaderUtilities.RemoveQuotes(type.Boundary).Value is not { Length: > 0 } boundary)
