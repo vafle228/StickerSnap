@@ -38,20 +38,27 @@ internal static class Vp9StickerArguments
 
     /// <summary>
     /// The picture is first brought to its size as shown with square pixels (MediaInfo's width
-    /// and height already apply rotation and the pixel aspect ratio), then cropped, scaled and
-    /// resampled to the sticker's rate.
+    /// and height already apply rotation and the pixel aspect ratio), then cropped, scaled (through
+    /// the smaller detail size when the fit ladder gave detail up) and resampled to the sticker's rate.
     /// </summary>
     internal static string Filters(StickerRender render)
     {
         var spec = render.Spec;
         var crop = spec.Crop;
-        return string.Join(',',
+        List<string> filters =
+        [
             $"scale={render.Source.Width}:{render.Source.Height}",
             "setsar=1",
             $"crop={crop.Width}:{crop.Height}:{crop.X}:{crop.Y}",
+        ];
+        if (spec.Detail is { } detail) filters.Add($"scale={detail.Width}:{detail.Height}:flags=lanczos");
+        filters.AddRange(
+        [
             $"scale={spec.Width}:{spec.Height}:flags=lanczos",
             $"fps={spec.Fps}",
-            $"format={(spec.KeepAlpha ? "yuva420p" : "yuv420p")}");
+            $"format={(spec.KeepAlpha ? "yuva420p" : "yuv420p")}",
+        ]);
+        return string.Join(',', filters);
     }
 
     private static IEnumerable<string> Rate(RateControl rate, int pass, string? passLog) => rate switch
