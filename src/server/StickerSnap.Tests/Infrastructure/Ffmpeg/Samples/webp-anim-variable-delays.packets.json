@@ -1,0 +1,63 @@
+{
+    "packets": [
+        {
+            "pts": 0,
+            "duration": 40
+        },
+        {
+            "pts": 40,
+            "duration": 40
+        },
+        {
+            "pts": 80,
+            "duration": 200
+        },
+        {
+            "pts": 280,
+            "duration": 40
+        },
+        {
+            "pts": 320,
+            "duration": 500
+        },
+        {
+            "pts": 820,
+            "duration": 100
+        },
+        {
+            "pts": 920,
+            "duration": 20
+        },
+        {
+            "pts": 940,
+            "duration": 20
+        },
+        {
+            "pts": 960,
+            "duration": 20
+        },
+        {
+            "pts": 980,
+            "duration": 1000
+        },
+        {
+            "pts": 1980,
+            "duration": 60
+        },
+        {
+            "pts": 2040,
+            "duration": 60
+        }
+    ],
+    "programs": [
+
+    ],
+    "stream_groups": [
+
+    ],
+    "streams": [
+        {
+            "time_base": "1/1000"
+        }
+    ]
+}
