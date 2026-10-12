@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Text;
 using CliWrap;
-using StickerSnap.Application.Ffmpeg;
 using StickerSnap.Core.Errors;
 
 namespace StickerSnap.Infrastructure.Ffmpeg;

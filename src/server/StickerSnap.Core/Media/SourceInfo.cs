@@ -23,7 +23,7 @@ public sealed record SourceInfo(
     bool HasAlpha,
     long SizeBytes)
 {
-    /// <summary>A source that is on disk and that ffprobe has just read.</summary>
+    /// <summary>A source that is on disk and that the media engine has just read.</summary>
     public static SourceInfo From(MediaInfo media, string fileName, string? path) => new(
         fileName,
         path,

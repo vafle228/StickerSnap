@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using StickerSnap.Application.Ffmpeg;
-using StickerSnap.Core.Ffmpeg;
+using StickerSnap.Application.Media;
 
 namespace StickerSnap.Infrastructure.Ffmpeg;
 
@@ -28,7 +27,7 @@ internal sealed class FfmpegLocator(
         {
             if (_found is not null) return _found;
             var lookup = await SearchAsync(cancellationToken);
-            if (lookup.Status != FfmpegStatus.Missing) _found = lookup;
+            if (lookup.Status != MediaEngineStatus.Missing) _found = lookup;
             return lookup;
         }
         finally

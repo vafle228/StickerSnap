@@ -1,4 +1,3 @@
-using StickerSnap.Application.Ffmpeg;
 using StickerSnap.Infrastructure.Ffmpeg;
 
 namespace StickerSnap.Tests.Infrastructure.Ffmpeg;

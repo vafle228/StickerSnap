@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using StickerSnap.Application.Ffmpeg;
+using StickerSnap.Application.Media;
 using StickerSnap.Infrastructure.Ffmpeg;
 
 namespace StickerSnap.Tests.Infrastructure.Ffmpeg;
@@ -25,7 +25,7 @@ public sealed class RealFfmpeg : IAsyncLifetime
         Probe = new FfprobeMediaProbe(locator, Ffmpeg);
     }
 
-    public IFfmpeg Ffmpeg { get; }
+    internal IFfmpeg Ffmpeg { get; }
 
     public IMediaProbe Probe { get; }
 

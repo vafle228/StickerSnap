@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using StickerSnap.Application.Ffmpeg;
+using StickerSnap.Application.Media;
 using StickerSnap.Infrastructure.Ffmpeg;
 
 namespace StickerSnap.Tests.Infrastructure.Ffmpeg;
@@ -54,7 +54,7 @@ public sealed class FfmpegLocatorTests : IDisposable
 
         var lookup = await Locator(directory).FindAsync(Cancel);
 
-        lookup.Status.Should().Be(FfmpegStatus.Ok);
+        lookup.Status.Should().Be(MediaEngineStatus.Ok);
         lookup.Version!.Text.Should().Be("9.0.2-17-g2a571b6068");
         lookup.Directory.Should().Be(directory);
     }
@@ -64,7 +64,7 @@ public sealed class FfmpegLocatorTests : IDisposable
     {
         var lookup = await Locator(Ffmpeg("old", "7.1")).FindAsync(Cancel);
 
-        lookup.Status.Should().Be(FfmpegStatus.TooOld);
+        lookup.Status.Should().Be(MediaEngineStatus.TooOld);
         lookup.Version!.Text.Should().Be("7.1");
     }
 
@@ -75,7 +75,7 @@ public sealed class FfmpegLocatorTests : IDisposable
 
         // An ffmpeg next to the test host or on this machine's PATH gets no answer either:
         // the substitute knows only the files the tests made
-        lookup.Status.Should().Be(FfmpegStatus.Missing);
+        lookup.Status.Should().Be(MediaEngineStatus.Missing);
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public sealed class FfmpegLocatorTests : IDisposable
         _reader.ReadAsync(executable, Arg.Any<CancellationToken>()).Returns("ffmpeg version 9.0.2 Copyright\n");
         var after = await locator.FindAsync(Cancel);
 
-        before.Status.Should().Be(FfmpegStatus.Missing);
-        after.Status.Should().Be(FfmpegStatus.Ok);
+        before.Status.Should().Be(MediaEngineStatus.Missing);
+        after.Status.Should().Be(MediaEngineStatus.Ok);
     }
 }

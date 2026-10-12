@@ -1,5 +1,3 @@
-using StickerSnap.Application.Ffmpeg;
-
 namespace StickerSnap.Infrastructure.Ffmpeg;
 
 internal sealed class CliFfmpeg(IFfmpegLocator locator) : IFfmpeg

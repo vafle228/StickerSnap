@@ -1,7 +1,7 @@
-namespace StickerSnap.Application.Ffmpeg;
+namespace StickerSnap.Infrastructure.Ffmpeg;
 
 /// <summary>Runs the FFmpeg that <see cref="IFfmpegLocator"/> found.</summary>
-public interface IFfmpeg
+internal interface IFfmpeg
 {
     /// <summary>
     /// Runs ffmpeg with <paramref name="arguments"/>, each one a whole argument, never a command
@@ -22,7 +22,7 @@ public interface IFfmpeg
 /// <summary>How a run of ffmpeg ended.</summary>
 /// <param name="Output">What it wrote to its standard output, such as `metadata=print:file=-`</param>
 /// <param name="Log">The last lines of its standard error: what goes under «Подробности»</param>
-public sealed record FfmpegResult(int ExitCode, string Output, string Log)
+internal sealed record FfmpegResult(int ExitCode, string Output, string Log)
 {
     public bool IsSuccess => ExitCode == 0;
 }
@@ -32,4 +32,4 @@ public sealed record FfmpegResult(int ExitCode, string Output, string Log)
 /// <param name="OutTime">Time of the output written so far; null while ffmpeg says N/A</param>
 /// <param name="Speed">Times real time; null while ffmpeg says N/A</param>
 /// <param name="IsEnd">The last block, `progress=end`</param>
-public sealed record FfmpegProgress(long Frame, TimeSpan? OutTime, double? Speed, bool IsEnd);
+internal sealed record FfmpegProgress(long Frame, TimeSpan? OutTime, double? Speed, bool IsEnd);

@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
-using StickerSnap.Application.Ffmpeg;
+using StickerSnap.Application.Media;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Media;
 

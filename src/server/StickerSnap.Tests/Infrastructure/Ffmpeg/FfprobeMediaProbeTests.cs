@@ -1,4 +1,3 @@
-using StickerSnap.Application.Ffmpeg;
 using StickerSnap.Core.Errors;
 using StickerSnap.Infrastructure.Ffmpeg;
 

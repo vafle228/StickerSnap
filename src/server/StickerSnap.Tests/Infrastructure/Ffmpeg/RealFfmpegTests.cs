@@ -1,6 +1,6 @@
-using StickerSnap.Application.Ffmpeg;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Media;
+using StickerSnap.Infrastructure.Ffmpeg;
 
 namespace StickerSnap.Tests.Infrastructure.Ffmpeg;
 

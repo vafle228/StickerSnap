@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using StickerSnap.Api;
 using StickerSnap.Api.Shell;
-using StickerSnap.Application.Ffmpeg;
+using StickerSnap.Application.Media;
 
 namespace StickerSnap.Tests.Api;
 
@@ -12,8 +12,8 @@ namespace StickerSnap.Tests.Api;
 /// The whole server in memory, with its own wwwroot (no `npm run build` needed) and the settings
 /// the desktop shell would pass as StickerSnap__*. The environment is Testing, so a SPA built into
 /// StickerSnap.Api/wwwroot is not served over this one as Development's static web assets.
-/// No real process is started: FFmpeg is <see cref="Ffmpeg"/>, missing until a test says otherwise.
-/// The data directory is a temporary one, never the user's.
+/// No real process is started: the media engine is <see cref="Engine"/>, missing until a test
+/// says otherwise. The data directory is a temporary one, never the user's.
 /// </summary>
 public class ApiFactory(params (string Key, string Value)[] shell) : WebApplicationFactory<Program>
 {
@@ -24,7 +24,7 @@ public class ApiFactory(params (string Key, string Value)[] shell) : WebApplicat
     private string? _dataDir;
     private bool _ownsDataDir;
 
-    public IFfmpegLocator Ffmpeg { get; } = MissingFfmpeg();
+    public IMediaEngine Engine { get; } = MissingEngine();
 
     /// <summary>StickerSnap__DataDir: a new temporary directory unless a test passes one to outlive the factory.</summary>
     public string DataDir
@@ -49,14 +49,14 @@ public class ApiFactory(params (string Key, string Value)[] shell) : WebApplicat
         builder.UseSetting("StickerSnap:DataDir", DataDir);
         foreach (var (key, value) in shell) builder.UseSetting($"{ShellOptions.Section}:{key}", value);
 
-        builder.ConfigureTestServices(services => services.AddSingleton(Ffmpeg));
+        builder.ConfigureTestServices(services => services.AddSingleton(Engine));
     }
 
-    private static IFfmpegLocator MissingFfmpeg()
+    private static IMediaEngine MissingEngine()
     {
-        var ffmpeg = Substitute.For<IFfmpegLocator>();
-        ffmpeg.FindAsync(Arg.Any<CancellationToken>()).Returns(FfmpegLookup.Missing);
-        return ffmpeg;
+        var engine = Substitute.For<IMediaEngine>();
+        engine.GetInfoAsync(Arg.Any<CancellationToken>()).Returns(new MediaEngineInfo("FFmpeg", MediaEngineStatus.Missing, null));
+        return engine;
     }
 
     protected override void Dispose(bool disposing)

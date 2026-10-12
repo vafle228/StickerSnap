@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.Json.Nodes;
-using StickerSnap.Application.Ffmpeg;
+using StickerSnap.Application.Media;
 using StickerSnap.Core.Errors;
 
 namespace StickerSnap.Tests.Api.Problems;
@@ -37,7 +37,7 @@ public sealed class ProblemResponseTests
     public async Task Answers_a_thrown_app_exception_with_its_code_status_and_params()
     {
         using var factory = new ApiFactory();
-        factory.Ffmpeg.FindAsync(Arg.Any<CancellationToken>()).Returns<Task<FfmpegLookup>>(
+        factory.Engine.GetInfoAsync(Arg.Any<CancellationToken>()).Returns<Task<MediaEngineInfo>>(
             _ => throw new AppException(ErrorCode.RateLimited, "Too Many Requests: retry after 24")
             {
                 Params = new Dictionary<string, object> { ["retryAfterSec"] = 24 },
@@ -55,7 +55,7 @@ public sealed class ProblemResponseTests
     public async Task Answers_an_unexpected_exception_with_internal_and_keeps_its_message_in_the_log()
     {
         using var factory = new ApiFactory();
-        factory.Ffmpeg.FindAsync(Arg.Any<CancellationToken>()).Returns<Task<FfmpegLookup>>(
+        factory.Engine.GetInfoAsync(Arg.Any<CancellationToken>()).Returns<Task<MediaEngineInfo>>(
             _ => throw new InvalidOperationException("secret path C:\\Users\\someone"));
 
         var response = await factory.CreateClient().GetAsync("/api/v1/app", Cancel);

@@ -1,5 +1,4 @@
 using System.Globalization;
-using StickerSnap.Application.Ffmpeg;
 
 namespace StickerSnap.Infrastructure.Ffmpeg;
 
