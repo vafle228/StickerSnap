@@ -35,6 +35,46 @@ public sealed class ProjectsController : ControllerBase
         return Ok(projects.Select(ProjectSummary.From).ToList());
     }
 
+    /// <summary>
+    /// Reads the video and makes a project of it with one segment; sends projectChanged. Dropping
+    /// the request while the video is read is «Отменить» and creates nothing.
+    /// </summary>
+    [HttpPost(Name = "createProject")]
+    [Produces("application/json")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(Project), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status415UnsupportedMediaType, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status507InsufficientStorage, "application/problem+json")]
+    [ProducesDefaultResponseType(typeof(ProblemDetails))]
+    public async Task<IActionResult> Create([FromBody] SourceRequest request, CancellationToken cancellationToken)
+    {
+        var created = await _service.CreateAsync(request.Source.ToSource(), cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, Project.From(created, _host.Mode));
+    }
+
+    /// <summary>
+    /// «Указать новое видео» for «Исходник не найден»: the scene stays, the segments past the new
+    /// video's end are named in the answer. Sends projectChanged.
+    /// </summary>
+    [HttpPut("{id:guid}/source", Name = "replaceProjectSource")]
+    [Produces("application/json")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(ReplaceSourceResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status415UnsupportedMediaType, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status507InsufficientStorage, "application/problem+json")]
+    [ProducesDefaultResponseType(typeof(ProblemDetails))]
+    public async Task<IActionResult> ReplaceSource(Guid id, [FromBody] SourceRequest request, CancellationToken cancellationToken)
+    {
+        var replaced = await _service.ReplaceSourceAsync(id, request.Source.ToSource(), cancellationToken);
+        return Ok(ReplaceSourceResponse.From(replaced, _host.Mode));
+    }
+
     /// <summary>Opens a .ssproj by its path and puts it on the list; also «Вернуть» after «Убрать из списка».</summary>
     [HttpPost("open", Name = "openProject")]
     [Produces("application/json")]

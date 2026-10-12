@@ -2,7 +2,10 @@ using System.Text.Json.Serialization;
 
 namespace StickerSnap.Api.Contracts;
 
-/// <summary>POST /api/v1/validate and later POST /api/v1/projects (schema SourceRequest).</summary>
+/// <summary>The answer to POST /api/v1/uploads (schema Upload): what a SourceRef of kind upload names.</summary>
+public sealed record Upload(string UploadId);
+
+/// <summary>POST /api/v1/validate, POST /api/v1/projects, PUT /api/v1/projects/{id}/source (schema SourceRequest).</summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record SourceRequest(SourceRef Source);
 
