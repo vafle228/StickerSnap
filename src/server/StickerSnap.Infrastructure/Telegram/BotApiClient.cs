@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
@@ -20,6 +21,8 @@ internal sealed class BotApiClient(HttpClient http, BotToken token, IOptions<Bot
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        // Titles and emoji as they are: the body goes to the Bot API, never into a page
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
     /// <summary>A method whose parameters are plain values, sent as JSON.</summary>
@@ -96,5 +99,9 @@ internal sealed class BotApiClient(HttpClient http, BotToken token, IOptions<Bot
         }
     }
 
-    private Uri Address(string path) => new(new Uri(options.Value.BotApiUrl.ToString().TrimEnd('/') + "/"), path);
+    /// <summary>
+    /// Joined as text: as a relative URI, bot123:ABC/getMe would read as an absolute one of the
+    /// scheme bot123.
+    /// </summary>
+    private Uri Address(string path) => new($"{options.Value.BotApiUrl.ToString().TrimEnd('/')}/{path}");
 }
