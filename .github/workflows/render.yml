@@ -1,19 +1,17 @@
 name: Render
 
 # The server tests tagged Category=Slow: the FFmpeg adapters on clips the pinned FFmpeg makes
-# with lavfi. They never block the fast job «Server» in ci.yml. Runs on a PR with the label
-# render-corpus, every night and by hand; the corpus of 30 clips joins this workflow in B4.
+# with lavfi. They never block the fast job «Server» in ci.yml. Like the other workflows, runs by
+# hand only (Actions → Render → Run workflow); the corpus of 30 clips joins it in B4.
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, labeled]
-  schedule:
-    - cron: "0 2 * * *"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   slow:
     name: Slow server tests
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'render-corpus')
     runs-on: ubuntu-latest
     env:
       StickerSnap__FfmpegDir: ${{ github.workspace }}/tools/ffmpeg/linux-x64
