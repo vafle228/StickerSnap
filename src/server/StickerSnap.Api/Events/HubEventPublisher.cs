@@ -22,6 +22,9 @@ public sealed class HubEventPublisher(IHubContext<EventsHub> hub, ILogger<HubEve
     public Task ProjectRemovedAsync(Guid id, CancellationToken cancellationToken) =>
         SendAsync("projectRemoved", new ProjectRemovedEvent(id), cancellationToken);
 
+    public Task JobUpdatedAsync(Core.Jobs.Job job, CancellationToken cancellationToken) =>
+        SendAsync("jobUpdated", Job.From(job), cancellationToken);
+
     private async Task SendAsync(string name, object payload, CancellationToken cancellationToken)
     {
         try

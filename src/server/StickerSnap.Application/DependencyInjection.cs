@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using StickerSnap.Application.App;
+using StickerSnap.Application.Jobs;
 using StickerSnap.Application.Projects;
 using StickerSnap.Application.Render;
 using StickerSnap.Application.Settings;
@@ -18,6 +19,7 @@ public static class DependencyInjection
         .AddSingleton<AppInfoService>()
         .AddSingleton<SettingsService>()
         .AddSingleton<ProjectService>()
+        .AddSingleton<JobQueue>()
         .AddSingleton<StickerFitService>()
         .AddSingleton<SegmentRenderService>()
         .AddSingleton<CorpusRenderService>()

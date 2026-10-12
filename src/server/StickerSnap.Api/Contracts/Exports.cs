@@ -33,7 +33,16 @@ public sealed record OutputSpec(int Width, int Height, double Fps, double Durati
 [JsonDerivedType(typeof(FpsConcession), "fps")]
 [JsonDerivedType(typeof(CrfConcession), "crf")]
 [JsonDerivedType(typeof(ScaleConcession), "scale")]
-public abstract record Concession(double From, double To);
+public abstract record Concession(double From, double To)
+{
+    public static Concession Of(Core.Render.Concession concession) => concession switch
+    {
+        Core.Render.Concession.Fps fps => new FpsConcession(fps.From, fps.To),
+        Core.Render.Concession.Crf crf => new CrfConcession(crf.From, crf.To),
+        Core.Render.Concession.Scale scale => new ScaleConcession(scale.From, scale.To),
+        _ => throw new ArgumentOutOfRangeException(nameof(concession), concession, "A concession the contract does not know"),
+    };
+}
 
 public sealed record FpsConcession(double From, double To) : Concession(From, To);
 
