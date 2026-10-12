@@ -18,6 +18,16 @@ describe("frame presets", () => {
     expect(squareCrop(fullHd).rect).toEqual({ x: 420, y: 0, width: 1080, height: 1080 });
   });
 
+  it("«Квадрат» stays on whole pixels when the margin is odd", () => {
+    expect(squareCrop({ width: 481, height: 270 }).rect).toEqual({
+      x: 105,
+      y: 0,
+      width: 270,
+      height: 270,
+    });
+    expect(squareCrop({ width: 270, height: 481 }).rect).toMatchObject({ x: 0, y: 105 });
+  });
+
   it("«Как в источнике» takes the whole frame", () => {
     expect(sourceCrop(fullHd).rect).toEqual({ x: 0, y: 0, width: 1920, height: 1080 });
   });
