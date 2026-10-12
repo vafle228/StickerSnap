@@ -349,8 +349,6 @@ export const ru = {
   "inspector.output": "Выход",
   "inspector.width": "Ширина",
   "inspector.height": "Высота",
-  "inspector.lockAspect": "Закрепить пропорции",
-  "inspector.lockAspectHint": "Ручки на холсте, размеры и пресеты не меняют форму",
   "inspector.stretchHint":
     "Кадр целиком, без обрезки. Пропорции можно ломать нарочно; одна сторона всегда {side}.",
   "inspector.speedLoop": "Скорость и цикл",

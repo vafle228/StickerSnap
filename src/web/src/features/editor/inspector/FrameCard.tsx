@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent, type KeyboardEvent } from "react";
-import { Button, Card, Segmented, Switch, TextField } from "../../../ds";
+import { Button, Card, Segmented, TextField } from "../../../ds";
 import { useAppInfo } from "../../../shared/api/queries";
 import type { Segment } from "../../../shared/api/types";
 import { t } from "../../../shared/strings/ru";
@@ -26,7 +26,6 @@ export function FrameCard() {
   const source = useEditor((s) => s.source);
   const draft = useEditor((s) => s.frameDraft);
   const segments = useEditor((s) => s.scene?.segments);
-  const locked = useEditor((s) => s.stretchLocked);
   const limits = useAppInfo().data?.limits;
   if (!segment || !source) return null;
 
@@ -91,7 +90,6 @@ export function FrameCard() {
               height={output.height}
               side={side}
               disabled={segment.preset === "emoji"}
-              locked={locked}
               onChange={(size) =>
                 setFrame(stretchOf(stretchLike(size, frame.aspect, source), source))
               }
@@ -100,14 +98,12 @@ export function FrameCard() {
           <div role="radiogroup" aria-label={t("inspector.stretchPreset")} className={styles.pair}>
             <PresetButton
               checked={frame.preset === "source"}
-              locked={locked}
               onClick={() => setFrame(sourceStretch(source))}
             >
               {t("inspector.preset.source")}
             </PresetButton>
             <PresetButton
               checked={frame.preset === "squash"}
-              locked={locked}
               onClick={() => setFrame(squashStretch(source))}
             >
               {t("inspector.preset.squash")}
@@ -116,18 +112,6 @@ export function FrameCard() {
           {side !== undefined && (
             <p className={styles.hint}>{t("inspector.stretchHint", { side })}</p>
           )}
-          <Switch
-            className={styles.long}
-            checked={locked}
-            disabled={segment.preset === "emoji"}
-            onChange={(on) => useEditor.getState().setStretchLocked(on)}
-            label={
-              <span className={styles.longText}>
-                <b>{t("inspector.lockAspect")}</b>
-                <span className={styles.quiet}>{t("inspector.lockAspectHint")}</span>
-              </span>
-            }
-          />
         </>
       )}
 
@@ -142,13 +126,10 @@ export function FrameCard() {
 
 function PresetButton({
   checked,
-  locked = false,
   onClick,
   children,
 }: {
   checked: boolean;
-  /** «Закрепить пропорции» is on: a preset would change the proportion */
-  locked?: boolean;
   onClick: () => void;
   children: string;
 }) {
@@ -159,7 +140,6 @@ function PresetButton({
       role="radio"
       aria-checked={checked}
       className={styles.preset}
-      disabled={locked}
       onClick={onClick}
     >
       {children}
@@ -172,15 +152,14 @@ interface StretchSizeProps {
   height: number;
   side: number;
   disabled: boolean;
-  locked: boolean;
   onChange: (size: { width: number; height: number }) => void;
 }
 
 /** Width and height of the output; one side is always the preset's (512). A typed side stays as
  *  typed and the other becomes 512, so 512 × 288 with width 300 gives 300 × 512; a typed 512
- *  keeps the other side. With «Закрепить пропорции» on, the sizes only show. No lock sits
- *  between the fields: with one side pinned at 512, a kept proportion leaves nothing to type. */
-function StretchSize({ width, height, side, disabled, locked, onChange }: StretchSizeProps) {
+ *  keeps the other side. No lock sits between the fields: with one side pinned at 512, a kept
+ *  proportion leaves nothing to type; a typo goes back with undo. */
+function StretchSize({ width, height, side, disabled, onChange }: StretchSizeProps) {
   const [draft, setDraft] = useState({ width: String(width), height: String(height) });
   const current = { width, height };
 
@@ -198,7 +177,7 @@ function StretchSize({ width, height, side, disabled, locked, onChange }: Stretc
     className: styles.size,
     inputMode: "numeric" as const,
     value: draft[key],
-    readOnly: locked || disabled,
+    readOnly: disabled,
     onChange: (e: ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, [key]: e.target.value }),
     onBlur: () => commit(key),
     onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
