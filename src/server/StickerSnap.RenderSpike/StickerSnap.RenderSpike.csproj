@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The stage 0 render spike: renders a corpus of clips and writes a report. A host like the Api. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\StickerSnap.Application\StickerSnap.Application.csproj" />
+    <ProjectReference Include="..\StickerSnap.Infrastructure\StickerSnap.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+</Project>

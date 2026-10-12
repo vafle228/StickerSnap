@@ -3,6 +3,7 @@
   <Project Path="StickerSnap.Application/StickerSnap.Application.csproj" />
   <Project Path="StickerSnap.Core/StickerSnap.Core.csproj" />
   <Project Path="StickerSnap.Infrastructure/StickerSnap.Infrastructure.csproj" />
+  <Project Path="StickerSnap.RenderSpike/StickerSnap.RenderSpike.csproj" />
   <Project Path="StickerSnap.Tests/StickerSnap.Tests.csproj" />
   <Folder Name="/Solution Items/">
     <File Path="Directory.Build.props" />

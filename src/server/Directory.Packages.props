@@ -9,6 +9,10 @@
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
   </ItemGroup>
 
+  <ItemGroup Label="RenderSpike">
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
+  </ItemGroup>
+
   <ItemGroup Label="Application and Infrastructure">
     <PackageVersion Include="CliWrap" Version="3.10.5" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />

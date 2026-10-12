@@ -3,7 +3,7 @@ name: Render
 # The server tests tagged Category=Slow: the FFmpeg adapters on clips the pinned FFmpeg makes
 # with lavfi. Runs on every PR to main and is a required check there, so code that breaks the
 # work with FFmpeg does not merge; also by hand. A PR that touches no server code passes at once.
-# The corpus of 30 clips joins this workflow in B4.
+# Among them the test corpus of 30 GIFs (StickerSnap.Tests/TestData/Corpus) rendered as stickers.
 on:
   pull_request:
     branches: [main]
