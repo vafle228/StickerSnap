@@ -21,7 +21,7 @@ public sealed class ContractComparerTests
     [Fact]
     public async Task Notices_a_renamed_field()
     {
-        var differences = await CompareWithTrimmed("listProjects");
+        var differences = await CompareWithTrimmed("listPacks");
 
         differences.Should().Contain([
             "getSettings 200 required: missing on the server: recent",
@@ -34,7 +34,7 @@ public sealed class ContractComparerTests
     [Fact]
     public async Task Notices_operations_the_contract_does_not_have()
     {
-        var differences = await CompareWithTrimmed("listProjects");
+        var differences = await CompareWithTrimmed("listPacks");
 
         differences.Should().Contain([
             "getApp (GET /api/v1/app) is on the server but not in the contract",
@@ -48,13 +48,13 @@ public sealed class ContractComparerTests
         var differences = await CompareWithTrimmed();
 
         differences.Should().Contain(
-            "listProjects (GET /api/v1/projects) is in the contract but not on the server, nor among the operations not yet on the server");
+            "listPacks (GET /api/v1/packs) is in the contract but not on the server, nor among the operations not yet on the server");
     }
 
     [Fact]
     public async Task Notices_an_operation_served_while_still_listed_as_not_yet_on_the_server()
     {
-        var differences = await CompareWithTrimmed("listProjects", "getSettings", "renamedLongAgo");
+        var differences = await CompareWithTrimmed("listPacks", "getSettings", "renamedLongAgo");
 
         differences.Should().Contain([
             "getSettings (GET /api/v1/settings) is on the server: strike it from the operations not yet on the server",
