@@ -9,9 +9,9 @@ namespace StickerSnap.Application.Render;
 /// <summary>
 /// Renders the default sticker of every clip of a corpus in each of the given ways and reads each
 /// result back: the size, what the file holds, how long it took, what Telegram would reject.
-/// The stage 0 render spike, and later the regression run of QA over the same corpus.
+/// The stage 0 render and fit spikes, and later the regression run of QA over the same corpus.
 /// </summary>
-public sealed class CorpusRenderService(IMediaProbe probe, IStickerRenderer renderer, TimeProvider time)
+public sealed class CorpusRenderService(IMediaProbe probe, IStickerRenderer renderer, StickerFitService fitter, TimeProvider time)
 {
     public async Task<CorpusReport> RunAsync(
         IReadOnlyList<string> sources,
@@ -79,11 +79,26 @@ public sealed class CorpusRenderService(IMediaProbe probe, IStickerRenderer rend
         var started = time.GetTimestamp();
         try
         {
-            var rendered = await renderer.RenderAsync(
-                new StickerRender(source, media, spec, rate, mode.Effort, output), cancellationToken);
+            FittedSticker? fitted = null;
+            RenderedSticker rendered;
+            if (mode.Fit)
+            {
+                fitted = await fitter.FitAsync(
+                    new StickerFit(source, media, spec, limits, LadderProfile.Sticker, output), cancellationToken);
+                rendered = new RenderedSticker(fitted.Path, fitted.SizeBytes);
+                rate = fitted.Attempts[^1].Rate;
+            }
+            else
+            {
+                rendered = await renderer.RenderAsync(new StickerRender(source, media, spec, rate, mode.Effort, output), cancellationToken);
+            }
+
             var elapsed = time.GetElapsedTime(started);
             var sticker = await probe.ProbeAsync(rendered.Path, cancellationToken);
-            return new ModeOutcome(mode, rate, elapsed, rendered.SizeBytes, sticker, StickerCheck.Problems(sticker, limits), null);
+            return new ModeOutcome(mode, rate, elapsed, rendered.SizeBytes, sticker, StickerCheck.Problems(sticker, limits), null)
+            {
+                Fitted = fitted,
+            };
         }
         catch (AppException e)
         {
@@ -93,9 +108,10 @@ public sealed class CorpusRenderService(IMediaProbe probe, IStickerRenderer rend
 }
 
 /// <summary>One way to render the corpus: an effort and a way to spend bits.</summary>
-/// <param name="Name">For the report and the file names: `crf`, `2pass`</param>
+/// <param name="Name">For the report and the file names: `crf`, `2pass`, `fit`</param>
 /// <param name="Crf">For a one-pass mode; null renders in two passes at <see cref="TargetBitrate"/></param>
-public sealed record RenderMode(string Name, RenderEffort Effort, int? Crf)
+/// <param name="Fit">Goes down the fit ladder (<see cref="StickerFitService"/>) before the two passes</param>
+public sealed record RenderMode(string Name, RenderEffort Effort, int? Crf, bool Fit = false)
 {
     public RateControl RateFor(StickerSpec spec, PresetLimits limits) => Crf is { } crf
         ? new RateControl.ConstantQuality(crf)
@@ -125,6 +141,9 @@ public sealed record ModeOutcome(
     IReadOnlyList<string> Problems,
     Failure? Failure)
 {
+    /// <summary>How the fit ladder got there, in a <see cref="RenderMode.Fit"/> mode</summary>
+    public FittedSticker? Fitted { get; init; }
+
     public bool Passes => Failure is null && Sticker is not null && Problems.Count == 0;
 
     /// <summary>The source could be transparent and the sticker still can; true for an opaque source.</summary>

@@ -12,8 +12,8 @@ namespace StickerSnap.RenderSpike;
 
 /// <summary>
 /// `dotnet run --project StickerSnap.RenderSpike -- &lt;corpus folder&gt; &lt;output folder&gt; [--crf 31]`:
-/// renders the default sticker of every clip in the corpus three ways (CRF, two passes, a CRF
-/// draft) and writes report.md and report.csv beside the stickers. FFmpeg is found as the
+/// renders the default sticker of every clip in the corpus four ways (CRF, two passes, a CRF
+/// draft, the fit ladder) and writes report.md and report.csv beside the stickers. FFmpeg is found as the
 /// server finds it: StickerSnap__FfmpegDir, else next to the program, else on PATH.
 /// </summary>
 public sealed class Program
@@ -49,6 +49,7 @@ public sealed class Program
             new("crf", RenderEffort.Final, crf),
             new("2pass", RenderEffort.Final, null),
             new("draft", RenderEffort.Draft, crf),
+            new("fit", RenderEffort.Final, null, Fit: true),
         ];
 
         Directory.CreateDirectory(output);

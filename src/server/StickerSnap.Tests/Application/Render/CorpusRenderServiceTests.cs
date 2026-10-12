@@ -21,7 +21,7 @@ public sealed class CorpusRenderServiceTests
 
     public CorpusRenderServiceTests()
     {
-        _service = new CorpusRenderService(_probe, _renderer, _time);
+        _service = new CorpusRenderService(_probe, _renderer, new StickerFitService(_renderer), _time);
         _probe.ProbeAsync("corpus/cat.mp4", Arg.Any<CancellationToken>()).Returns(Media.Landscape);
         _probe.ProbeAsync(Arg.Is<string>(p => p.EndsWith(".webm")), Arg.Any<CancellationToken>()).Returns(Media.Sticker);
         _renderer.RenderAsync(Arg.Any<StickerRender>(), Arg.Any<CancellationToken>()).Returns(call =>
@@ -100,6 +100,21 @@ public sealed class CorpusRenderServiceTests
 
         await _renderer.Received(1).RenderAsync(
             Arg.Is<StickerRender>(r => r.Rate == new RateControl.TwoPass(332_049)), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Goes_down_the_fit_ladder_in_a_fit_mode_and_reports_how()
+    {
+        _renderer.EstimateAsync(Arg.Any<StickerProbe>(), Arg.Any<CancellationToken>()).Returns(300_000L, 200_000L);
+
+        var report = await _service.RunAsync(["corpus/cat.mp4"], "out", [new RenderMode("fit", RenderEffort.Final, null, Fit: true)], null, Cancel);
+
+        var outcome = report.Entries.Single().Outcomes.Single();
+        outcome.Fitted!.Concessions.Should().Equal(new Concession.Fps(30, 24));
+        outcome.Rate.Should().Be(new RateControl.TwoPass(664_098));
+        outcome.SizeBytes.Should().Be(250_000);
+        await _renderer.Received(1).RenderAsync(
+            Arg.Is<StickerRender>(r => r.Spec.Fps == 24 && r.OutputPath == Path.Combine("out", "cat.mp4.fit.webm")), Arg.Any<CancellationToken>());
     }
 
     [Fact]
