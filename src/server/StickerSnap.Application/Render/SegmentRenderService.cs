@@ -15,19 +15,12 @@ namespace StickerSnap.Application.Render;
 /// since only the final file is sent. A segment with fitting switched off (R7) is rendered once at
 /// the first step, as it is, over the limit or not.
 /// </summary>
-public sealed class SegmentRenderService(StickerFitService fitter, IStickerRenderer renderer, IMediaProbe probe)
+public sealed class SegmentRenderService(IStickerFitService fitter, IStickerRenderer renderer, IMediaProbe probe) : ISegmentRenderService
 {
     /// <summary>The share of a final render's progress the check takes.</summary>
     internal const double ValidateShare = 0.05;
 
-    /// <param name="progress">Gets <see cref="RenderProgress"/> as the contract's Job.progress has it, rising</param>
-    /// <exception cref="AppException">
-    /// `bad_request` when the scene has no such segment or the segment breaks a rule of the scene
-    /// against the source; `cannot_fit` when the ladder ran out; `render_failed`, `disk_full` and
-    /// `ffmpeg_missing` from the media engine; `source_unreadable` when the file it wrote cannot be
-    /// read back. A cancelled render throws <see cref="OperationCanceledException"/>; neither a
-    /// failed nor a cancelled render leaves a file being written or a temp file of the engine
-    /// </exception>
+    /// <inheritdoc />
     public async Task<RenderedSegment> RenderAsync(SegmentRender request, IProgress<RenderProgress>? progress, CancellationToken cancellationToken)
     {
         var segment = request.Scene.Segments.FirstOrDefault(segment => segment.Id == request.SegmentId)

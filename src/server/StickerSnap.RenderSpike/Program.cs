@@ -58,7 +58,7 @@ public sealed class Program
         }
 
         using var host = Build();
-        var service = host.Services.GetRequiredService<CorpusRenderService>();
+        var service = host.Services.GetRequiredService<ICorpusRenderService>();
         RenderMode[] modes =
         [
             new("crf", RenderEffort.Final, crf),
@@ -84,7 +84,7 @@ public sealed class Program
         IReadOnlyList<SegmentPlan> plans;
         try
         {
-            plans = await host.Services.GetRequiredService<RenderPlanService>().DescribeAsync(project, CancellationToken.None);
+            plans = await host.Services.GetRequiredService<IRenderPlanService>().DescribeAsync(project, CancellationToken.None);
         }
         catch (AppException e)
         {
@@ -120,7 +120,7 @@ public sealed class Program
         IReadOnlyList<SegmentOutcome> outcomes;
         try
         {
-            outcomes = await host.Services.GetRequiredService<ProjectRenderService>()
+            outcomes = await host.Services.GetRequiredService<IProjectRenderService>()
                 .RenderAsync(project, quality, new StageProgress(), CancellationToken.None);
         }
         catch (AppException e)

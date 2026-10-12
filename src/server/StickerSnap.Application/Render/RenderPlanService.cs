@@ -11,9 +11,9 @@ namespace StickerSnap.Application.Render;
 /// by <see cref="SceneCompiler"/> at the first step of the fit ladder, in two passes at the target
 /// bitrate, as the media engine's commands. For a person checking the compiler by hand.
 /// </summary>
-public sealed class RenderPlanService(IProjectStore projects, IStickerRenderer renderer)
+public sealed class RenderPlanService(IProjectStore projects, IStickerRenderer renderer) : IRenderPlanService
 {
-    /// <exception cref="AppException">As <see cref="IProjectStore.ReadAsync"/></exception>
+    /// <inheritdoc />
     public async Task<IReadOnlyList<SegmentPlan>> DescribeAsync(string projectPath, CancellationToken cancellationToken)
     {
         var project = await projects.ReadAsync(projectPath, cancellationToken);

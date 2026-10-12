@@ -5,18 +5,15 @@ using StickerSnap.Core.Settings;
 namespace StickerSnap.Application.Settings;
 
 /// <summary>GET and PATCH /api/v1/settings: «Настройки» change at once, without «Сохранить».</summary>
-public sealed class SettingsService(ISettingsRepository repository, IFolderAccess folders, IEventPublisher events)
+public sealed class SettingsService(ISettingsRepository repository, IFolderAccess folders, IEventPublisher events) : ISettingsService
 {
     /// <summary>One change at a time: two quick PATCHes must not both start from the same file.</summary>
     private readonly SemaphoreSlim _gate = new(1, 1);
 
+    /// <inheritdoc />
     public Task<UserSettings> GetAsync(CancellationToken cancellationToken) => repository.GetAsync(cancellationToken);
 
-    /// <summary>
-    /// Applies <paramref name="change"/>, saves the result and tells every window by settingsChanged.
-    /// A new folder must be an absolute path the server can create and write in.
-    /// </summary>
-    /// <exception cref="AppException">bad_request for a wrong field, save_failed or disk_full</exception>
+    /// <inheritdoc />
     public async Task<UserSettings> UpdateAsync(SettingsChange change, CancellationToken cancellationToken)
     {
         if (change.IsEmpty) throw new AppException(ErrorCode.BadRequest, "The change names no field of the settings");

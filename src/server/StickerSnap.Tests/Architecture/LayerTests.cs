@@ -91,4 +91,26 @@ public sealed class LayerTests
             .WithoutRequiringPositiveResults()
             .Check(Server);
     }
+
+    /// <summary>
+    /// A use case is registered and consumed through its own interface, <c>IFooService</c> for
+    /// <c>FooService</c>, so a test or another engine can stand in for it.
+    /// </summary>
+    [Fact]
+    public void Application_services_implement_their_own_interface()
+    {
+        var services = Server.Classes
+            .Where(type => Application.GetObjects(Server).Contains(type) && type.Name.EndsWith("Service", StringComparison.Ordinal) && !type.IsAbstract.GetValueOrDefault());
+        services.Where(type => !type.ImplementedInterfaces.Any(i => i.Name == "I" + type.Name))
+            .Select(type => type.FullName).Should().BeEmpty("each service implements I<ClassName>");
+    }
+
+    [Fact]
+    public void Nothing_outside_the_application_names_a_concrete_service()
+    {
+        Types().That().Are(Infrastructure).Or().Are(Api)
+            .Should().NotDependOnAny(Classes().That().Are(Application).And().HaveNameEndingWith("Service"))
+            .WithoutRequiringPositiveResults()
+            .Check(Server);
+    }
 }

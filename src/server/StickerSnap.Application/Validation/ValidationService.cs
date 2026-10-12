@@ -8,12 +8,9 @@ using StickerSnap.Core.Validation;
 namespace StickerSnap.Application.Validation;
 
 /// <summary>Checks any .webm against Telegram's rules (R8): a file dropped on the window, made anywhere.</summary>
-public sealed class ValidationService(SourceFiles files, IMediaProbe probe)
+public sealed class ValidationService(SourceFiles files, IMediaProbe probe) : IValidationService
 {
-    /// <exception cref="AppException">
-    /// `format_unsupported` with `params.ext` for a file that is not .webm; `source_not_found`,
-    /// `source_unreadable` and `ffmpeg_missing` from the probe; `bad_request` for a path from a browser
-    /// </exception>
+    /// <inheritdoc />
     public async Task<FileValidation> ValidateAsync(SourceRef source, CancellationToken cancellationToken)
     {
         var path = files.PathOf(source);

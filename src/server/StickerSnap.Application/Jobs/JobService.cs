@@ -10,7 +10,7 @@ namespace StickerSnap.Application.Jobs;
 /// queued, and again before «Повторить». An export and a publication go by the revision saved
 /// last, so a stale one is revision_conflict; a preview's segment must keep the scene's rules.
 /// </summary>
-public sealed class JobService(IJobQueue queue, ProjectService projects) : IJobService
+public sealed class JobService(IJobQueue queue, IProjectService projects) : IJobService
 {
     /// <inheritdoc/>
     public async Task<Job> CreateAsync(JobRequest request, CancellationToken cancellationToken)

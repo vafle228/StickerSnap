@@ -9,10 +9,9 @@ namespace StickerSnap.Application.Render;
 /// the project as `&lt;project&gt;.&lt;segment&gt;.webm` (`.draft.webm` for a draft). For a person
 /// checking the engine by hand, before the SPA can ask for an export.
 /// </summary>
-public sealed class ProjectRenderService(IProjectStore projects, SegmentRenderService engine)
+public sealed class ProjectRenderService(IProjectStore projects, ISegmentRenderService engine) : IProjectRenderService
 {
-    /// <param name="progress">Gets each segment's progress under its id</param>
-    /// <exception cref="AppException">As <see cref="IProjectStore.ReadAsync"/>; a segment's own failure is in its outcome</exception>
+    /// <inheritdoc />
     public async Task<IReadOnlyList<SegmentOutcome>> RenderAsync(
         string projectPath,
         RenderEffort quality,

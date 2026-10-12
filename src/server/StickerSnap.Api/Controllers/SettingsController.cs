@@ -11,9 +11,9 @@ namespace StickerSnap.Api.Controllers;
 [Produces("application/json")]
 public sealed class SettingsController : ControllerBase
 {
-    private readonly SettingsService _service;
+    private readonly ISettingsService _service;
 
-    public SettingsController(SettingsService service)
+    public SettingsController(ISettingsService service)
     {
         _service = service;
     }
