@@ -53,8 +53,6 @@ interface CropFrameProps {
  *  on the frame finish editing, like «Готово». */
 export function CropFrame({ frame, preset, source, limits, scale }: CropFrameProps) {
   const gesture = useRef<{ what: Gesture; x: number; y: number } | null>(null);
-  // The lock in «Растянуть» fixes the proportion: the side handles go away.
-  const locked = useEditor((s) => s.stretchLocked);
   const min = Math.min(source.width, source.height, Math.max(MIN_SOURCE, MIN_SCREEN / scale));
 
   const crop = frame.mode === "crop";
@@ -180,7 +178,6 @@ export function CropFrame({ frame, preset, source, limits, scale }: CropFramePro
             />
           ))}
         {!crop &&
-          !locked &&
           SIDES.map((side) => (
             <span
               key={side}
