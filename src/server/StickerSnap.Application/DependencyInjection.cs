@@ -3,6 +3,8 @@ using StickerSnap.Application.App;
 using StickerSnap.Application.Projects;
 using StickerSnap.Application.Render;
 using StickerSnap.Application.Settings;
+using StickerSnap.Application.Sources;
+using StickerSnap.Application.Validation;
 
 namespace StickerSnap.Application;
 
@@ -18,5 +20,7 @@ public static class DependencyInjection
         .AddSingleton<ProjectService>()
         .AddSingleton<StickerFitService>()
         .AddSingleton<CorpusRenderService>()
-        .AddSingleton<RenderPlanService>();
+        .AddSingleton<RenderPlanService>()
+        .AddSingleton<SourceFiles>()
+        .AddSingleton<ValidationService>();
 }
