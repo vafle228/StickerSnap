@@ -13,15 +13,16 @@ export function fpsOf(source: Pick<SourceInfo, "fps">): number {
   return source.fps.num / source.fps.den;
 }
 
-/** The biggest centered square: «Квадрат». */
+/** The biggest centered square: «Квадрат». In whole pixels, as the server takes a crop: an odd
+ *  margin leaves the extra pixel on the right or at the bottom. */
 export function squareCrop(source: Size): Crop {
   const side = Math.min(source.width, source.height);
   return {
     mode: "crop",
     preset: "square",
     rect: {
-      x: (source.width - side) / 2,
-      y: (source.height - side) / 2,
+      x: Math.floor((source.width - side) / 2),
+      y: Math.floor((source.height - side) / 2),
       width: side,
       height: side,
     },

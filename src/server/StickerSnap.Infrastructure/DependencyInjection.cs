@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StickerSnap.Application.Media;
+using StickerSnap.Application.Projects;
 using StickerSnap.Application.Settings;
 using StickerSnap.Infrastructure.Ffmpeg;
+using StickerSnap.Infrastructure.Projects;
 using StickerSnap.Infrastructure.Settings;
 using StickerSnap.Infrastructure.Storage;
 
@@ -20,6 +22,7 @@ public static class DependencyInjection
         services.Configure<DataOptions>(configuration.GetSection(DataOptions.Section));
         services.AddSingleton<IFolderAccess, FolderAccess>();
         services.AddSingleton<ISettingsRepository, JsonSettingsRepository>();
+        services.AddSingleton<IProjectStore, ProjectFileStore>();
 
         services.Configure<FfmpegOptions>(configuration.GetSection(FfmpegOptions.Section));
         services.AddSingleton<IFfmpegVersionReader, CliFfmpegVersionReader>();
