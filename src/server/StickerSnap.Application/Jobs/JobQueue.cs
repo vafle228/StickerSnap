@@ -13,7 +13,7 @@ namespace StickerSnap.Application.Jobs;
 /// jobUpdated, at most once per <see cref="EventInterval"/> a job with its latest snapshot; the
 /// end of a job is sent at once. A finished job is kept for <see cref="KeepFinished"/>.
 /// </summary>
-public sealed class JobQueue : IAsyncDisposable
+public sealed class JobQueue : IJobQueue, IAsyncDisposable
 {
     public static readonly TimeSpan KeepFinished = TimeSpan.FromMinutes(10);
 
@@ -40,7 +40,7 @@ public sealed class JobQueue : IAsyncDisposable
         _logger = logger;
     }
 
-    /// <summary>A new job for <paramref name="request"/>, queued in its lane, or already running when the lane was free.</summary>
+    /// <inheritdoc/>
     public Job Enqueue(JobRequest request)
     {
         var pack = request is JobRequest.Publish { Target: PublishTarget.Existing existing } ? existing.Pack : null;
@@ -62,7 +62,7 @@ public sealed class JobQueue : IAsyncDisposable
         return job;
     }
 
-    /// <summary>The jobs running, waiting and finished in the last 10 minutes, newest first.</summary>
+    /// <inheritdoc/>
     public IReadOnlyList<Job> List()
     {
         lock (_gate)
@@ -72,24 +72,19 @@ public sealed class JobQueue : IAsyncDisposable
         }
     }
 
-    /// <exception cref="AppException">job_not_found</exception>
+    /// <inheritdoc/>
     public Job Get(string id)
     {
         lock (_gate) return Find(id).Job;
     }
 
-    /// <summary>What the job was asked to do, to check it again before «Повторить».</summary>
-    /// <exception cref="AppException">job_not_found</exception>
+    /// <inheritdoc/>
     public JobRequest RequestOf(string id)
     {
         lock (_gate) return Find(id).Request;
     }
 
-    /// <summary>
-    /// Cancels a queued or running job at once; its executor is told to stop, and the lane takes
-    /// the next job when it has. A finished job is answered as it is.
-    /// </summary>
-    /// <exception cref="AppException">job_not_found</exception>
+    /// <inheritdoc/>
     public Job Cancel(string id)
     {
         Run? stopped;
@@ -104,11 +99,7 @@ public sealed class JobQueue : IAsyncDisposable
         return job;
     }
 
-    /// <summary>
-    /// «Повторить»: a partial, failed or canceled job waits in its lane again for the segments it
-    /// left undone. A job queued or running is answered as it is.
-    /// </summary>
-    /// <exception cref="AppException">job_not_found; bad_request for a job that succeeded</exception>
+    /// <inheritdoc/>
     public Job Retry(string id)
     {
         var stopped = new List<Run>();

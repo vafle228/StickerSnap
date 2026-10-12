@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using StickerSnap.Api.Contracts;
-using JobService = StickerSnap.Application.Jobs.JobService;
+using StickerSnap.Application.Jobs;
 
 namespace StickerSnap.Api.Controllers;
 
@@ -13,9 +13,9 @@ namespace StickerSnap.Api.Controllers;
 [Tags("jobs")]
 public sealed class JobsController : ControllerBase
 {
-    private readonly JobService _service;
+    private readonly IJobService _service;
 
-    public JobsController(JobService service)
+    public JobsController(IJobService service)
     {
         _service = service;
     }
@@ -32,7 +32,7 @@ public sealed class JobsController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict, "application/problem+json")]
     [ProducesDefaultResponseType(typeof(ProblemDetails))]
-    public async Task<IActionResult> Create([FromBody] JobRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Create([FromBody] Contracts.JobRequest request, CancellationToken cancellationToken)
     {
         var job = await _service.CreateAsync(request.ToRequest(), cancellationToken);
         return Accepted(Job.From(job));

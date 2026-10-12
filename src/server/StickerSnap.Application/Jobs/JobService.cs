@@ -10,30 +10,25 @@ namespace StickerSnap.Application.Jobs;
 /// queued, and again before «Повторить». An export and a publication go by the revision saved
 /// last, so a stale one is revision_conflict; a preview's segment must keep the scene's rules.
 /// </summary>
-public sealed class JobService(JobQueue queue, ProjectService projects)
+public sealed class JobService(IJobQueue queue, ProjectService projects) : IJobService
 {
-    /// <summary>POST /jobs: the job, queued or already running.</summary>
-    /// <exception cref="AppException">
-    /// project_not_found; revision_conflict; bad_request for segments the project does not have or a
-    /// preview's segment that breaks a rule
-    /// </exception>
+    /// <inheritdoc/>
     public async Task<Job> CreateAsync(JobRequest request, CancellationToken cancellationToken)
     {
         await CheckAsync(request, cancellationToken);
         return queue.Enqueue(request);
     }
 
-    /// <summary>GET /jobs: running, waiting and finished in the last 10 minutes, newest first.</summary>
+    /// <inheritdoc/>
     public IReadOnlyList<Job> List() => queue.List();
 
-    /// <exception cref="AppException">job_not_found</exception>
+    /// <inheritdoc/>
     public Job Get(string id) => queue.Get(id);
 
-    /// <exception cref="AppException">job_not_found</exception>
+    /// <inheritdoc/>
     public Job Cancel(string id) => queue.Cancel(id);
 
-    /// <summary>POST /jobs/{id}/retry: the segments left undone, if the project still is as the job saw it.</summary>
-    /// <exception cref="AppException">job_not_found; bad_request for a job that succeeded; what <see cref="CreateAsync"/> checks</exception>
+    /// <inheritdoc/>
     public async Task<Job> RetryAsync(string id, CancellationToken cancellationToken)
     {
         if (queue.Get(id).CanRetry) await CheckAsync(queue.RequestOf(id), cancellationToken);

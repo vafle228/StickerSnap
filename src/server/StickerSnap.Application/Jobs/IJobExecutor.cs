@@ -3,7 +3,7 @@ using StickerSnap.Core.Jobs;
 namespace StickerSnap.Application.Jobs;
 
 /// <summary>
-/// Does the work of one kind of job for <see cref="JobQueue"/>: renders a preview, exports, or
+/// Does the work of one kind of job for <see cref="IJobQueue"/>: renders a preview, exports, or
 /// publishes. Registered in DI, one per <see cref="Kind"/>; a kind with none fails its jobs.
 /// </summary>
 public interface IJobExecutor
