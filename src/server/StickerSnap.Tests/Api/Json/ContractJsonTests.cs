@@ -31,6 +31,18 @@ public sealed class ContractJsonTests
     }
 
     [Fact]
+    public void Does_not_read_a_number_from_a_string()
+    {
+        // ASP.NET starts from the web defaults, which read "262144" as a number.
+        var web = ContractJson.Apply(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var read = () => JsonSerializer.Deserialize<PresetLimits>(
+            """{"maxBytes":"262144","side":512,"maxDurationSec":3,"maxFps":30}""", web);
+
+        read.Should().Throw<JsonException>();
+    }
+
+    [Fact]
     public void Leaves_out_an_absent_field_and_names_fields_in_camel_case()
     {
         var json = JsonSerializer.Serialize(new FfmpegInfo(MediaEngineStatus.Missing, Version: null), Options);
