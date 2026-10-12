@@ -28,15 +28,21 @@ internal sealed partial class FfprobeMediaProbe(IFfmpegLocator locator, IFfmpeg 
             };
 
         var media = FfprobeOutput.Parse(probe.Output, extension);
-        if (media.Format == MediaFormat.Webp) media = await WithFrameDelaysAsync(directory, path, media, cancellationToken);
+        if (media.Format is MediaFormat.Webp or MediaFormat.Webm)
+        {
+            var frames = await ReadFramesAsync(directory, path, cancellationToken);
+            media = media.Format == MediaFormat.Webp ? FfprobeOutput.WithFrameDelays(media, frames) : FfprobeOutput.WithFrameTimes(media, frames);
+        }
         return media is { Format: MediaFormat.Gif or MediaFormat.Webp, HasAlpha: true }
             ? media with { HasAlpha = await HasTransparentPixelAsync(path, cancellationToken) }
             : media;
     }
 
-    /// <summary>Animated WEBP keeps only a delay per frame: its length and rate come from them.</summary>
-    private static async Task<MediaInfo> WithFrameDelaysAsync(
-        string directory, string path, MediaInfo media, CancellationToken cancellationToken)
+    /// <summary>
+    /// Each frame's time and length: animated WEBP keeps only a delay per frame, and WEBM's header
+    /// may declare another length than its frames run (<see cref="FfprobeOutput.WithFrameTimes"/>).
+    /// </summary>
+    private static async Task<string> ReadFramesAsync(string directory, string path, CancellationToken cancellationToken)
     {
         var frames = await FfmpegProcess.RunAsync(
             Path.Combine(directory, FfmpegProcess.Ffprobe), [.. FfprobeOutput.FrameDelayArguments, path], null, cancellationToken);
@@ -46,7 +52,7 @@ internal sealed partial class FfprobeMediaProbe(IFfmpegLocator locator, IFfmpeg 
                 Log = frames.Log,
             };
 
-        return FfprobeOutput.WithFrameDelays(media, frames.Output);
+        return frames.Output;
     }
 
     /// <summary>

@@ -1,8 +1,10 @@
 using StickerSnap.Application.Media;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Media;
+using StickerSnap.Core.Projects;
 using StickerSnap.Core.Render;
 using StickerSnap.Core.Telegram;
+using StickerSnap.Core.Validation;
 
 namespace StickerSnap.Application.Render;
 
@@ -95,7 +97,7 @@ public sealed class CorpusRenderService(IMediaProbe probe, IStickerRenderer rend
 
             var elapsed = time.GetElapsedTime(started);
             var sticker = await probe.ProbeAsync(rendered.Path, cancellationToken);
-            return new ModeOutcome(mode, rate, elapsed, rendered.SizeBytes, sticker, StickerCheck.Problems(sticker, limits), null)
+            return new ModeOutcome(mode, rate, elapsed, rendered.SizeBytes, sticker, StickerValidator.Validate(sticker, SegmentPreset.Sticker, limits).Problems, null)
             {
                 Fitted = fitted,
             };
@@ -131,7 +133,7 @@ public sealed record CorpusEntry(
 
 /// <param name="SizeBytes">Null when the render failed</param>
 /// <param name="Sticker">What the probe read from the rendered file</param>
-/// <param name="Problems">What Telegram would reject, from <see cref="StickerCheck"/></param>
+/// <param name="Problems">What Telegram would reject, from <see cref="StickerValidator"/></param>
 public sealed record ModeOutcome(
     RenderMode Mode,
     RateControl Rate,

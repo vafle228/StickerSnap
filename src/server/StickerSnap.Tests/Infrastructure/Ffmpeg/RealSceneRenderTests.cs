@@ -3,6 +3,7 @@ using StickerSnap.Application.Render;
 using StickerSnap.Core.Media;
 using StickerSnap.Core.Projects;
 using StickerSnap.Core.Render;
+using StickerSnap.Core.Validation;
 using StickerSnap.Infrastructure.Ffmpeg;
 using StickerSnap.Tests.TestData;
 
@@ -154,7 +155,7 @@ public sealed class RealSceneRenderTests(RealFfmpeg ffmpeg) : IClassFixture<Real
             new StickerFit(path, source, spec, limits, LadderProfile.Sticker, ffmpeg.Clip($"{Path.GetFileName(clip)}.{preset}.webm")), Cancel);
         var sticker = await ffmpeg.Probe.ProbeAsync(fitted.Path, Cancel);
 
-        StickerCheck.Problems(sticker, limits).Should().BeEmpty();
+        StickerValidator.Validate(sticker, preset, limits).Problems.Should().BeEmpty();
         sticker.FrameCount.Should().Be(spec.At(fitted.Rung).PlayedFrames);
         sticker.HasAlpha.Should().Be(source.HasAlpha);
     }

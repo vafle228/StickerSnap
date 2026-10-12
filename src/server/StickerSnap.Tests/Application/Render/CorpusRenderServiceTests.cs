@@ -76,7 +76,7 @@ public sealed class CorpusRenderServiceTests
         var report = await _service.RunAsync(["corpus/cat.mp4"], "out", [Crf], null, Cancel);
 
         var outcome = report.Entries.Single().Outcomes.Single();
-        outcome.Problems.Should().Equal("300000 B is over 262144 B");
+        outcome.Problems.Should().Equal("size 300000, expected ≤ 262144");
         outcome.Passes.Should().BeFalse();
     }
 

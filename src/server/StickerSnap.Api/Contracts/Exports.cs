@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using StickerSnap.Application.Validation;
+using StickerSnap.Core.Validation;
 
 namespace StickerSnap.Api.Contracts;
 
@@ -42,36 +44,16 @@ public sealed record ScaleConcession(double From, double To) : Concession(From, 
 /// <summary>«Как подбирали» (schema LadderStep): a rung tried and the size it gave.</summary>
 public sealed record LadderStep(IReadOnlyList<Concession> Label, long Bytes);
 
-/// <summary>R8, the checklist of artboard 3c (schema ValidationReport).</summary>
-public sealed record ValidationReport(string FileName, long Bytes, ValidationVerdict Verdict, IReadOnlyList<ValidationCheck> Checks);
-
-/// <summary>`experimental` is a long sticker (R19).</summary>
-public enum ValidationVerdict
+/// <summary>R8, the checklist of artboard 3c (schema ValidationReport): POST /api/v1/validate and an export's check.</summary>
+public sealed record ValidationReport(string FileName, long Bytes, ValidationVerdict Verdict, IReadOnlyList<ValidationCheck> Checks)
 {
-    Pass,
-    Fail,
-    Experimental,
+    public static ValidationReport From(FileValidation file) => new(
+        file.FileName,
+        file.Bytes,
+        file.Validation.Verdict,
+        file.Validation.Checks.Select(c => new ValidationCheck(c.Rule, c.Status, c.Expected, c.Actual)).ToList());
 }
 
 /// <param name="Expected">`≤ 262144`</param>
 /// <param name="Actual">`277504`</param>
 public sealed record ValidationCheck(ValidationRule Rule, CheckStatus Status, string Expected, string Actual);
-
-public enum ValidationRule
-{
-    Container,
-    Codec,
-    Size,
-    Dimensions,
-    Duration,
-    Fps,
-    Audio,
-    Alpha,
-}
-
-public enum CheckStatus
-{
-    Pass,
-    Fail,
-    Warn,
-}

@@ -170,9 +170,10 @@ function exportResult(
         durationSec: output.durationSec,
         fps: output.fps,
         audio: "none",
-        alpha: project.source.hasAlpha ? "yuva420p" : "none",
+        alpha: project.source.hasAlpha ? "present" : "none",
       },
       limits,
+      plan.segment.preset === "emoji",
     ),
   };
 }

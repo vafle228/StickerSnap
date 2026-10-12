@@ -1,7 +1,9 @@
 using StickerSnap.Application.Media;
 using StickerSnap.Core.Media;
+using StickerSnap.Core.Projects;
 using StickerSnap.Core.Render;
 using StickerSnap.Core.Telegram;
+using StickerSnap.Core.Validation;
 using StickerSnap.Infrastructure.Ffmpeg;
 
 namespace StickerSnap.Tests.Infrastructure.Ffmpeg;
@@ -35,7 +37,7 @@ public sealed class RealStickerRendererTests(RealFfmpeg ffmpeg) : IClassFixture<
 
         var (file, sticker) = await RenderAsync(clip, spec => new RateControl.TwoPass(TargetBitrate.BitsPerSecond(Sticker.MaxBytes, spec.DurationSec)));
 
-        StickerCheck.Problems(sticker, Sticker).Should().BeEmpty();
+        StickerValidator.Validate(sticker, SegmentPreset.Sticker, Sticker).Problems.Should().BeEmpty();
         sticker.Should().BeEquivalentTo(new { Width = 512, Height = 512, FrameCount = 90, SizeBytes = file.SizeBytes });
         sticker.DurationSec.Should().BeApproximately(3, 0.05);
     }
@@ -62,7 +64,7 @@ public sealed class RealStickerRendererTests(RealFfmpeg ffmpeg) : IClassFixture<
         var (_, sticker) = await RenderAsync(clip, spec => new RateControl.TwoPass(TargetBitrate.BitsPerSecond(Sticker.MaxBytes, spec.DurationSec, spec.KeepAlpha)));
 
         sticker.HasAlpha.Should().BeTrue();
-        StickerCheck.Problems(sticker, Sticker).Should().BeEmpty();
+        StickerValidator.Validate(sticker, SegmentPreset.Sticker, Sticker).Problems.Should().BeEmpty();
     }
 
     [Fact]
@@ -74,6 +76,6 @@ public sealed class RealStickerRendererTests(RealFfmpeg ffmpeg) : IClassFixture<
         var (_, sticker) = await RenderAsync(clip, _ => new RateControl.ConstantQuality(31));
 
         sticker.HasAlpha.Should().BeTrue();
-        StickerCheck.Problems(sticker, Sticker).Should().BeEmpty();
+        StickerValidator.Validate(sticker, SegmentPreset.Sticker, Sticker).Problems.Should().BeEmpty();
     }
 }
