@@ -48,6 +48,7 @@ public sealed class Program
         services.AddOpenApi(options => options
             .AddDocumentTransformer<AbsentNullTransformer>()
             .AddSchemaTransformer<ConstTransformer>()
+            .AddSchemaTransformer<StringOrNumberValuesTransformer>()
             .AddSchemaTransformer<DiscriminatorTransformer>());
 
         // Errors are Problem Details with a code and a trace id.

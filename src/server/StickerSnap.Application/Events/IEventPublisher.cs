@@ -1,4 +1,5 @@
 using StickerSnap.Application.Projects;
+using StickerSnap.Core.Jobs;
 using StickerSnap.Core.Settings;
 
 namespace StickerSnap.Application.Events;
@@ -18,4 +19,7 @@ public interface IEventPublisher
 
     /// <summary>projectRemoved: after «Убрать из списка» or «Удалить с диска».</summary>
     Task ProjectRemovedAsync(Guid id, CancellationToken cancellationToken);
+
+    /// <summary>jobUpdated: a job's state or progress changed, no more than 10 times a second; its end always.</summary>
+    Task JobUpdatedAsync(Job job, CancellationToken cancellationToken);
 }

@@ -25,7 +25,6 @@ public sealed partial class ContractTests
         "createUpload",
         "createProject", "replaceProjectSource", "getProjectCover", "getProjectMedia", "getProjectFrames",
         "estimateSegment", "getFile",
-        "createJob", "listJobs", "getJob", "cancelJob", "retryJob",
         "getAccount", "startAccountLink", "deleteAccountLink", "checkAccount",
         "listPacks", "importPack", "checkPackName", "getPack", "deletePack", "syncPack",
         "deletePackSticker", "getPackStickerMedia",
@@ -35,7 +34,7 @@ public sealed partial class ContractTests
     /// <summary>The events of x-events the hub does not send yet. The list only shrinks, as above.</summary>
     private static readonly IReadOnlySet<string> EventsNotYetSent = new HashSet<string>
     {
-        "jobUpdated", "accountChanged", "packChanged",
+        "accountChanged", "packChanged",
     };
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
