@@ -20,6 +20,10 @@ namespace StickerSnap.RenderSpike;
 /// `… -- --print-command &lt;file.ssproj&gt;` prints the FFmpeg commands that render each segment
 /// of the project at the first step of the fit ladder, to read and run by hand.
 /// </para>
+/// <para>
+/// `… -- --render &lt;file.ssproj&gt; [--draft]` renders each segment of the project with the
+/// render engine, as the export would (or as the exact preview with --draft), beside the project.
+/// </para>
 /// </summary>
 public sealed class Program
 {
@@ -32,11 +36,14 @@ public sealed class Program
     public static async Task<int> Main(string[] args)
     {
         if (args is ["--print-command", var project]) return await PrintCommandsAsync(project);
+        if (args is ["--render", var rendered]) return await RenderAsync(rendered, RenderEffort.Final);
+        if (args is ["--render", var drafted, "--draft"]) return await RenderAsync(drafted, RenderEffort.Draft);
 
         if (!TryParse(args, out var corpus, out var output, out var crf))
         {
             Console.Error.WriteLine("Usage: StickerSnap.RenderSpike <corpus folder> <output folder> [--crf 31]");
             Console.Error.WriteLine("       StickerSnap.RenderSpike --print-command <file.ssproj>");
+            Console.Error.WriteLine("       StickerSnap.RenderSpike --render <file.ssproj> [--draft]");
             return 2;
         }
 
@@ -107,6 +114,47 @@ public sealed class Program
         return 0;
     }
 
+    private static async Task<int> RenderAsync(string project, RenderEffort quality)
+    {
+        using var host = Build();
+        IReadOnlyList<SegmentOutcome> outcomes;
+        try
+        {
+            outcomes = await host.Services.GetRequiredService<ProjectRenderService>()
+                .RenderAsync(project, quality, new StageProgress(), CancellationToken.None);
+        }
+        catch (AppException e)
+        {
+            Console.Error.WriteLine($"{e.Code}: {e.Message}");
+            return 1;
+        }
+
+        foreach (var outcome in outcomes)
+        {
+            Console.WriteLine($"# {outcome.SegmentId}");
+            if (outcome.Sticker is { } sticker)
+            {
+                var output = sticker.Output;
+                Console.WriteLine(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{sticker.Path}: {sticker.Bytes} B, {output.Width}x{output.Height}, {output.Fps} fps, {output.DurationSec:0.###} s, crf {sticker.Crf}"));
+                Console.WriteLine($"given up: {(sticker.Concessions.Count == 0 ? "nothing" : string.Join(", ", sticker.Concessions))}");
+                Console.WriteLine($"ladder: {string.Join(" | ", sticker.Ladder.Select(step => $"{step.Rung}: {step.Bytes} B"))}");
+                if (sticker.Validation is { } validation)
+                    Console.WriteLine($"telegram: {validation.Verdict.ToString().ToLowerInvariant()}{string.Concat(validation.Problems.Select(p => $"; {p}"))}");
+            }
+            else if (outcome.Failure is { } failure)
+            {
+                Console.WriteLine($"{failure.Code}: {failure.Message}");
+                if (failure.Log is not null) Console.WriteLine(failure.Log);
+            }
+
+            Console.WriteLine();
+        }
+
+        return outcomes.All(outcome => outcome.Sticker is not null) ? 0 : 1;
+    }
+
     private static IHost Build()
     {
         // Configuration from the environment only: the arguments are the corpus, not settings
@@ -133,6 +181,22 @@ public sealed class Program
         if (positional.Count != 2 || !Directory.Exists(positional[0])) return false;
         (corpus, output) = (positional[0], positional[1]);
         return true;
+    }
+
+    /// <summary>A line whenever a segment's stage or attempt changes: the engine's progress, readable.</summary>
+    private sealed class StageProgress : IProgress<SegmentProgress>
+    {
+        private string? _last;
+
+        public void Report(SegmentProgress value)
+        {
+            var (fraction, stage, attempt) = value.Progress;
+            var line = $"{value.SegmentId}: {stage.ToString().ToLowerInvariant()}" +
+                (attempt is null ? "" : $", attempt {attempt.N}{string.Concat(attempt.Concessions.Select(c => $", {c}"))}");
+            if (line == _last) return;
+            _last = line;
+            Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"{fraction,4:P0} {line}"));
+        }
     }
 
     /// <summary>A line per clip as it is done: the corpus takes minutes.</summary>

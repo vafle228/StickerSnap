@@ -19,8 +19,10 @@ public static class DependencyInjection
         .AddSingleton<SettingsService>()
         .AddSingleton<ProjectService>()
         .AddSingleton<StickerFitService>()
+        .AddSingleton<SegmentRenderService>()
         .AddSingleton<CorpusRenderService>()
         .AddSingleton<RenderPlanService>()
+        .AddSingleton<ProjectRenderService>()
         .AddSingleton<SourceFiles>()
         .AddSingleton<ValidationService>();
 }

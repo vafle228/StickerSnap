@@ -16,14 +16,27 @@ public sealed class FfmpegStickerRendererTests : IDisposable
 
     public FfmpegStickerRendererTests()
     {
-        _ffmpeg.RunAsync(Arg.Any<IReadOnlyList<string>>(), null, Arg.Any<CancellationToken>()).Returns(call =>
+        _ffmpeg.RunAsync(Arg.Any<IReadOnlyList<string>>(), Arg.Any<IProgress<FfmpegProgress>?>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             var arguments = call.Arg<IReadOnlyList<string>>();
             _runs.Add(arguments);
             if (arguments[^1].EndsWith(".webm")) File.WriteAllBytes(arguments[^1], new byte[1000]);
+            var progress = call.Arg<IProgress<FfmpegProgress>?>();
+            progress?.Report(new FfmpegProgress(45, null, null, IsEnd: false));
+            progress?.Report(new FfmpegProgress(90, null, null, IsEnd: true));
             return new FfmpegResult(0, "", "");
         });
     }
+
+    /// <summary>ffmpeg writes part of the file, then fails or is stopped as <paramref name="ends"/> says.</summary>
+    private void Fails(Func<FfmpegResult> ends) =>
+        _ffmpeg.RunAsync(Arg.Any<IReadOnlyList<string>>(), Arg.Any<IProgress<FfmpegProgress>?>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var arguments = call.Arg<IReadOnlyList<string>>();
+            _runs.Add(arguments);
+            if (arguments[^1].EndsWith(".webm")) File.WriteAllBytes(arguments[^1], new byte[500]);
+            return ends();
+        });
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -42,7 +55,7 @@ public sealed class FfmpegStickerRendererTests : IDisposable
     {
         var render = Render(new RateControl.ConstantQuality(31));
 
-        var sticker = await new FfmpegStickerRenderer(_ffmpeg).RenderAsync(render, Cancel);
+        var sticker = await new FfmpegStickerRenderer(_ffmpeg).RenderAsync(render, progress: null, Cancel);
 
         sticker.Should().Be(new RenderedSticker(render.OutputPath, 1000));
         _runs.Should().ContainSingle().Which.Should().ContainInConsecutiveOrder("-crf", "31");
@@ -51,7 +64,7 @@ public sealed class FfmpegStickerRendererTests : IDisposable
     [Fact]
     public async Task Runs_two_passes_over_one_statistics_file_and_then_removes_it()
     {
-        await new FfmpegStickerRenderer(_ffmpeg).RenderAsync(Render(new RateControl.TwoPass(664_098)), Cancel);
+        await new FfmpegStickerRenderer(_ffmpeg).RenderAsync(Render(new RateControl.TwoPass(664_098)), progress: null, Cancel);
 
         _runs.Should().HaveCount(2);
         var log = _runs[0][_runs[0].ToList().IndexOf("-passlogfile") + 1];
@@ -79,18 +92,84 @@ public sealed class FfmpegStickerRendererTests : IDisposable
     [Fact]
     public async Task Fails_with_the_log_of_ffmpeg_and_stops_after_a_failed_pass()
     {
-        _ffmpeg.RunAsync(Arg.Any<IReadOnlyList<string>>(), null, Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            _runs.Add(call.Arg<IReadOnlyList<string>>());
-            return new FfmpegResult(1, "", "Error while opening encoder");
-        });
+        Fails(() => new FfmpegResult(1, "", "Error while opening encoder"));
 
-        var render = () => new FfmpegStickerRenderer(_ffmpeg).RenderAsync(Render(new RateControl.TwoPass(664_098)), Cancel);
+        var render = () => new FfmpegStickerRenderer(_ffmpeg).RenderAsync(Render(new RateControl.TwoPass(664_098)), progress: null, Cancel);
 
         var error = (await render.Should().ThrowAsync<AppException>()).Which;
         error.Code.Should().Be(ErrorCode.RenderFailed);
         error.Log.Should().Be("Error while opening encoder");
         _runs.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Reports_each_pass_from_the_frames_written_over_the_frames_of_the_sticker()
+    {
+        var passes = new CollectProgress<PassProgress>();
+        var render = Render(new RateControl.TwoPass(664_098));
+
+        await new FfmpegStickerRenderer(_ffmpeg).RenderAsync(render, passes, Cancel);
+
+        render.Spec.PlayedFrames.Should().Be(90);
+        passes.Reports.Should().Equal(
+            new PassProgress(1, 2, 0), new PassProgress(1, 2, 0.5), new PassProgress(1, 2, 1), new PassProgress(1, 2, 1),
+            new PassProgress(2, 2, 0), new PassProgress(2, 2, 0.5), new PassProgress(2, 2, 1), new PassProgress(2, 2, 1));
+    }
+
+    [Fact]
+    public async Task Asks_ffmpeg_for_no_progress_when_nobody_listens()
+    {
+        await new FfmpegStickerRenderer(_ffmpeg).RenderAsync(Render(new RateControl.ConstantQuality(40)), progress: null, Cancel);
+
+        await _ffmpeg.Received(1).RunAsync(Arg.Any<IReadOnlyList<string>>(), null, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Calls_a_disk_that_filled_up_during_a_pass_disk_full_and_leaves_no_half_file()
+    {
+        Fails(() => new FfmpegResult(1, "", "[out#0/webm] Error writing trailer: No space left on device"));
+        var render = Render(new RateControl.ConstantQuality(40));
+
+        var run = () => new FfmpegStickerRenderer(_ffmpeg).RenderAsync(render, progress: null, Cancel);
+
+        var error = (await run.Should().ThrowAsync<AppException>()).Which;
+        error.Code.Should().Be(ErrorCode.DiskFull);
+        error.Log.Should().Contain("No space left on device");
+        File.Exists(render.OutputPath).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Leaves_neither_the_half_file_nor_the_statistics_when_cancelled_in_the_second_pass()
+    {
+        Fails(() => throw new OperationCanceledException());
+        var render = Render(new RateControl.TwoPass(664_098));
+        _ffmpeg.RunAsync(Arg.Is<IReadOnlyList<string>>(a => a.Last() == "-"), Arg.Any<IProgress<FfmpegProgress>?>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                _runs.Add(call.Arg<IReadOnlyList<string>>());
+                return new FfmpegResult(0, "", "");
+            });
+
+        var run = () => new FfmpegStickerRenderer(_ffmpeg).RenderAsync(render, progress: null, Cancel);
+
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        _runs.Should().HaveCount(2);
+        File.Exists(render.OutputPath).Should().BeFalse();
+        var log = _runs[0][_runs[0].ToList().IndexOf("-passlogfile") + 1];
+        Directory.Exists(Path.GetDirectoryName(log)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Keeps_a_draft_at_the_path_asked_with_the_estimate_of_the_final_render()
+    {
+        var spec = StickerSpec.Default(Media.Landscape, TelegramLimits.Current.Sticker);
+        var path = Path.Combine(_output.FullName, "preview.webm");
+
+        var draft = await new FfmpegStickerRenderer(_ffmpeg).DraftAsync(new StickerProbe("in/cat.mp4", Media.Landscape, spec, 40), path, Cancel);
+
+        draft.Should().Be(new DraftSticker(path, 1000, 820));
+        File.Exists(path).Should().BeTrue();
+        _runs.Should().ContainSingle().Which.Should().ContainInConsecutiveOrder("-deadline", "realtime");
     }
 
     [Fact]

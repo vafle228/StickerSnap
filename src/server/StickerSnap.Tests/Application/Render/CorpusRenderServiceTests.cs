@@ -24,7 +24,7 @@ public sealed class CorpusRenderServiceTests
         _service = new CorpusRenderService(_probe, _renderer, new StickerFitService(_renderer), _time);
         _probe.ProbeAsync("corpus/cat.mp4", Arg.Any<CancellationToken>()).Returns(Media.Landscape);
         _probe.ProbeAsync(Arg.Is<string>(p => p.EndsWith(".webm")), Arg.Any<CancellationToken>()).Returns(Media.Sticker);
-        _renderer.RenderAsync(Arg.Any<StickerRender>(), Arg.Any<CancellationToken>()).Returns(call =>
+        _renderer.RenderAsync(Arg.Any<StickerRender>(), Arg.Any<IProgress<PassProgress>?>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             _time.Advance(TimeSpan.FromSeconds(2));
             return new RenderedSticker(call.Arg<StickerRender>().OutputPath, 250_000);
@@ -42,11 +42,11 @@ public sealed class CorpusRenderServiceTests
         await _renderer.Received(1).RenderAsync(
             new StickerRender("corpus/cat.mp4", Media.Landscape, spec, new RateControl.ConstantQuality(31), RenderEffort.Final,
                 Path.Combine("out", "cat.mp4.crf.webm")),
-            Arg.Any<CancellationToken>());
+            Arg.Any<IProgress<PassProgress>?>(), Arg.Any<CancellationToken>());
         await _renderer.Received(1).RenderAsync(
             new StickerRender("corpus/cat.mp4", Media.Landscape, spec, new RateControl.TwoPass(664_098), RenderEffort.Final,
                 Path.Combine("out", "cat.mp4.2pass.webm")),
-            Arg.Any<CancellationToken>());
+            Arg.Any<IProgress<PassProgress>?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public sealed class CorpusRenderServiceTests
         await _service.RunAsync(["corpus/cat.mp4"], "out", [TwoPass], null, Cancel);
 
         await _renderer.Received(1).RenderAsync(
-            Arg.Is<StickerRender>(r => r.Rate == new RateControl.TwoPass(332_049)), Arg.Any<CancellationToken>());
+            Arg.Is<StickerRender>(r => r.Rate == new RateControl.TwoPass(332_049)), Arg.Any<IProgress<PassProgress>?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public sealed class CorpusRenderServiceTests
         outcome.Rate.Should().Be(new RateControl.TwoPass(664_098));
         outcome.SizeBytes.Should().Be(250_000);
         await _renderer.Received(1).RenderAsync(
-            Arg.Is<StickerRender>(r => r.Spec.Fps == 24 && r.OutputPath == Path.Combine("out", "cat.mp4.fit.webm")), Arg.Any<CancellationToken>());
+            Arg.Is<StickerRender>(r => r.Spec.Fps == 24 && r.OutputPath == Path.Combine("out", "cat.mp4.fit.webm")), Arg.Any<IProgress<PassProgress>?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public sealed class CorpusRenderServiceTests
     [Fact]
     public async Task Goes_on_to_the_next_mode_when_a_render_fails()
     {
-        _renderer.RenderAsync(Arg.Is<StickerRender>(r => r.Rate is RateControl.ConstantQuality), Arg.Any<CancellationToken>())
+        _renderer.RenderAsync(Arg.Is<StickerRender>(r => r.Rate is RateControl.ConstantQuality), Arg.Any<IProgress<PassProgress>?>(), Arg.Any<CancellationToken>())
             .Returns<RenderedSticker>(_ => throw new AppException(ErrorCode.RenderFailed, "ffmpeg failed") { Log = "Invalid argument" });
 
         var report = await _service.RunAsync(["corpus/cat.mp4"], "out", [Crf, TwoPass], null, Cancel);
