@@ -1,3 +1,5 @@
+using StickerSnap.Core.Projects;
+
 namespace StickerSnap.Core.Telegram;
 
 /// <summary>The limits of video stickers and packs in Telegram, as GET /api/v1/app reports them.</summary>
@@ -16,6 +18,9 @@ public sealed record TelegramLimits(
         Emoji: new PresetLimits(MaxBytes: 262_144, Side: 100, MaxDurationSec: 3, MaxFps: 30),
         RegularPackCapacity: 120,
         EmojiPackCapacity: 200);
+
+    /// <summary>The limits of a sticker or a custom emoji.</summary>
+    public PresetLimits For(SegmentPreset preset) => preset == SegmentPreset.Emoji ? Emoji : Sticker;
 
     /// <summary>The bot that creates the packs: their links end in _by_StickerSnapAppBot.</summary>
     public const string BotUsername = "StickerSnapAppBot";
