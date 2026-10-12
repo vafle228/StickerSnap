@@ -28,6 +28,7 @@ public static class DependencyInjection
         // The media engine of the Application's ports is FFmpeg: another engine is registered here instead
         services.AddSingleton<IMediaEngine, FfmpegEngine>();
         services.AddSingleton<IMediaProbe, FfprobeMediaProbe>();
+        services.AddSingleton<IStickerRenderer, FfmpegStickerRenderer>();
 
         return services;
     }
