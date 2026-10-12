@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using StickerSnap.Application.App;
+using StickerSnap.Application.Projects;
 using StickerSnap.Application.Render;
 using StickerSnap.Application.Settings;
 
@@ -14,6 +15,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services) => services
         .AddSingleton<AppInfoService>()
         .AddSingleton<SettingsService>()
+        .AddSingleton<ProjectService>()
         .AddSingleton<StickerFitService>()
         .AddSingleton<CorpusRenderService>();
 }
