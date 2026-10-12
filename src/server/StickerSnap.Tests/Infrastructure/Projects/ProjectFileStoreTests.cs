@@ -49,6 +49,33 @@ public sealed class ProjectFileStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Creates_a_new_project_under_its_name_in_a_folder_it_makes()
+    {
+        var folder = PathOf("Проекты");
+        var project = SampleProjects.Sample with { Name = "cat" };
+
+        var path = await _store.CreateAsync(folder, project, Cancel);
+
+        path.Should().Be(Path.Combine(folder, "cat.ssproj"));
+        (await _store.ReadAsync(path, Cancel)).Should().BeEquivalentTo(project, SampleProjects.ByValue);
+    }
+
+    [Fact]
+    public async Task Numbers_a_new_project_whose_name_is_taken_and_never_overwrites()
+    {
+        var project = SampleProjects.Sample with { Name = "cat" };
+        await File.WriteAllTextAsync(PathOf("cat.ssproj"), "someone else's", Cancel);
+
+        var second = await _store.CreateAsync(_folder.FullName, project, Cancel);
+        var third = await _store.CreateAsync(_folder.FullName, project, Cancel);
+
+        Path.GetFileName(second).Should().Be("cat (2).ssproj");
+        Path.GetFileName(third).Should().Be("cat (3).ssproj");
+        (await File.ReadAllTextAsync(PathOf("cat.ssproj"), Cancel)).Should().Be("someone else's");
+        _folder.GetFiles().Select(file => file.Name).Should().BeEquivalentTo("cat.ssproj", "cat (2).ssproj", "cat (3).ssproj");
+    }
+
+    [Fact]
     public async Task Reads_the_sample_from_a_disk()
     {
         var path = await TestData.TestFiles.CopyToAsync(SampleProjects.SamplePath, _folder.FullName, Cancel);
