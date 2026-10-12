@@ -4,16 +4,9 @@ name: Desktop
 # (src/desktop/e2e): the real shell starts the real server. Its own workflow like E2E, so the
 # fast checks in CI never wait for a packaging run and a red run here does not block a merge.
 
+# Runs by hand, and on a release tag v*; not on every push or merge.
 on:
-  pull_request:
-    paths:
-      - "src/desktop/**"
-      - "src/server/**"
-      - "src/web/**"
-      - "package-lock.json"
-      - ".github/workflows/desktop.yml"
   push:
-    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 
