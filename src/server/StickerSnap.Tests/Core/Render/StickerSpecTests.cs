@@ -1,3 +1,4 @@
+using StickerSnap.Core.Media;
 using StickerSnap.Core.Render;
 using StickerSnap.Core.Telegram;
 
@@ -58,5 +59,31 @@ public sealed class StickerSpecTests
         var spec = () => StickerSpec.Default(Media.Landscape with { Width = 1, Height = 1 }, Sticker);
 
         spec.Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData(10, 1, false, 10)]
+    [InlineData(4, 1, false, 4)]
+    [InlineData(30000, 1001, false, 30)]
+    [InlineData(60, 1, false, 30)]
+    [InlineData(25, 2, false, 30)]
+    [InlineData(10, 1, true, 30)]
+    [InlineData(0, 0, false, 30)]
+    public void Plays_at_the_rate_of_a_steady_whole_numbered_source_under_30_fps_and_at_30_otherwise(
+        int num, int den, bool variable, int fps)
+    {
+        var source = Media.Landscape with { Fps = new Rational(num, den), IsVariableFrameRate = variable };
+
+        StickerSpec.Default(source, Sticker).Fps.Should().Be(fps);
+    }
+
+    [Fact]
+    public void Takes_the_frame_rate_and_the_detail_of_a_step_of_the_fit_ladder()
+    {
+        var spec = StickerSpec.Default(Media.Landscape, Sticker);
+        var rungs = FitLadder.Rungs(spec, LadderProfile.Sticker);
+
+        spec.At(rungs[0]).Should().Be(spec);
+        spec.At(rungs[^1]).Should().Be(spec with { Fps = 20, Detail = new PixelSize(384, 384) });
     }
 }
