@@ -192,9 +192,11 @@ jobs:
         with:
           name: server-build
       - run: tar -xzf server-build.tgz
+      # No --no-build: dotnet test finds no test projects in unpacked build output, so it checks
+      # the unpacked bin/obj are up to date and builds only what is not.
       # xUnit on Microsoft.Testing.Platform (src/server/global.json): unit, architecture and
       # WebApplicationFactory tests; the ones tagged Category=Slow run in "Slow server tests"
-      - run: dotnet test --solution StickerSnap.slnx -c Release --no-build --filter-not-trait "Category=Slow"
+      - run: dotnet test --solution StickerSnap.slnx -c Release --filter-not-trait "Category=Slow"
         working-directory: src/server
 
   # Required check of the main branch: its name must stay "Slow server tests".
@@ -249,7 +251,7 @@ jobs:
       - run: node tools/fetch-ffmpeg.mjs linux-x64
         if: steps.changes.outputs.server == 'true'
 
-      - run: dotnet test --solution StickerSnap.slnx -c Release --no-build --filter-trait "Category=Slow"
+      - run: dotnet test --solution StickerSnap.slnx -c Release --filter-trait "Category=Slow"
         if: steps.changes.outputs.server == 'true'
         working-directory: src/server
 
