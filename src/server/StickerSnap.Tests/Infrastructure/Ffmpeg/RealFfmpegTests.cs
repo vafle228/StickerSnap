@@ -93,6 +93,21 @@ public sealed class RealFfmpegTests(RealFfmpeg ffmpeg) : IClassFixture<RealFfmpe
     }
 
     [Fact]
+    public async Task Probes_an_animated_webp_with_uneven_delays_by_its_frames()
+    {
+        // Made by libwebp's encoder: FFmpeg's libwebp_anim writes even delays only
+        var sample = Path.Combine(AppContext.BaseDirectory, "Infrastructure", "Ffmpeg", "Samples", "webp-anim-variable-delays.webp");
+
+        var webp = await ffmpeg.Probe.ProbeAsync(sample, Cancel);
+
+        webp.Should().BeEquivalentTo(new
+        {
+            Format = MediaFormat.Webp, FrameCount = 12, IsVariableFrameRate = true, Fps = new Rational(40, 7), HasAlpha = false,
+        });
+        webp.DurationSec.Should().BeApproximately(2.1, 1e-9);
+    }
+
+    [Fact]
     public async Task Answers_a_broken_file_with_the_words_of_ffprobe()
     {
         var whole = await ffmpeg.MakeAsync("whole.mp4", "-f", "lavfi", "-i", Picture, "-c:v", "libopenh264");
