@@ -24,7 +24,7 @@ public sealed class Vp9StickerArgumentsTests
             "-t", "2.983333", "-i", "in/cat.mp4",
             "-filter_complex",
             "[0:v:0]trim=end_frame=90,setpts=PTS-STARTPTS,fps=30,tpad=stop=-1:stop_mode=clone,trim=end_frame=90," +
-            "scale=1920:1080,setsar=1,crop=1080:1080:420:0:exact=1,scale=512:512:flags=lanczos,format=yuv420p[v]",
+            "scale=1920:1080,setsar=1,crop=1080:1080:420:0:exact=1,scale=512:512:flags=lanczos,setsar=1,format=yuv420p[v]",
             "-map", "[v]", "-an", "-sn", "-dn",
             "-c:v", "libvpx-vp9", "-pix_fmt", "yuv420p",
             "-crf", "31", "-b:v", "0",

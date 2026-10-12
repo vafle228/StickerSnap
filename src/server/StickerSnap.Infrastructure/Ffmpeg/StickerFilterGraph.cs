@@ -21,7 +21,8 @@ namespace StickerSnap.Infrastructure.Ffmpeg;
 /// The rate comes before the picture: no more than 90 frames are scaled whatever the speed. Then
 /// the picture is brought to its size as shown with square pixels, cropped (`exact`, so an odd
 /// corner stays where it is), shrunk to the detail of the fit ladder and scaled to the sticker,
-/// which squeezes it for a stretch. A ping-pong plays the frames back without the two ends.
+/// which squeezes it for a stretch; its pixels are square again, so a player shows it squeezed.
+/// A ping-pong plays the frames back without the two ends.
 /// </para>
 /// </summary>
 internal static class StickerFilterGraph
@@ -87,6 +88,9 @@ internal static class StickerFilterGraph
             chain.Add($"crop={spec.Crop.Width}:{spec.Crop.Height}:{spec.Crop.X}:{spec.Crop.Y}:exact=1");
         if (spec.Detail is { } detail) chain.Add($"scale={detail.Width}:{detail.Height}:flags=lanczos");
         chain.Add($"scale={spec.Width}:{spec.Height}:flags=lanczos");
+
+        // scale keeps the picture's proportion as shown by stretching its pixels; a sticker's are square
+        chain.Add("setsar=1");
 
         var format = $"format={(spec.KeepAlpha ? "yuva420p" : "yuv420p")}";
         var head = $"[0:v:0]{string.Join(',', chain)}";
