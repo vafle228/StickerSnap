@@ -1011,7 +1011,7 @@ components:
       name: id
       in: path
       required: true
-      description: id проекта — GUID из реестра проектов сервера
+      description: id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём
       schema:
         type: string
         format: uuid

@@ -139,7 +139,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -172,7 +172,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -195,7 +195,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -218,7 +218,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -241,7 +241,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -265,7 +265,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -288,7 +288,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -656,7 +656,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -1382,7 +1382,7 @@ export interface components {
         };
     };
     parameters: {
-        /** @description id проекта — GUID из реестра проектов сервера */
+        /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
         ProjectId: string;
         JobId: string;
         /** @description Имя пака в Telegram целиком, с хвостом `_by_StickerSnapAppBot` */
@@ -1608,7 +1608,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -1636,7 +1636,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -1659,7 +1659,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -1690,7 +1690,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -1722,7 +1722,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -1755,7 +1755,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -1782,7 +1782,7 @@ export interface operations {
                 Range?: string;
             };
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -1823,7 +1823,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -1849,7 +1849,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
@@ -2328,7 +2328,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description id проекта — GUID из реестра проектов сервера */
+                /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
                 id: components["parameters"]["ProjectId"];
             };
             cookie?: never;
