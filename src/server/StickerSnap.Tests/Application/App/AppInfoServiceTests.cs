@@ -1,6 +1,5 @@
 using StickerSnap.Application.App;
-using StickerSnap.Application.Ffmpeg;
-using StickerSnap.Core.Ffmpeg;
+using StickerSnap.Application.Media;
 using StickerSnap.Core.Telegram;
 
 namespace StickerSnap.Tests.Application.App;
@@ -8,23 +7,23 @@ namespace StickerSnap.Tests.Application.App;
 public sealed class AppInfoServiceTests
 {
     private readonly IHostInfo _host = Substitute.For<IHostInfo>();
-    private readonly IFfmpegLocator _ffmpeg = Substitute.For<IFfmpegLocator>();
+    private readonly IMediaEngine _engine = Substitute.For<IMediaEngine>();
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task Reports_the_build_the_launch_and_the_found_ffmpeg()
+    public async Task Reports_the_build_the_launch_and_the_media_engine()
     {
-        var found = FfmpegLookup.Found(new FfmpegVersion("9.0.2", 9), "/opt/ffmpeg");
+        var engine = new MediaEngineInfo("FFmpeg", MediaEngineStatus.Ok, "9.0.2");
         _host.AppVersion.Returns("0.1.0");
         _host.Mode.Returns(AppMode.Desktop);
-        _ffmpeg.FindAsync(Arg.Any<CancellationToken>()).Returns(found);
+        _engine.GetInfoAsync(Arg.Any<CancellationToken>()).Returns(engine);
 
-        var app = await new AppInfoService(_host, _ffmpeg).GetAsync(Cancel);
+        var app = await new AppInfoService(_host, _engine).GetAsync(Cancel);
 
         app.Should().Be(new AppInfo(
             AppVersion: "0.1.0",
-            Ffmpeg: found,
+            Engine: engine,
             ApiVersion: "1.0.0",
             Mode: AppMode.Desktop,
             BotUsername: "StickerSnapAppBot",

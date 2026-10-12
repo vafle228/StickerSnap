@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 using StickerSnap.Application.App;
-using StickerSnap.Application.Ffmpeg;
+using StickerSnap.Application.Media;
 
 namespace StickerSnap.Api.Contracts;
 
@@ -15,7 +15,7 @@ public sealed record AppInfo(
 {
     public static AppInfo From(Application.App.AppInfo app) => new(
         app.AppVersion,
-        new FfmpegInfo(app.Ffmpeg.Status, app.Ffmpeg.Version?.Text),
+        new FfmpegInfo(app.Engine.Status, app.Engine.Version),
         app.ApiVersion,
         app.Mode,
         app.BotUsername,
@@ -25,8 +25,9 @@ public sealed record AppInfo(
             new PackCapacity(app.Limits.RegularPackCapacity, app.Limits.EmojiPackCapacity)));
 }
 
-/// <param name="Version">Absent when FFmpeg was not found</param>
-public sealed record FfmpegInfo(FfmpegStatus Status, string? Version);
+/// <summary>The contract names the media engine `ffmpeg`, after the one the app ships with.</summary>
+/// <param name="Version">Absent when the engine was not found</param>
+public sealed record FfmpegInfo(MediaEngineStatus Status, string? Version);
 
 public sealed record TelegramLimits(PresetLimits Sticker, PresetLimits Emoji, PackCapacity PackCapacity);
 

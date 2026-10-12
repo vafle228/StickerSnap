@@ -1,8 +1,8 @@
-using StickerSnap.Application.Ffmpeg;
+using StickerSnap.Application.Media;
 using StickerSnap.Core.Errors;
-using StickerSnap.Core.Ffmpeg;
+using StickerSnap.Infrastructure.Ffmpeg;
 
-namespace StickerSnap.Tests.Application.Ffmpeg;
+namespace StickerSnap.Tests.Infrastructure.Ffmpeg;
 
 public sealed class FfmpegLookupTests
 {
@@ -13,7 +13,7 @@ public sealed class FfmpegLookupTests
     {
         var lookup = FfmpegLookup.Found(new FfmpegVersion("9.0.2", 9), Directory);
 
-        lookup.Status.Should().Be(FfmpegStatus.Ok);
+        lookup.Status.Should().Be(MediaEngineStatus.Ok);
         lookup.Require().Should().Be(Directory);
     }
 
@@ -22,7 +22,7 @@ public sealed class FfmpegLookupTests
     {
         var lookup = FfmpegLookup.Found(new FfmpegVersion("7.1", 7), Directory);
 
-        lookup.Status.Should().Be(FfmpegStatus.TooOld);
+        lookup.Status.Should().Be(MediaEngineStatus.TooOld);
         lookup.Invoking(l => l.Require()).Should().Throw<AppException>()
             .Which.Code.Should().Be(ErrorCode.FfmpegMissing);
     }

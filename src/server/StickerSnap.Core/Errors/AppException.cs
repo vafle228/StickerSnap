@@ -16,6 +16,6 @@ public sealed class AppException(ErrorCode code, string message, Exception? inne
     /// <summary>Errors of request fields, for a hint under the field: { "folders.projects": ["not_absolute"] }.</summary>
     public IReadOnlyDictionary<string, string[]> Fields { get; init; } = new Dictionary<string, string[]>();
 
-    /// <summary>A line of ffprobe or the tail of FFmpeg's log, shown under «Подробности».</summary>
+    /// <summary>What the media engine said, such as the tail of its log, shown under «Подробности».</summary>
     public string? Log { get; init; }
 }

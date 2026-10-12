@@ -1,7 +1,7 @@
-namespace StickerSnap.Application.Ffmpeg;
+namespace StickerSnap.Infrastructure.Ffmpeg;
 
 /// <summary>Finds the FFmpeg the server renders with and tells its version.</summary>
-public interface IFfmpegLocator
+internal interface IFfmpegLocator
 {
     Task<FfmpegLookup> FindAsync(CancellationToken cancellationToken);
 }

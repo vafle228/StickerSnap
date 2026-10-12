@@ -1,6 +1,6 @@
-using StickerSnap.Core.Ffmpeg;
+using StickerSnap.Infrastructure.Ffmpeg;
 
-namespace StickerSnap.Tests.Core.Ffmpeg;
+namespace StickerSnap.Tests.Infrastructure.Ffmpeg;
 
 /// <summary>The version from the first line of `ffmpeg -version`, as the builds people have print it.</summary>
 public sealed class FfmpegVersionTests

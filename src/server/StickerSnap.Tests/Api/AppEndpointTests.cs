@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text.Json.Nodes;
-using StickerSnap.Application.Ffmpeg;
-using StickerSnap.Core.Ffmpeg;
+using StickerSnap.Application.Media;
 
 namespace StickerSnap.Tests.Api;
 
@@ -22,8 +21,8 @@ public sealed class AppEndpointTests
     public async Task Reports_versions_mode_bot_and_limits_in_the_contract_s_shape()
     {
         using var factory = new ApiFactory(("Mode", "desktop"));
-        factory.Ffmpeg.FindAsync(Arg.Any<CancellationToken>())
-            .Returns(FfmpegLookup.Found(new FfmpegVersion("9.0.2-17-g2a571b6068", 9), "/opt/ffmpeg"));
+        factory.Engine.GetInfoAsync(Arg.Any<CancellationToken>())
+            .Returns(new MediaEngineInfo("FFmpeg", MediaEngineStatus.Ok, "9.0.2-17-g2a571b6068"));
 
         var app = await GetApp(factory);
 
@@ -67,8 +66,8 @@ public sealed class AppEndpointTests
     public async Task Names_the_version_of_an_ffmpeg_too_old_to_use()
     {
         using var factory = new ApiFactory();
-        factory.Ffmpeg.FindAsync(Arg.Any<CancellationToken>())
-            .Returns(FfmpegLookup.Found(new FfmpegVersion("7.1", 7), "/usr/bin"));
+        factory.Engine.GetInfoAsync(Arg.Any<CancellationToken>())
+            .Returns(new MediaEngineInfo("FFmpeg", MediaEngineStatus.TooOld, "7.1"));
 
         var app = await GetApp(factory);
 

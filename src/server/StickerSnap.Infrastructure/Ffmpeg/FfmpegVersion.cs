@@ -1,13 +1,13 @@
 using System.Text.RegularExpressions;
 
-namespace StickerSnap.Core.Ffmpeg;
+namespace StickerSnap.Infrastructure.Ffmpeg;
 
 /// <summary>
 /// The version FFmpeg names in the first line of `ffmpeg -version`. Releases say `9.0.2` or
 /// `n9.0.2-17-g2a571b6068`; builds from the master branch say `N-121234-g5f8a1c2b3d` and carry no
 /// number, but are newer than any release.
 /// </summary>
-public sealed partial record FfmpegVersion(string Text, int? Major)
+internal sealed partial record FfmpegVersion(string Text, int? Major)
 {
     /// <summary>9.0 decodes animated WEBP; older builds cannot open such a source.</summary>
     public const int MinimumMajor = 9;

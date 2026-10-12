@@ -1,4 +1,4 @@
-using StickerSnap.Application.Ffmpeg;
+using StickerSnap.Application.Media;
 using StickerSnap.Core.Telegram;
 
 namespace StickerSnap.Application.App;
@@ -6,7 +6,7 @@ namespace StickerSnap.Application.App;
 /// <summary>What «О программе» and the start of the SPA need to know about the server.</summary>
 public sealed record AppInfo(
     string AppVersion,
-    FfmpegLookup Ffmpeg,
+    MediaEngineInfo Engine,
     string ApiVersion,
     AppMode Mode,
     string BotUsername,

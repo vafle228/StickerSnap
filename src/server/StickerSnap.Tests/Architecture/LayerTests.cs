@@ -48,6 +48,20 @@ public sealed class LayerTests
             .Check(Server);
     }
 
+    /// <summary>
+    /// The use cases talk to a media engine through the ports of Application/Media; which engine
+    /// it is (FFmpeg today) only the Infrastructure knows, so another one can replace it there.
+    /// </summary>
+    [Fact]
+    public void Core_and_application_do_not_name_a_media_engine()
+    {
+        Types().That().Are(Core).Or().Are(Application)
+            .Should().NotHaveNameMatching(@"(?i)ff(mpeg|probe)")
+            .AndShould().NotResideInNamespaceMatching(@"(?i)ff(mpeg|probe)")
+            .WithoutRequiringPositiveResults()
+            .Check(Server);
+    }
+
     [Fact]
     public void Infrastructure_does_not_know_the_api()
     {

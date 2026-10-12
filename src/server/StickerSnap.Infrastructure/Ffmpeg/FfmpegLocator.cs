@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using StickerSnap.Application.Ffmpeg;
-using StickerSnap.Core.Ffmpeg;
+using StickerSnap.Application.Media;
 
 namespace StickerSnap.Infrastructure.Ffmpeg;
 
@@ -16,8 +15,6 @@ internal sealed class FfmpegLocator(
     IFfmpegVersionReader reader,
     ILogger<FfmpegLocator> logger) : IFfmpegLocator
 {
-    private static readonly string Executable = OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg";
-
     private readonly SemaphoreSlim _gate = new(1, 1);
     private FfmpegLookup? _found;
 
@@ -30,7 +27,7 @@ internal sealed class FfmpegLocator(
         {
             if (_found is not null) return _found;
             var lookup = await SearchAsync(cancellationToken);
-            if (lookup.Status != FfmpegStatus.Missing) _found = lookup;
+            if (lookup.Status != MediaEngineStatus.Missing) _found = lookup;
             return lookup;
         }
         finally
@@ -57,7 +54,7 @@ internal sealed class FfmpegLocator(
 
         foreach (var directory in directories)
         {
-            var executable = Path.Combine(directory, Executable);
+            var executable = Path.Combine(directory, FfmpegProcess.Ffmpeg);
             if (!File.Exists(executable)) continue;
 
             var output = await reader.ReadAsync(executable, cancellationToken);

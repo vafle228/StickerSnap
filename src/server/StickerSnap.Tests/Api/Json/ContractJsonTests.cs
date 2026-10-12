@@ -2,7 +2,7 @@ using System.Text.Json;
 using StickerSnap.Api.Contracts;
 using StickerSnap.Api.Json;
 using StickerSnap.Application.App;
-using StickerSnap.Application.Ffmpeg;
+using StickerSnap.Application.Media;
 using StickerSnap.Core.Errors;
 
 namespace StickerSnap.Tests.Api.Json;
@@ -13,7 +13,7 @@ public sealed class ContractJsonTests
     private static readonly JsonSerializerOptions Options = ContractJson.Apply(new JsonSerializerOptions());
 
     [Theory]
-    [InlineData(FfmpegStatus.TooOld, "\"too_old\"")]
+    [InlineData(MediaEngineStatus.TooOld, "\"too_old\"")]
     [InlineData(AppMode.Desktop, "\"desktop\"")]
     [InlineData(ErrorCode.FfmpegMissing, "\"ffmpeg_missing\"")]
     [InlineData(ErrorCode.NotOurPack, "\"not_our_pack\"")]
@@ -33,7 +33,7 @@ public sealed class ContractJsonTests
     [Fact]
     public void Leaves_out_an_absent_field_and_names_fields_in_camel_case()
     {
-        var json = JsonSerializer.Serialize(new FfmpegInfo(FfmpegStatus.Missing, Version: null), Options);
+        var json = JsonSerializer.Serialize(new FfmpegInfo(MediaEngineStatus.Missing, Version: null), Options);
 
         json.Should().Be("""{"status":"missing"}""");
     }
