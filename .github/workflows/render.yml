@@ -1,9 +1,12 @@
 name: Render
 
 # The server tests tagged Category=Slow: the FFmpeg adapters on clips the pinned FFmpeg makes
-# with lavfi. They never block the fast job «Server» in ci.yml. Like the other workflows, runs by
-# hand only (Actions → Render → Run workflow); the corpus of 30 clips joins it in B4.
+# with lavfi. Runs on every PR to main and is a required check there, so code that breaks the
+# work with FFmpeg does not merge; also by hand. A PR that touches no server code passes at once.
+# The corpus of 30 clips joins this workflow in B4.
 on:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -17,25 +20,45 @@ jobs:
       StickerSnap__FfmpegDir: ${{ github.workspace }}/tools/ffmpeg/linux-x64
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The check has to report on every PR to stay required, so it skips the work, not the job
+      - id: changes
+        name: Look for server or FFmpeg changes
+        run: |
+          pattern='^(src/server/|tools/fetch-ffmpeg\.mjs$|\.github/workflows/render\.yml$)'
+          if [ "${{ github.event_name }}" != "pull_request" ] ||
+             git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -qE "$pattern"; then
+            echo "server=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No server or FFmpeg changes: nothing to test"
+          fi
 
       - uses: actions/setup-dotnet@v4
+        if: steps.changes.outputs.server == 'true'
         with:
           dotnet-version: 10.0.x
 
       - uses: actions/setup-node@v4
+        if: steps.changes.outputs.server == 'true'
         with:
           node-version: 22
 
       # The pinned build and its SHA-256 live in the script, so the script is the cache key
       - uses: actions/cache@v4
+        if: steps.changes.outputs.server == 'true'
         with:
           path: tools/ffmpeg/linux-x64
           key: ffmpeg-linux-x64-${{ hashFiles('tools/fetch-ffmpeg.mjs') }}
 
       - run: node tools/fetch-ffmpeg.mjs linux-x64
+        if: steps.changes.outputs.server == 'true'
 
       - run: dotnet build StickerSnap.slnx -c Release
+        if: steps.changes.outputs.server == 'true'
         working-directory: src/server
 
       - run: dotnet test --solution StickerSnap.slnx -c Release --no-build --filter-trait "Category=Slow"
+        if: steps.changes.outputs.server == 'true'
         working-directory: src/server
