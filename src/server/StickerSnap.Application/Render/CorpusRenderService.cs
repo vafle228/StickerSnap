@@ -86,13 +86,13 @@ public sealed class CorpusRenderService(IMediaProbe probe, IStickerRenderer rend
             if (mode.Fit)
             {
                 fitted = await fitter.FitAsync(
-                    new StickerFit(source, media, spec, limits, LadderProfile.Sticker, output), cancellationToken);
+                    new StickerFit(source, media, spec, limits, LadderProfile.Sticker, output), progress: null, cancellationToken);
                 rendered = new RenderedSticker(fitted.Path, fitted.SizeBytes);
                 rate = fitted.Attempts[^1].Rate;
             }
             else
             {
-                rendered = await renderer.RenderAsync(new StickerRender(source, media, spec, rate, mode.Effort, output), cancellationToken);
+                rendered = await renderer.RenderAsync(new StickerRender(source, media, spec, rate, mode.Effort, output), progress: null, cancellationToken);
             }
 
             var elapsed = time.GetElapsedTime(started);

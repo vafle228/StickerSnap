@@ -41,18 +41,32 @@ public sealed class StickerFitServiceTests
     private void Renders(params long[] bytes)
     {
         var next = 0;
-        _renderer.RenderAsync(Arg.Any<StickerRender>(), Arg.Any<CancellationToken>()).Returns(call =>
+        _renderer.RenderAsync(Arg.Any<StickerRender>(), Arg.Any<IProgress<PassProgress>?>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             var render = call.Arg<StickerRender>();
             _renders.Add(render);
+            var passes = call.Arg<IProgress<PassProgress>?>();
+            passes?.Report(new PassProgress(1, 2, 0.5));
+            passes?.Report(new PassProgress(2, 2, 1));
             return new RenderedSticker(render.OutputPath, bytes[Math.Min(next++, bytes.Length - 1)]);
+        });
+    }
+
+    private void Drafts(params long[] estimates)
+    {
+        var next = 0;
+        _renderer.DraftAsync(Arg.Any<StickerProbe>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            _probes.Add(call.Arg<StickerProbe>());
+            var estimate = estimates[Math.Min(next++, estimates.Length - 1)];
+            return new DraftSticker(call.Arg<string>(), estimate * 5 / 4, estimate);
         });
     }
 
     [Fact]
     public async Task Renders_the_first_step_in_two_passes_at_the_target_bitrate_when_it_fits_at_crf_40()
     {
-        var sticker = await _service.FitAsync(Fit, Cancel);
+        var sticker = await _service.FitAsync(Fit, progress: null, Cancel);
 
         _probes.Should().ContainSingle().Which.Should().Be(new StickerProbe("in/cat.mp4", Media.Landscape, Spec, 40));
         _renders.Should().ContainSingle().Which.Should().Be(
@@ -67,7 +81,7 @@ public sealed class StickerFitServiceTests
     {
         Estimates(400_000, 300_000, 240_000);
 
-        var sticker = await _service.FitAsync(Fit, Cancel);
+        var sticker = await _service.FitAsync(Fit, progress: null, Cancel);
 
         _probes.Select(p => (p.Spec.Fps, p.Crf)).Should().Equal((30, 40), (24, 40), (20, 40));
         _renders.Should().ContainSingle().Which.Spec.Fps.Should().Be(20);
@@ -80,7 +94,7 @@ public sealed class StickerFitServiceTests
     {
         Estimates(400_000);
 
-        var sticker = await _service.FitAsync(Fit, Cancel);
+        var sticker = await _service.FitAsync(Fit, progress: null, Cancel);
 
         _probes.Should().HaveCount(7);
         _renders.Should().ContainSingle().Which.Spec.Should().Be(Spec with { Fps = 20, Detail = new PixelSize(384, 384) });
@@ -93,7 +107,7 @@ public sealed class StickerFitServiceTests
     {
         Renders(270_000, 250_000);
 
-        var sticker = await _service.FitAsync(Fit, Cancel);
+        var sticker = await _service.FitAsync(Fit, progress: null, Cancel);
 
         _renders.Select(r => ((RateControl.TwoPass)r.Rate).BitsPerSecond).Should().Equal(664_098, 600_283);
         sticker.SizeBytes.Should().Be(250_000);
@@ -106,7 +120,7 @@ public sealed class StickerFitServiceTests
         var fit = Fit with { Spec = Spec with { KeepAlpha = true } };
         Renders(100_000, 220_000);
 
-        var sticker = await _service.FitAsync(fit, Cancel);
+        var sticker = await _service.FitAsync(fit, progress: null, Cancel);
 
         _renders.Select(r => ((RateControl.TwoPass)r.Rate).BitsPerSecond).Should().Equal(332_049, 664_098);
         sticker.SizeBytes.Should().Be(220_000);
@@ -118,7 +132,7 @@ public sealed class StickerFitServiceTests
         var fit = Fit with { Spec = Spec with { KeepAlpha = true } };
         Renders(100_000, 300_000, 270_000, 100_000);
 
-        var sticker = await _service.FitAsync(fit, Cancel);
+        var sticker = await _service.FitAsync(fit, progress: null, Cancel);
 
         _renders.Should().HaveCount(4);
         _renders[^1].Rate.Should().Be(_renders[0].Rate);
@@ -130,9 +144,58 @@ public sealed class StickerFitServiceTests
     {
         Renders(300_000);
 
-        var fit = () => _service.FitAsync(Fit, Cancel);
+        var fit = () => _service.FitAsync(Fit, progress: null, Cancel);
 
         (await fit.Should().ThrowAsync<AppException>()).Which.Code.Should().Be(ErrorCode.CannotFit);
         _renders.Should().HaveCount(StickerFitService.MaxFinalAttempts);
+    }
+
+    [Fact]
+    public async Task Reports_the_estimates_as_probes_and_then_the_passes_of_the_step_taken_rising_to_the_end()
+    {
+        Estimates(400_000, 240_000);
+        Renders(270_000, 250_000);
+        var progress = new CollectProgress<RenderProgress>();
+
+        await _service.FitAsync(Fit, progress, Cancel);
+
+        var reports = progress.Reports;
+        reports.Select(r => (r.Stage, r.Attempt?.N)).Should().Equal(
+            (RenderStage.Probe, 1), (RenderStage.Probe, 2),
+            (RenderStage.Pass1, 2), (RenderStage.Pass2, 2),
+            (RenderStage.Pass1, 2), (RenderStage.Pass2, 2),
+            (RenderStage.Pass2, 2));
+        reports.Select(r => r.Fraction).Should().BeInAscendingOrder().And.EndWith(1.0);
+        reports.Where(r => r.Stage == RenderStage.Probe).Should().AllSatisfy(r => r.Fraction.Should().BeLessThan(StickerFitService.ProbeShare));
+        reports[2].Attempt!.Concessions.Should().Equal(new Concession.Fps(30, 24));
+    }
+
+    [Fact]
+    public async Task Drafts_each_step_at_the_output_until_one_fits_and_leaves_that_draft_there()
+    {
+        Drafts(400_000, 240_000);
+        var progress = new CollectProgress<RenderProgress>();
+
+        var draft = await _service.DraftAsync(Fit, progress, Cancel);
+
+        _probes.Select(p => (p.Spec.Fps, p.Crf)).Should().Equal((30, 40), (24, 40));
+        await _renderer.Received(2).DraftAsync(Arg.Any<StickerProbe>(), "out/cat.webm", Arg.Any<CancellationToken>());
+        await _renderer.DidNotReceive().RenderAsync(Arg.Any<StickerRender>(), Arg.Any<IProgress<PassProgress>?>(), Arg.Any<CancellationToken>());
+        draft.Should().BeEquivalentTo(new { Path = "out/cat.webm", SizeBytes = 300_000L, HoldsCrf = true, Attempts = Array.Empty<FinalAttempt>() });
+        draft.Concessions.Should().Equal(new Concession.Fps(30, 24));
+        progress.Reports.Select(r => (r.Stage, r.Attempt?.N)).Should().Equal((RenderStage.Pass2, 1), (RenderStage.Pass2, 2), (RenderStage.Pass2, 2));
+        progress.Reports.Select(r => r.Fraction).Should().BeInAscendingOrder().And.EndWith(1.0);
+    }
+
+    [Fact]
+    public async Task Leaves_the_draft_of_the_last_step_when_none_fits()
+    {
+        Drafts(400_000);
+
+        var draft = await _service.DraftAsync(Fit, progress: null, Cancel);
+
+        _probes.Should().HaveCount(7);
+        draft.HoldsCrf.Should().BeFalse();
+        draft.Rung.Crf.Should().Be(52);
     }
 }

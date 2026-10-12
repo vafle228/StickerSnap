@@ -118,7 +118,7 @@ public sealed class RealSceneRenderTests(RealFfmpeg ffmpeg) : IClassFixture<Real
         var (path, source) = await VideoAsync();
         var render = Render(path, source, segment, ffmpeg.Clip($"{name}.webm"));
 
-        var file = await new FfmpegStickerRenderer(ffmpeg.Ffmpeg).RenderAsync(render, Cancel);
+        var file = await new FfmpegStickerRenderer(ffmpeg.Ffmpeg).RenderAsync(render, progress: null, Cancel);
         var sticker = await ffmpeg.Probe.ProbeAsync(file.Path, Cancel);
 
         var spec = render.Spec;
@@ -152,7 +152,7 @@ public sealed class RealSceneRenderTests(RealFfmpeg ffmpeg) : IClassFixture<Real
         var renderer = new FfmpegStickerRenderer(ffmpeg.Ffmpeg);
 
         var fitted = await new StickerFitService(renderer).FitAsync(
-            new StickerFit(path, source, spec, limits, LadderProfile.Sticker, ffmpeg.Clip($"{Path.GetFileName(clip)}.{preset}.webm")), Cancel);
+            new StickerFit(path, source, spec, limits, LadderProfile.Sticker, ffmpeg.Clip($"{Path.GetFileName(clip)}.{preset}.webm")), progress: null, Cancel);
         var sticker = await ffmpeg.Probe.ProbeAsync(fitted.Path, Cancel);
 
         StickerValidator.Validate(sticker, preset, limits).Problems.Should().BeEmpty();

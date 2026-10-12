@@ -25,7 +25,7 @@ public sealed class RealStickerRendererTests(RealFfmpeg ffmpeg) : IClassFixture<
         var spec = StickerSpec.Default(source, Sticker);
         var render = new StickerRender(clip, source, spec, rate(spec), RenderEffort.Final, ffmpeg.Clip(Path.GetFileName(clip) + ".webm"));
 
-        var file = await new FfmpegStickerRenderer(ffmpeg.Ffmpeg).RenderAsync(render, Cancel);
+        var file = await new FfmpegStickerRenderer(ffmpeg.Ffmpeg).RenderAsync(render, progress: null, Cancel);
         return (file, await ffmpeg.Probe.ProbeAsync(file.Path, Cancel));
     }
 

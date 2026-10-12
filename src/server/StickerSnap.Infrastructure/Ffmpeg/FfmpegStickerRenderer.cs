@@ -1,6 +1,7 @@
 using StickerSnap.Application.Media;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Render;
+using StickerSnap.Infrastructure.Storage;
 
 namespace StickerSnap.Infrastructure.Ffmpeg;
 
@@ -17,27 +18,38 @@ internal sealed class FfmpegStickerRenderer(IFfmpeg ffmpeg) : IStickerRenderer
 
     internal const double TransparentDraftOverFinal = 1.58;
 
-    public async Task<RenderedSticker> RenderAsync(StickerRender render, CancellationToken cancellationToken)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(render.OutputPath))!);
+    /// <summary>How the C library words ENOSPC, which ffmpeg prints when a write fails, on every system.</summary>
+    private const string NoSpace = "No space left on device";
 
-        if (render.Rate is RateControl.TwoPass)
+    public async Task<RenderedSticker> RenderAsync(StickerRender render, IProgress<PassProgress>? progress, CancellationToken cancellationToken)
+    {
+        try
         {
-            var passes = Directory.CreateTempSubdirectory("stickersnap-pass-");
-            try
+            CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(render.OutputPath))!, render);
+            if (render.Rate is RateControl.TwoPass)
             {
-                var log = Path.Combine(passes.FullName, "vp9");
-                await RunAsync(Vp9StickerArguments.For(render, 1, log), "pass 1", render, cancellationToken);
-                await RunAsync(Vp9StickerArguments.For(render, 2, log), "pass 2", render, cancellationToken);
+                var passes = CreateTempDirectory("stickersnap-pass-", render);
+                try
+                {
+                    var log = Path.Combine(passes.FullName, "vp9");
+                    await RunAsync(Vp9StickerArguments.For(render, 1, log), 1, 2, render, progress, cancellationToken);
+                    await RunAsync(Vp9StickerArguments.For(render, 2, log), 2, 2, render, progress, cancellationToken);
+                }
+                finally
+                {
+                    passes.Delete(recursive: true);
+                }
             }
-            finally
+            else
             {
-                passes.Delete(recursive: true);
+                await RunAsync(Vp9StickerArguments.For(render, 0, null), 1, 1, render, progress, cancellationToken);
             }
         }
-        else
+        catch
         {
-            await RunAsync(Vp9StickerArguments.For(render, 0, null), "the render", render, cancellationToken);
+            // Half a file is no sticker: whatever stopped the render, nothing is left to pick up
+            DeleteQuietly(render.OutputPath);
+            throw;
         }
 
         return new RenderedSticker(render.OutputPath, new FileInfo(render.OutputPath).Length);
@@ -49,20 +61,28 @@ internal sealed class FfmpegStickerRenderer(IFfmpeg ffmpeg) : IStickerRenderer
         var scratch = Directory.CreateTempSubdirectory("stickersnap-probe-");
         try
         {
-            var draft = new StickerRender(
-                probe.SourcePath,
-                probe.Source,
-                probe.Spec,
-                new RateControl.ConstantQuality(probe.Crf),
-                RenderEffort.Draft,
-                Path.Combine(scratch.FullName, "probe.webm"));
-            var rendered = await RenderAsync(draft, cancellationToken);
-            return (long)Math.Round(rendered.SizeBytes / (probe.Spec.KeepAlpha ? TransparentDraftOverFinal : DraftOverFinal));
+            var draft = await DraftAsync(probe, Path.Combine(scratch.FullName, "probe.webm"), cancellationToken);
+            return draft.EstimatedBytes;
         }
         finally
         {
             scratch.Delete(recursive: true);
         }
+    }
+
+    /// <summary>One realtime pass at the probe's CRF; the final render is that much smaller.</summary>
+    public async Task<DraftSticker> DraftAsync(StickerProbe probe, string outputPath, CancellationToken cancellationToken)
+    {
+        var draft = new StickerRender(
+            probe.SourcePath,
+            probe.Source,
+            probe.Spec,
+            new RateControl.ConstantQuality(probe.Crf),
+            RenderEffort.Draft,
+            outputPath);
+        var rendered = await RenderAsync(draft, progress: null, cancellationToken);
+        var estimate = (long)Math.Round(rendered.SizeBytes / (probe.Spec.KeepAlpha ? TransparentDraftOverFinal : DraftOverFinal));
+        return new DraftSticker(rendered.Path, rendered.SizeBytes, estimate);
     }
 
     /// <summary>`ffmpeg …` once, or twice for two passes, with the statistics beside the output.</summary>
@@ -80,15 +100,81 @@ internal sealed class FfmpegStickerRenderer(IFfmpeg ffmpeg) : IStickerRenderer
             ? argument
             : $"\"{argument.Replace("\"", "\\\"")}\"";
 
-    private async Task RunAsync(IReadOnlyList<string> arguments, string step, StickerRender render, CancellationToken cancellationToken)
+    private async Task RunAsync(
+        IReadOnlyList<string> arguments,
+        int pass,
+        int passes,
+        StickerRender render,
+        IProgress<PassProgress>? progress,
+        CancellationToken cancellationToken)
     {
-        var result = await ffmpeg.RunAsync(arguments, progress: null, cancellationToken);
-        if (!result.IsSuccess)
-            throw new AppException(
+        var frames = progress is null ? null : new FrameProgress(progress, pass, passes, render.Spec.PlayedFrames);
+        frames?.Report(0);
+        var result = await ffmpeg.RunAsync(arguments, frames, cancellationToken);
+        if (result.IsSuccess)
+        {
+            frames?.Report(1);
+            return;
+        }
+
+        var step = passes == 1 ? "the render" : $"pass {pass}";
+        throw result.Log.Contains(NoSpace, StringComparison.OrdinalIgnoreCase)
+            ? new AppException(ErrorCode.DiskFull, $"No space left for {step} of {Path.GetFileName(render.SourcePath)}") { Log = result.Log }
+            : new AppException(
                 ErrorCode.RenderFailed,
                 $"ffmpeg failed {step} of {Path.GetFileName(render.SourcePath)} (exit code {result.ExitCode})")
             {
                 Log = result.Log,
             };
+    }
+
+    /// <summary>Removes a file the failed render may have started, never hiding why it failed.</summary>
+    private static void DeleteQuietly(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception e) when (IoErrors.IsIoError(e))
+        {
+            // The directory may be gone or locked: there is no file to pick up either way
+        }
+    }
+
+    private static void CreateDirectory(string path, StickerRender render)
+    {
+        try
+        {
+            Directory.CreateDirectory(path);
+        }
+        catch (Exception e) when (IoErrors.IsIoError(e))
+        {
+            throw Unwritable(e, path, render);
+        }
+    }
+
+    private static DirectoryInfo CreateTempDirectory(string prefix, StickerRender render)
+    {
+        try
+        {
+            return Directory.CreateTempSubdirectory(prefix);
+        }
+        catch (Exception e) when (IoErrors.IsIoError(e))
+        {
+            throw Unwritable(e, Path.GetTempPath(), render);
+        }
+    }
+
+    private static AppException Unwritable(Exception e, string path, StickerRender render) => IoErrors.IsDiskFull(e)
+        ? new AppException(ErrorCode.DiskFull, $"No space left in {path} to render {Path.GetFileName(render.SourcePath)}", e)
+        : new AppException(ErrorCode.RenderFailed, $"Cannot write to {path} to render {Path.GetFileName(render.SourcePath)}: {e.Message}", e);
+
+    /// <summary>A pass's frames written over the frames the sticker has, as the share of the pass done.</summary>
+    private sealed class FrameProgress(IProgress<PassProgress> progress, int pass, int passes, int frames) : IProgress<FfmpegProgress>
+    {
+        public void Report(FfmpegProgress value) =>
+            Report(value.IsEnd ? 1 : Math.Clamp((double)value.Frame / Math.Max(1, frames), 0, 1));
+
+        public void Report(double fraction) => progress.Report(new PassProgress(pass, passes, fraction));
     }
 }
