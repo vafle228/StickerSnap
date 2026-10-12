@@ -1,6 +1,7 @@
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Media;
 using StickerSnap.Infrastructure.Ffmpeg;
+using StickerSnap.Tests.TestData;
 
 namespace StickerSnap.Tests.Infrastructure.Ffmpeg;
 
@@ -96,7 +97,7 @@ public sealed class RealFfmpegTests(RealFfmpeg ffmpeg) : IClassFixture<RealFfmpe
     public async Task Probes_an_animated_webp_with_uneven_delays_by_its_frames()
     {
         // Made by libwebp's encoder: FFmpeg's libwebp_anim writes even delays only
-        var sample = Path.Combine(AppContext.BaseDirectory, "Infrastructure", "Ffmpeg", "Samples", "webp-anim-variable-delays.webp");
+        var sample = await TestFiles.CopyToAsync("Media/webp-anim-variable-delays.webp", ffmpeg.Clip(""), Cancel);
 
         var webp = await ffmpeg.Probe.ProbeAsync(sample, Cancel);
 

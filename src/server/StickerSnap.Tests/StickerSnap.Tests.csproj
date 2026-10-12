@@ -20,10 +20,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Real ffprobe output for clips made with lavfi, read by the fast tests without FFmpeg -->
-    <None Include="Infrastructure\Ffmpeg\Samples\*.json" CopyToOutputDirectory="PreserveNewest" />
-    <!-- Animated WEBP with uneven delays, from libwebp's own encoder: the pinned FFmpeg writes even ones -->
-    <None Include="Infrastructure\Ffmpeg\Samples\*.webp" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Test files, read through TestData/TestFiles.cs under their path in TestData/: Ffprobe/gif.json -->
+    <EmbeddedResource Include="TestData\**\*" Exclude="TestData\**\*.cs" LogicalName="TestData/$([System.String]::Copy('%(RecursiveDir)').Replace('\','/'))%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

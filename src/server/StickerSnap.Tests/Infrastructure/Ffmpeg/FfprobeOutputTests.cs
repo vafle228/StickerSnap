@@ -1,11 +1,12 @@
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Media;
 using StickerSnap.Infrastructure.Ffmpeg;
+using StickerSnap.Tests.TestData;
 
 namespace StickerSnap.Tests.Infrastructure.Ffmpeg;
 
 /// <summary>
-/// Samples/ holds what the pinned ffprobe 9.0.2 printed for 1-second clips made with lavfi
+/// TestData/Ffprobe holds what the pinned ffprobe 9.0.2 printed for 1-second clips made with lavfi
 /// (testsrc2, libopenh264, libvpx-vp9, libwebp_anim) and for animated WEBP files with uneven
 /// delays made with libwebp's own encoder (the webp-anim-*-delays files); no FFmpeg runs here.
 /// </summary>
@@ -13,8 +14,7 @@ public sealed class FfprobeOutputTests
 {
     private static MediaInfo Parse(string sample, string extension = "mp4") => FfprobeOutput.Parse(Sample(sample), extension);
 
-    private static string Sample(string name) =>
-        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Infrastructure", "Ffmpeg", "Samples", name));
+    private static string Sample(string name) => TestFiles.ReadText($"Ffprobe/{name}");
 
     [Fact]
     public void Reads_an_h264_mp4_with_sound()
