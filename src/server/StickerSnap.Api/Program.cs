@@ -1,62 +1,100 @@
 using System.Runtime.InteropServices;
-using StickerSnap.Api.Endpoints;
+using Microsoft.AspNetCore.Mvc;
+using StickerSnap.Api.Events;
 using StickerSnap.Api.Json;
 using StickerSnap.Api.Problems;
 using StickerSnap.Api.Shell;
 using StickerSnap.Application;
 using StickerSnap.Application.App;
+using StickerSnap.Application.Events;
 using StickerSnap.Core.Errors;
 using StickerSnap.Infrastructure;
 using StickerSnap.Infrastructure.Ffmpeg;
 
-var builder = WebApplication.CreateBuilder(args);
+namespace StickerSnap.Api;
 
-// The composition root: the only place that knows Infrastructure. Endpoints call the Application.
-builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddOpenApi();
+/// <summary>
+/// The composition root: the only place that knows Infrastructure. Controllers call the Application.
+/// WebApplicationFactory&lt;Program&gt; in StickerSnap.Tests starts the app from here.
+/// </summary>
+public sealed class Program
+{
+    private Program()
+    {
+    }
 
-// The contract's JSON and its errors: Problem Details with a code and a trace id.
-builder.Services.ConfigureHttpJsonOptions(options => ContractJson.Apply(options.SerializerOptions));
-builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = Problem.Complete);
-builder.Services.AddExceptionHandler<ProblemExceptionHandler>();
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+        ConfigureServices(builder.Services, builder.Configuration, builder.Environment);
 
-// The desktop shell passes its token, the mode and its pid (src/desktop/src/server.ts).
-builder.Services.Configure<ShellOptions>(builder.Configuration.GetSection(ShellOptions.Section));
-builder.Services.AddSingleton<IHostInfo, ShellHostInfo>();
-builder.Services.AddHostedService<ParentWatch>();
+        var app = builder.Build();
+        Configure(app);
 
-// In development FFmpeg comes from tools/ffmpeg/<rid>, where npm run fetch:ffmpeg puts it.
-if (builder.Environment.IsDevelopment())
-    builder.Services.PostConfigure<FfmpegOptions>(options => options.FfmpegDir ??= Path.Combine(
-        builder.Environment.ContentRootPath, "..", "..", "..", "tools", "ffmpeg", RuntimeInformation.RuntimeIdentifier));
+        app.Run();
+    }
 
-var app = builder.Build();
+    private static void ConfigureServices(IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
+    {
+        services.AddApplication();
+        services.AddInfrastructure(configuration);
+        services.AddSingleton(TimeProvider.System);
 
-app.UseExceptionHandler();
-app.UseMiddleware<TokenGate>();
+        // The contract's JSON, the same for controllers, problems and the hub.
+        services.AddControllers()
+            .AddJsonOptions(options => ContractJson.Apply(options.JsonSerializerOptions))
+            .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = BadRequestOf);
+        services.ConfigureHttpJsonOptions(options => ContractJson.Apply(options.SerializerOptions));
+        services.AddOpenApi();
 
-// The server's own OpenAPI document, /openapi/v1.json, to compare with src/contract/openapi.yaml.
-if (app.Environment.IsDevelopment()) app.MapOpenApi();
+        // Errors are Problem Details with a code and a trace id.
+        services.AddProblemDetails(options => options.CustomizeProblemDetails = Problem.Complete);
+        services.AddExceptionHandler<ProblemExceptionHandler>();
 
-// The SPA is built by Vite into wwwroot (npm run build) and served from here.
-// During development Vite serves it on 127.0.0.1:5173 and proxies /api and /hubs to this server.
-app.UseDefaultFiles();
-app.UseStaticFiles();
+        // The hub only sends events.
+        services.AddSignalR().AddJsonProtocol(options => ContractJson.Apply(options.PayloadSerializerOptions));
+        services.AddSingleton<IEventPublisher, HubEventPublisher>();
 
-app.MapGroup("/api/v1").MapApp();
+        // The desktop shell passes its token, the mode and its pid (src/desktop/src/server.ts).
+        services.Configure<ShellOptions>(configuration.GetSection(ShellOptions.Section));
+        services.AddSingleton<IHostInfo, ShellHostInfo>();
+        services.AddHostedService<ParentWatch>();
 
-// An API path without a handler is a mistake of the SPA: bad_request, never the SPA page.
-// An unknown hub is a plain 404, as SignalR answers.
-app.MapFallback("/api/{**path}", (HttpRequest request) =>
-    TypedResults.Problem(Problem.Of(ErrorCode.BadRequest, $"No endpoint for {request.Method} {request.Path}")));
-app.MapFallback("/hubs/{**path}", () => Results.NotFound());
+        // In development FFmpeg comes from tools/ffmpeg/<rid>, where npm run fetch:ffmpeg puts it.
+        if (environment.IsDevelopment())
+        {
+            var tools = Path.Combine(
+                environment.ContentRootPath, "..", "..", "..", "tools", "ffmpeg", RuntimeInformation.RuntimeIdentifier);
+            services.PostConfigure<FfmpegOptions>(options => options.FfmpegDir ??= tools);
+        }
+    }
 
-// No router in the SPA: every other path gets index.html.
-app.MapFallbackToFile("index.html");
+    private static void Configure(WebApplication app)
+    {
+        app.UseExceptionHandler();
+        app.UseMiddleware<TokenGate>();
 
-app.Run();
+        // The server's own OpenAPI document, /openapi/v1.json, to compare with src/contract/openapi.yaml.
+        if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
-// WebApplicationFactory<Program> in StickerSnap.Tests starts the app from here.
-public partial class Program;
+        // The SPA is built by Vite into wwwroot (npm run build) and served from here.
+        // During development Vite serves it on 127.0.0.1:5173 and proxies /api and /hubs to this server.
+        app.UseDefaultFiles();
+        app.UseStaticFiles();
+
+        app.MapControllers();
+        app.MapHub<EventsHub>(EventsHub.Path);
+
+        // No router in the SPA: every other path gets index.html.
+        app.MapFallbackToFile("index.html");
+    }
+
+    /// <summary>A body that does not bind (bad JSON, an unknown enum value or field) is bad_request.</summary>
+    private static IActionResult BadRequestOf(ActionContext context)
+    {
+        var errors = context.ModelState
+            .Where(entry => entry.Value is { Errors.Count: > 0 })
+            .Select(entry => $"{entry.Key}: {string.Join(" ", entry.Value!.Errors.Select(error => error.ErrorMessage))}");
+        return new ProblemResult(Problem.Of(ErrorCode.BadRequest, string.Join("; ", errors)));
+    }
+}

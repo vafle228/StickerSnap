@@ -4,15 +4,8 @@ name: E2E
 # Its own workflow, so the fast checks in CI never wait for a browser and a red
 # run here does not block a merge: the PR shows it, the report says why.
 
+# Runs by hand only, not on every push or merge.
 on:
-  pull_request:
-    paths:
-      - "src/web/**"
-      - "src/contract/**"
-      - "package-lock.json"
-      - ".github/workflows/e2e.yml"
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:

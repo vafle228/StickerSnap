@@ -1,6 +1,7 @@
 using ArchUnitNET.Domain;
 using ArchUnitNET.Loader;
 using ArchUnitNET.xUnitV3;
+using StickerSnap.Api;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
 namespace StickerSnap.Tests.Architecture;

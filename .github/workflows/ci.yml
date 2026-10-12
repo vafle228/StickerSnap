@@ -1,9 +1,8 @@
 name: CI
 
+# Runs by hand only (Actions → CI → Run workflow), not on every push or merge.
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
