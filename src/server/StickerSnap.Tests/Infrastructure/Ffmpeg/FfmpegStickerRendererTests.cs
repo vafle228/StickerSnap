@@ -60,6 +60,22 @@ public sealed class FfmpegStickerRendererTests : IDisposable
         Directory.Exists(Path.GetDirectoryName(log)).Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData(false, 820)]
+    [InlineData(true, 633)]
+    public async Task Estimates_the_final_size_at_a_crf_from_a_draft_it_then_removes(bool transparent, long bytes)
+    {
+        var spec = StickerSpec.Default(Media.Landscape, TelegramLimits.Current.Sticker) with { KeepAlpha = transparent };
+
+        var estimate = await new FfmpegStickerRenderer(_ffmpeg).EstimateAsync(new StickerProbe("in/cat.mp4", Media.Landscape, spec, 37), Cancel);
+
+        estimate.Should().Be(bytes);
+        var run = _runs.Should().ContainSingle().Which;
+        run.Should().ContainInConsecutiveOrder("-crf", "37");
+        run.Should().ContainInConsecutiveOrder("-deadline", "realtime");
+        Directory.Exists(Path.GetDirectoryName(run[^1])).Should().BeFalse();
+    }
+
     [Fact]
     public async Task Fails_with_the_log_of_ffmpeg_and_stops_after_a_failed_pass()
     {

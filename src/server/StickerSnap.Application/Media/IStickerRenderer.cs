@@ -12,6 +12,13 @@ public interface IStickerRenderer
     /// when the engine is missing or too old
     /// </exception>
     Task<RenderedSticker> RenderAsync(StickerRender render, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// How many bytes the final render of <paramref name="probe"/> would take at its constant
+    /// quality, found in a fraction of that render's time; no file is kept.
+    /// </summary>
+    /// <exception cref="Core.Errors.AppException">As <see cref="RenderAsync"/></exception>
+    Task<long> EstimateAsync(StickerProbe probe, CancellationToken cancellationToken);
 }
 
 /// <param name="Source">What the probe read from <paramref name="SourcePath"/></param>
@@ -23,5 +30,8 @@ public sealed record StickerRender(
     RateControl Rate,
     RenderEffort Effort,
     string OutputPath);
+
+/// <param name="Crf">The constant quality of the final render it stands for</param>
+public sealed record StickerProbe(string SourcePath, MediaInfo Source, StickerSpec Spec, int Crf);
 
 public sealed record RenderedSticker(string Path, long SizeBytes);

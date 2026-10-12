@@ -83,6 +83,15 @@ public sealed class Vp9StickerArgumentsTests
     }
 
     [Fact]
+    public void Shrinks_the_picture_to_its_detail_before_it_is_scaled_to_the_sticker()
+    {
+        var render = Render with { Spec = Render.Spec with { Fps = 20, Detail = new PixelSize(384, 384) } };
+
+        Vp9StickerArguments.Filters(render).Should().Be(
+            "scale=1920:1080,setsar=1,crop=1080:1080:420:0,scale=384:384:flags=lanczos,scale=512:512:flags=lanczos,fps=20,format=yuv420p");
+    }
+
+    [Fact]
     public void Leaves_the_decoder_of_a_transparent_gif_to_ffmpeg()
     {
         var source = Media.Landscape with { Format = MediaFormat.Gif, Codec = "gif", HasAlpha = true };
