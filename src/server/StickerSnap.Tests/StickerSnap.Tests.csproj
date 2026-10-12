@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <!-- Test files, read through TestData/TestFiles.cs under their path in TestData/: Ffprobe/gif.json -->
-    <EmbeddedResource Include="TestData\**\*" Exclude="TestData\**\*.cs" LogicalName="TestData/$([System.String]::Copy('%(RecursiveDir)').Replace('\','/'))%(Filename)%(Extension)" />
+    <EmbeddedResource Include="TestData\**\*" Exclude="TestData\**\*.cs;TestData\**\*.md" LogicalName="TestData/$([System.String]::Copy('%(RecursiveDir)').Replace('\','/'))%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
