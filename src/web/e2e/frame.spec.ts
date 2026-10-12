@@ -1,8 +1,8 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /* The sticker's frame (R3): «Рамка» on the canvas keeps the square unless Shift is held,
-   «Готово» puts the result in the inspector; «Растянуть» takes sizes, and the lock keeps the
-   proportion whatever is typed. */
+   «Готово» puts the result in the inspector; «Растянуть» takes sizes and its presets bring the
+   proportion back. */
 
 async function openCat(page: Page) {
   await page.goto("/?mock=ok");
@@ -50,7 +50,9 @@ test("shrinks the crop as a square, frees it with Shift and lands it with «Го
   await expect(inspector.getByRole("button", { name: "Применить ко всем стикерам" })).toBeVisible();
 });
 
-test("stretches to typed sizes, and the lock keeps the proportion", async ({ page }) => {
+test("stretches to typed sizes, and «Как в источнике» brings the proportion back", async ({
+  page,
+}) => {
   const { inspector } = await openCat(page);
   await inspector.getByRole("radio", { name: "Растянуть" }).click();
   const width = inspector.getByRole("textbox", { name: "Ширина" });
@@ -64,14 +66,7 @@ test("stretches to typed sizes, and the lock keeps the proportion", async ({ pag
   await expect(width).toHaveValue("512");
   await expect(height).toHaveValue("512");
 
-  const lock = inspector.getByRole("switch", { name: /^Закрепить пропорции/ });
-  await inspector.getByText("Закрепить пропорции", { exact: true }).click();
-  await expect(lock).toBeChecked();
-  await expect(width).not.toBeEditable();
-  await expect(height).not.toBeEditable();
-  await expect(inspector.getByRole("radio", { name: "Как в источнике" })).toBeDisabled();
-
-  await inspector.getByText("Закрепить пропорции", { exact: true }).click();
+  await expect(inspector.getByRole("switch", { name: /^Закрепить пропорции/ })).toHaveCount(0);
   await inspector.getByRole("radio", { name: "Как в источнике" }).click();
   await expect(height).toHaveValue("288");
 });
