@@ -45,7 +45,7 @@ public sealed class Program
             .AddJsonOptions(options => ContractJson.Apply(options.JsonSerializerOptions))
             .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = BadRequestOf);
         services.ConfigureHttpJsonOptions(options => ContractJson.Apply(options.SerializerOptions));
-        services.AddOpenApi();
+        services.AddOpenApi(options => options.AddDocumentTransformer<AbsentNullTransformer>());
 
         // Errors are Problem Details with a code and a trace id.
         services.AddProblemDetails(options => options.CustomizeProblemDetails = Problem.Complete);

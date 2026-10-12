@@ -22,6 +22,8 @@
   <ItemGroup>
     <!-- Test files, read through TestData/TestFiles.cs under their path in TestData/: Ffprobe/gif.json -->
     <EmbeddedResource Include="TestData\**\*" Exclude="TestData\**\*.cs;TestData\**\*.md" LogicalName="TestData/$([System.String]::Copy('%(RecursiveDir)').Replace('\','/'))%(Filename)%(Extension)" />
+    <!-- The contract itself, as the repository has it, for Api/Contract: read through ContractDocuments.cs -->
+    <EmbeddedResource Include="..\..\contract\openapi.yaml" LogicalName="Contract/openapi.yaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,6 +31,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Microsoft.OpenApi.YamlReader" />
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="TngTech.ArchUnitNET.xUnitV3" />
     <PackageReference Include="xunit.v3" />
