@@ -192,7 +192,12 @@ paths:
       tags: [sources]
       operationId: validateWebm
       summary: Проверка любого .webm (R8) → чек-лист
-      description: Артборды 3c, 6 (.webm на окно). Этап 1a. Быстрая, синхронная.
+      description: >-
+        Артборды 3c, 6 (.webm на окно). Этап 1a. Быстрая, синхронная.
+        Пресет — по размеру кадра (G4): большая сторона не больше 100 px — эмодзи (100×100),
+        иначе стикер (сторона 512). `kind: path` — только в режиме desktop, в web это bad_request.
+        Не .webm — format_unsupported (415), нет файла — source_not_found (404),
+        нечитаемый — source_unreadable (422).
       requestBody:
         required: true
         content:
@@ -212,6 +217,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
         default:
           $ref: '#/components/responses/Problem'
 
@@ -1698,7 +1705,10 @@ components:
 
     ValidationVerdict:
       type: string
-      description: '`experimental` — длинный стикер R19'
+      description: >-
+        `experimental` — длинный стикер R19 (G4): заявленная в заголовке WEBM длительность
+        (Info › Duration) не больше 3 с, а кадры идут дольше; правило duration тогда `warn`.
+        Заявленная длительность больше 3 с — `fail`.
       enum: [pass, fail, experimental]
 
     ExportResult:

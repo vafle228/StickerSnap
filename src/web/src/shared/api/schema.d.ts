@@ -80,7 +80,7 @@ export interface paths {
         put?: never;
         /**
          * Проверка любого .webm (R8) → чек-лист
-         * @description Артборды 3c, 6 (.webm на окно). Этап 1a. Быстрая, синхронная.
+         * @description Артборды 3c, 6 (.webm на окно). Этап 1a. Быстрая, синхронная. Пресет — по размеру кадра (G4): большая сторона не больше 100 px — эмодзи (100×100), иначе стикер (сторона 512). `kind: path` — только в режиме desktop, в web это bad_request. Не .webm — format_unsupported (415), нет файла — source_not_found (404), нечитаемый — source_unreadable (422).
          */
         post: operations["validateWebm"];
         delete?: never;
@@ -999,7 +999,7 @@ export interface components {
             }[];
         };
         /**
-         * @description `experimental` — длинный стикер R19
+         * @description `experimental` — длинный стикер R19 (G4): заявленная в заголовке WEBM длительность (Info › Duration) не больше 3 с, а кадры идут дольше; правило duration тогда `warn`. Заявленная длительность больше 3 с — `fail`.
          * @enum {string}
          */
         ValidationVerdict: "pass" | "fail" | "experimental";
@@ -1521,6 +1521,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
             415: components["responses"]["UnsupportedMediaType"];
+            422: components["responses"]["UnprocessableContent"];
             default: components["responses"]["Problem"];
         };
     };
