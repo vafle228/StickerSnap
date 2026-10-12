@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "id": "6f1c2a4e-8b3d-4f7a-9c21-5d0e7a3b9f12",
+  "name": "Кот и клавиатура",
+  "revision": 12,
+  "savedAt": "2026-10-12T09:30:00+00:00",
+  "source": {
+    "path": "D:\\Видео\\cat-keyboard.gif",
+    "fileName": "cat-keyboard.gif",
+    "sizeBytes": 1048576,
+    "fingerprint": "sha256:5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
+    "media": {
+      "format": "gif",
+      "codec": "gif",
+      "width": 480,
+      "height": 270,
+      "fps": {
+        "num": 10,
+        "den": 1
+      },
+      "variableFrameRate": false,
+      "frameCount": 31,
+      "durationSec": 3.1,
+      "hasAlpha": false,
+      "hasAudio": false
+    }
+  },
+  "scene": {
+    "schemaVersion": 1,
+    "layers": [
+      {
+        "kind": "video",
+        "id": "video"
+      }
+    ],
+    "segments": [
+      {
+        "id": "seg-1",
+        "name": "Стикер 1",
+        "inFrame": 0,
+        "outFrame": "29",
+        "excludedFrames": [],
+        "frame": {
+          "mode": "crop",
+          "preset": "square",
+          "rect": {
+            "x": 105,
+            "y": 0,
+            "width": 270,
+            "height": 270
+          }
+        },
+        "speed": 1,
+        "loop": "normal",
+        "preset": "sticker",
+        "longSticker": false,
+        "autoFit": true
+      },
+      {
+        "id": "seg-2",
+        "name": "Стикер 2",
+        "inFrame": 10,
+        "outFrame": 20,
+        "excludedFrames": [],
+        "frame": {
+          "mode": "stretch",
+          "preset": "squash",
+          "aspect": {
+            "width": 270,
+            "height": 270
+          }
+        },
+        "speed": 1.5,
+        "loop": "pingpong",
+        "preset": "emoji",
+        "longSticker": false,
+        "autoFit": true
+      }
+    ]
+  },
+  "exports": {}
+}
