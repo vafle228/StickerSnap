@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddSingleton<IProjectStore, ProjectFileStore>();
         services.AddSingleton<IProjectRegistry, JsonProjectRegistry>();
         services.AddSingleton<ISourcePresence, SourcePresence>();
+        services.AddSingleton<ISourceWatch, FileSystemSourceWatch>();
         services.Configure<UploadOptions>(configuration.GetSection(UploadOptions.Section));
         services.AddSingleton<IUploadStore, UploadStore>();
         services.AddSingleton<IFileFingerprint, SampledFileFingerprint>();

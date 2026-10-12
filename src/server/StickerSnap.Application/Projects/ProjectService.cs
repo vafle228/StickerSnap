@@ -21,6 +21,7 @@ public sealed class ProjectService(
     IEventPublisher events,
     SourceImport import,
     ISettingsService settings,
+    ISourceWatch watch,
     TimeProvider clock) : IProjectService
 {
     private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _locks = new();
@@ -67,6 +68,7 @@ public sealed class ProjectService(
             await store.WriteAsync(card.Path, replaced, CancellationToken.None);
             var item = await ChangedAsync(card.Path, replaced, CancellationToken.None);
 
+            watch.Forget(id);
             var outOfRange = replaced.Scene.Segments
                 .Where(segment => segment.InFrame >= read.Media.FrameCount || segment.OutFrame >= read.Media.FrameCount)
                 .Select(segment => segment.Id)
@@ -99,6 +101,7 @@ public sealed class ProjectService(
             }
 
             var item = await ChangedAsync(full, project, cancellationToken);
+            WatchIfMissing(project, item);
             return new OpenedProject(project, full, item.SourceStatus);
         }, cancellationToken);
     }
@@ -108,6 +111,7 @@ public sealed class ProjectService(
     {
         var (card, project) = await ReadAsync(id, cancellationToken);
         var item = await RefreshAsync(card, project, cancellationToken);
+        WatchIfMissing(project, item);
         return new OpenedProject(project, card.Path, item.SourceStatus);
     }
 
@@ -158,9 +162,34 @@ public sealed class ProjectService(
             if (mode == RemoveMode.Trash) await trash.MoveToTrashAsync(card.Path, cancellationToken);
 
             await registry.RemoveAsync(id, cancellationToken);
+            watch.Forget(id);
             await events.ProjectRemovedAsync(id, cancellationToken);
             return true;
         }, cancellationToken);
+
+    /// <summary>A project opened without its video waits for it: «Исходник не найден» clears once it is back.</summary>
+    private void WatchIfMissing(Project project, ProjectListItem item)
+    {
+        if (item.SourceStatus == PresenceStatus.Missing)
+            watch.Watch(project.Id, project.Source.Path, () => SourceAppearedAsync(project.Id));
+    }
+
+    /// <summary>Tells the windows the source is there again; a project gone meanwhile is nothing to tell.</summary>
+    private async Task SourceAppearedAsync(Guid id)
+    {
+        try
+        {
+            await UnderLockAsync(id, async () =>
+            {
+                var (card, project) = await ReadAsync(id, CancellationToken.None);
+                return await ChangedAsync(card.Path, project, CancellationToken.None);
+            }, CancellationToken.None);
+        }
+        catch (AppException exception) when (exception.Code is ErrorCode.ProjectNotFound or ErrorCode.ProjectInvalid or ErrorCode.ProjectTooNew)
+        {
+            // Removed or broken since it was opened: the next read says so
+        }
+    }
 
     private ProjectListItem ItemOf(ProjectCard card) => new(card, sources.Of(card.SourcePath));
 

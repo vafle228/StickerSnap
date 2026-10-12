@@ -32,6 +32,7 @@ public sealed class ProjectSourceTests
     private readonly IProjectStore _store = Substitute.For<IProjectStore>();
     private readonly ISourcePresence _presence = Substitute.For<ISourcePresence>();
     private readonly IEventPublisher _events = Substitute.For<IEventPublisher>();
+    private readonly ISourceWatch _watch = Substitute.For<ISourceWatch>();
     private readonly IHostInfo _host = Substitute.For<IHostInfo>();
     private readonly IUploadStore _uploads = Substitute.For<IUploadStore>();
     private readonly IMediaProbe _probe = Substitute.For<IMediaProbe>();
@@ -68,7 +69,8 @@ public sealed class ProjectSourceTests
 
         var import = new SourceImport(new SourceFiles(_host, _uploads), _probe, _fingerprints, _uploads);
         _service = new ProjectService(
-            _registry, _store, Substitute.For<ITrash>(), _presence, _events, import, _settings, new FakeTimeProvider(Now));
+            _registry, _store, Substitute.For<ITrash>(), _presence, _events, import, _settings, _watch,
+            new FakeTimeProvider(Now));
     }
 
     [Fact]

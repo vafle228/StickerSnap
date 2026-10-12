@@ -36,7 +36,8 @@ public sealed class JobServiceTests : IAsyncDisposable
         var sources = Substitute.For<ISourcePresence>();
         sources.Of(Arg.Any<string>()).Returns(PresenceStatus.Ok);
         var projects = new ProjectService(
-            _registry, _store, Substitute.For<ITrash>(), sources, _events, Imports.Unused(), Substitute.For<ISettingsService>(), _clock);
+            _registry, _store, Substitute.For<ITrash>(), sources, _events, Imports.Unused(), Substitute.For<ISettingsService>(),
+            Substitute.For<ISourceWatch>(), _clock);
         _queue = new JobQueue([_exports], _events, _clock, NullLogger<JobQueue>.Instance);
         _service = new JobService(_queue, projects);
     }

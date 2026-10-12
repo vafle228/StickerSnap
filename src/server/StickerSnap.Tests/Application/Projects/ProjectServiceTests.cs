@@ -27,6 +27,7 @@ public sealed class ProjectServiceTests
     private readonly ITrash _trash = Substitute.For<ITrash>();
     private readonly ISourcePresence _sources = Substitute.For<ISourcePresence>();
     private readonly IEventPublisher _events = Substitute.For<IEventPublisher>();
+    private readonly ISourceWatch _watch = Substitute.For<ISourceWatch>();
     private readonly ProjectService _service;
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
@@ -45,7 +46,8 @@ public sealed class ProjectServiceTests
             });
         _sources.Of(Arg.Any<string>()).Returns(PresenceStatus.Ok);
         _service = new ProjectService(
-            _registry, _store, _trash, _sources, _events, Imports.Unused(), Substitute.For<ISettingsService>(), new FakeTimeProvider(Now));
+            _registry, _store, _trash, _sources, _events, Imports.Unused(), Substitute.For<ISettingsService>(),
+            _watch, new FakeTimeProvider(Now));
     }
 
     private async Task<OpenedProject> ListedAsync(Project project, string path)
@@ -157,6 +159,45 @@ public sealed class ProjectServiceTests
         var get = () => _service.GetAsync(Guid.NewGuid(), Cancel);
 
         (await get.Should().ThrowAsync<AppException>()).Which.Code.Should().Be(ErrorCode.ProjectNotFound);
+    }
+
+    [Fact]
+    public async Task Tells_the_windows_when_the_missing_source_of_an_opened_project_comes_back()
+    {
+        await ListedAsync(Cat, CatPath);
+        Func<Task>? appeared = null;
+        _watch.Watch(Cat.Id, Cat.Source.Path, Arg.Do<Func<Task>>(callback => appeared = callback));
+        _sources.Of(Cat.Source.Path).Returns(PresenceStatus.Missing);
+
+        var opened = await _service.GetAsync(Cat.Id, Cancel);
+        _sources.Of(Cat.Source.Path).Returns(PresenceStatus.Ok);
+        appeared.Should().NotBeNull();
+        await appeared!();
+
+        opened.SourceStatus.Should().Be(PresenceStatus.Missing);
+        await _events.Received(1).ProjectChangedAsync(
+            Arg.Is<ProjectListItem>(item => item.Card.Id == Cat.Id && item.SourceStatus == PresenceStatus.Ok),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Watches_no_source_that_is_there()
+    {
+        await ListedAsync(Cat, CatPath);
+
+        await _service.GetAsync(Cat.Id, Cancel);
+
+        _watch.DidNotReceiveWithAnyArgs().Watch(default, default!, default!);
+    }
+
+    [Fact]
+    public async Task Stops_watching_the_source_of_a_removed_project()
+    {
+        await ListedAsync(Cat, CatPath);
+
+        await _service.RemoveAsync(Cat.Id, RemoveMode.Forget, Cancel);
+
+        _watch.Received(1).Forget(Cat.Id);
     }
 
     [Fact]
