@@ -23,6 +23,12 @@ public static class DependencyInjection
         services.AddSingleton<IFolderAccess, FolderAccess>();
         services.AddSingleton<ISettingsRepository, JsonSettingsRepository>();
         services.AddSingleton<IProjectStore, ProjectFileStore>();
+        services.AddSingleton<IProjectRegistry, JsonProjectRegistry>();
+        services.AddSingleton<ISourcePresence, SourcePresence>();
+        // The desktop builds are Windows and Linux; every other Unix keeps the same trash as Linux
+        services.AddSingleton<ITrash>(provider => OperatingSystem.IsWindows()
+            ? new WindowsRecycleBin()
+            : FreedesktopTrash.ForUser(provider.GetRequiredService<TimeProvider>()));
 
         services.Configure<FfmpegOptions>(configuration.GetSection(FfmpegOptions.Section));
         services.AddSingleton<IFfmpegVersionReader, CliFfmpegVersionReader>();

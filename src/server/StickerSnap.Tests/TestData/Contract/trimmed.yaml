@@ -17,12 +17,12 @@ paths:
                 $ref: '#/components/schemas/Settings'
         default:
           description: Ошибка
-  /api/v1/projects:
+  /api/v1/packs:
     get:
-      operationId: listProjects
+      operationId: listPacks
       responses:
         '200':
-          description: Проекты
+          description: Паки
           content:
             application/json:
               schema:

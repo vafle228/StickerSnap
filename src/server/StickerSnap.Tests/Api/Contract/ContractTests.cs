@@ -23,8 +23,7 @@ public sealed partial class ContractTests
     public static readonly IReadOnlySet<string> NotYetOnServer = new HashSet<string>
     {
         "createUpload", "validateWebm",
-        "listProjects", "createProject", "openProject", "getProject", "renameProject", "deleteProject",
-        "saveScene", "replaceProjectSource", "getProjectCover", "getProjectMedia", "getProjectFrames",
+        "createProject", "replaceProjectSource", "getProjectCover", "getProjectMedia", "getProjectFrames",
         "estimateSegment", "getFile",
         "createJob", "listJobs", "getJob", "cancelJob", "retryJob",
         "getAccount", "startAccountLink", "deleteAccountLink", "checkAccount",
@@ -36,7 +35,7 @@ public sealed partial class ContractTests
     /// <summary>The events of x-events the hub does not send yet. The list only shrinks, as above.</summary>
     private static readonly IReadOnlySet<string> EventsNotYetSent = new HashSet<string>
     {
-        "jobUpdated", "projectChanged", "projectRemoved", "accountChanged", "packChanged",
+        "jobUpdated", "accountChanged", "packChanged",
     };
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
