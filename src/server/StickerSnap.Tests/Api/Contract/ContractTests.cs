@@ -25,7 +25,6 @@ public sealed partial class ContractTests
         "createUpload",
         "createProject", "replaceProjectSource", "getProjectCover", "getProjectMedia", "getProjectFrames",
         "estimateSegment", "getFile",
-        "createJob", "listJobs", "getJob", "cancelJob", "retryJob",
         "getAccount", "startAccountLink", "deleteAccountLink", "checkAccount",
         "listPacks", "importPack", "checkPackName", "getPack", "deletePack", "syncPack",
         "deletePackSticker", "getPackStickerMedia",

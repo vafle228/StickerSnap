@@ -20,6 +20,7 @@ public static class DependencyInjection
         .AddSingleton<SettingsService>()
         .AddSingleton<ProjectService>()
         .AddSingleton<JobQueue>()
+        .AddSingleton<JobService>()
         .AddSingleton<StickerFitService>()
         .AddSingleton<SegmentRenderService>()
         .AddSingleton<CorpusRenderService>()
