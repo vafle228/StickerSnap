@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using StickerSnap.Api;
 using StickerSnap.Api.Shell;
 using StickerSnap.Application.Ffmpeg;
 
