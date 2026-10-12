@@ -19,6 +19,12 @@ public interface IStickerRenderer
     /// </summary>
     /// <exception cref="Core.Errors.AppException">As <see cref="RenderAsync"/></exception>
     Task<long> EstimateAsync(StickerProbe probe, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The commands the engine would run for <paramref name="render"/>, one per line, for a person
+    /// to read and run by hand; nothing is run.
+    /// </summary>
+    string Describe(StickerRender render);
 }
 
 /// <param name="Source">What the probe read from <paramref name="SourcePath"/></param>

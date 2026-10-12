@@ -17,5 +17,6 @@ public static class DependencyInjection
         .AddSingleton<SettingsService>()
         .AddSingleton<ProjectService>()
         .AddSingleton<StickerFitService>()
-        .AddSingleton<CorpusRenderService>();
+        .AddSingleton<CorpusRenderService>()
+        .AddSingleton<RenderPlanService>();
 }

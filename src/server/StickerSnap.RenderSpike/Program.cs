@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using StickerSnap.Application;
 using StickerSnap.Application.Render;
+using StickerSnap.Core.Errors;
 using StickerSnap.Core.Media;
 using StickerSnap.Core.Render;
 using StickerSnap.Infrastructure;
@@ -15,6 +16,10 @@ namespace StickerSnap.RenderSpike;
 /// renders the default sticker of every clip in the corpus four ways (CRF, two passes, a CRF
 /// draft, the fit ladder) and writes report.md and report.csv beside the stickers. FFmpeg is found as the
 /// server finds it: StickerSnap__FfmpegDir, else next to the program, else on PATH.
+/// <para>
+/// `… -- --print-command &lt;file.ssproj&gt;` prints the FFmpeg commands that render each segment
+/// of the project at the first step of the fit ladder, to read and run by hand.
+/// </para>
 /// </summary>
 public sealed class Program
 {
@@ -26,9 +31,12 @@ public sealed class Program
 
     public static async Task<int> Main(string[] args)
     {
+        if (args is ["--print-command", var project]) return await PrintCommandsAsync(project);
+
         if (!TryParse(args, out var corpus, out var output, out var crf))
         {
             Console.Error.WriteLine("Usage: StickerSnap.RenderSpike <corpus folder> <output folder> [--crf 31]");
+            Console.Error.WriteLine("       StickerSnap.RenderSpike --print-command <file.ssproj>");
             return 2;
         }
 
@@ -60,6 +68,42 @@ public sealed class Program
         await File.WriteAllTextAsync(markdown, ReportWriter.Markdown(report));
         await File.WriteAllTextAsync(Path.Combine(output, "report.csv"), ReportWriter.Csv(report));
         Console.WriteLine($"Report: {markdown}");
+        return 0;
+    }
+
+    private static async Task<int> PrintCommandsAsync(string project)
+    {
+        using var host = Build();
+        IReadOnlyList<SegmentPlan> plans;
+        try
+        {
+            plans = await host.Services.GetRequiredService<RenderPlanService>().DescribeAsync(project, CancellationToken.None);
+        }
+        catch (AppException e)
+        {
+            Console.Error.WriteLine($"{e.Code}: {e.Message}");
+            return 1;
+        }
+
+        foreach (var plan in plans)
+        {
+            Console.WriteLine($"# {plan.Segment.Name} ({plan.Segment.Id})");
+            if (plan.Spec is { } spec)
+            {
+                Console.WriteLine(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"# {spec.Width}x{spec.Height}, {spec.Fps} fps, {spec.PlayedFrames} frames, {spec.DurationSec:0.###} s, " +
+                    $"source frames {spec.Clip.Frames.First}-{spec.Clip.Frames.Last}"));
+                Console.WriteLine(plan.Commands);
+            }
+            else
+            {
+                Console.WriteLine($"# makes no sticker: {plan.Problem}");
+            }
+
+            Console.WriteLine();
+        }
+
         return 0;
     }
 

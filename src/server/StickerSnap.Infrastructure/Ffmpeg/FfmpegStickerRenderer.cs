@@ -65,6 +65,21 @@ internal sealed class FfmpegStickerRenderer(IFfmpeg ffmpeg) : IStickerRenderer
         }
     }
 
+    /// <summary>`ffmpeg …` once, or twice for two passes, with the statistics beside the output.</summary>
+    public string Describe(StickerRender render)
+    {
+        IEnumerable<IReadOnlyList<string>> runs = render.Rate is RateControl.TwoPass
+            ? [Vp9StickerArguments.For(render, 1, render.OutputPath + ".vp9"), Vp9StickerArguments.For(render, 2, render.OutputPath + ".vp9")]
+            : [Vp9StickerArguments.For(render, 0, null)];
+        return string.Join(Environment.NewLine, runs.Select(arguments => string.Join(' ', ["ffmpeg", .. arguments.Select(Quote)])));
+    }
+
+    /// <summary>An argument as a shell reads it back whole: in double quotes when it holds more than letters and signs.</summary>
+    private static string Quote(string argument) =>
+        argument.Length > 0 && argument.All(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.' or '/' or '\\' or ':' or '=' or ',')
+            ? argument
+            : $"\"{argument.Replace("\"", "\\\"")}\"";
+
     private async Task RunAsync(IReadOnlyList<string> arguments, string step, StickerRender render, CancellationToken cancellationToken)
     {
         var result = await ffmpeg.RunAsync(arguments, progress: null, cancellationToken);

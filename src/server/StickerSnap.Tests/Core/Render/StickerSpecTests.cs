@@ -13,8 +13,17 @@ public sealed class StickerSpecTests
     {
         var spec = StickerSpec.Default(Media.Landscape, Sticker);
 
-        spec.Should().Be(new StickerSpec(
-            StartSec: 0, DurationSec: 3, new PixelRect(420, 0, 1080, 1080), Width: 512, Height: 512, Fps: 30, KeepAlpha: false));
+        spec.Should().BeEquivalentTo(new
+        {
+            Clip = new { Frames = new SourceFrames(0, 89, []), Speed = 1, PingPong = false },
+            Crop = new PixelRect(420, 0, 1080, 1080),
+            Width = 512,
+            Height = 512,
+            Fps = 30,
+            KeepAlpha = false,
+            Detail = (PixelSize?)null,
+        });
+        (spec.ForwardFrames, spec.DurationSec).Should().Be((90, 3));
     }
 
     [Fact]
@@ -36,7 +45,9 @@ public sealed class StickerSpecTests
     [Fact]
     public void Keeps_the_whole_of_a_source_shorter_than_3_seconds()
     {
-        StickerSpec.Default(Media.Landscape with { DurationSec = 1.5 }, Sticker).DurationSec.Should().Be(1.5);
+        var spec = StickerSpec.Default(Media.Landscape with { FrameCount = 45, DurationSec = 1.5 }, Sticker);
+
+        (spec.Clip.Frames.Last, spec.DurationSec).Should().Be((44, 1.5));
     }
 
     [Fact]
@@ -75,6 +86,16 @@ public sealed class StickerSpecTests
         var source = Media.Landscape with { Fps = new Rational(num, den), IsVariableFrameRate = variable };
 
         StickerSpec.Default(source, Sticker).Fps.Should().Be(fps);
+    }
+
+    [Theory]
+    [InlineData(30, 1, 0.5, 15)]
+    [InlineData(10, 1, 2, 20)]
+    [InlineData(24, 1, 1.25, 30)]
+    [InlineData(10, 1, 0.25, 30)]
+    public void Plays_at_the_rate_the_frames_come_at_after_the_speed(int num, int den, double speed, int fps)
+    {
+        StickerSpec.StartRate(Media.Landscape with { Fps = new Rational(num, den) }, 30, speed).Should().Be(fps);
     }
 
     [Fact]

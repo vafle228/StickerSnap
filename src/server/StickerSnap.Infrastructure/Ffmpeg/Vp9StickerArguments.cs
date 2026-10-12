@@ -4,7 +4,10 @@ using StickerSnap.Core.Render;
 
 namespace StickerSnap.Infrastructure.Ffmpeg;
 
-/// <summary>The ffmpeg arguments that render a sticker as VP9 in WEBM, one pass at a time.</summary>
+/// <summary>
+/// The ffmpeg arguments that render a sticker as VP9 in WEBM, one pass at a time: the frames and
+/// the picture of <see cref="StickerFilterGraph"/>, then the encoder.
+/// </summary>
 internal static class Vp9StickerArguments
 {
     /// <summary>
@@ -16,15 +19,8 @@ internal static class Vp9StickerArguments
     public static IReadOnlyList<string> For(StickerRender render, int pass, string? passLog)
     {
         var spec = render.Spec;
-        List<string> arguments = [];
-
-        // FFmpeg's own VP8 and VP9 decoders drop the alpha WEBM keeps beside the picture; libvpx reads it
-        if (spec.KeepAlpha && render.Source.Codec is "vp9" or "vp8")
-            arguments.AddRange(["-c:v", render.Source.Codec == "vp9" ? "libvpx-vp9" : "libvpx"]);
-        if (spec.StartSec > 0) arguments.AddRange(["-ss", Number(spec.StartSec)]);
-        arguments.AddRange(["-t", Number(spec.DurationSec), "-i", render.SourcePath]);
-
-        arguments.AddRange(["-map", "0:v:0", "-an", "-sn", "-dn", "-vf", Filters(render)]);
+        List<string> arguments = [.. StickerFilterGraph.Input(render)];
+        arguments.AddRange(["-filter_complex", StickerFilterGraph.Filters(render), "-map", StickerFilterGraph.Output, "-an", "-sn", "-dn"]);
         arguments.AddRange(["-c:v", "libvpx-vp9", "-pix_fmt", spec.KeepAlpha ? "yuva420p" : "yuv420p"]);
         arguments.AddRange(Rate(render.Rate, pass, passLog));
         arguments.AddRange(Effort(render.Effort));
@@ -34,31 +30,6 @@ internal static class Vp9StickerArguments
         else
             arguments.AddRange(["-f", "webm", "-y", render.OutputPath]);
         return arguments;
-    }
-
-    /// <summary>
-    /// The picture is first brought to its size as shown with square pixels (MediaInfo's width
-    /// and height already apply rotation and the pixel aspect ratio), then cropped, scaled (through
-    /// the smaller detail size when the fit ladder gave detail up) and resampled to the sticker's rate.
-    /// </summary>
-    internal static string Filters(StickerRender render)
-    {
-        var spec = render.Spec;
-        var crop = spec.Crop;
-        List<string> filters =
-        [
-            $"scale={render.Source.Width}:{render.Source.Height}",
-            "setsar=1",
-            $"crop={crop.Width}:{crop.Height}:{crop.X}:{crop.Y}",
-        ];
-        if (spec.Detail is { } detail) filters.Add($"scale={detail.Width}:{detail.Height}:flags=lanczos");
-        filters.AddRange(
-        [
-            $"scale={spec.Width}:{spec.Height}:flags=lanczos",
-            $"fps={spec.Fps}",
-            $"format={(spec.KeepAlpha ? "yuva420p" : "yuv420p")}",
-        ]);
-        return string.Join(',', filters);
     }
 
     private static IEnumerable<string> Rate(RateControl rate, int pass, string? passLog) => rate switch

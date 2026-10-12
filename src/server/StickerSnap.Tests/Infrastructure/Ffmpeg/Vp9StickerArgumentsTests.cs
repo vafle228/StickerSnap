@@ -21,9 +21,11 @@ public sealed class Vp9StickerArgumentsTests
     public void Renders_a_crf_sticker_in_one_run()
     {
         Vp9StickerArguments.For(Render, 0, null).Should().Equal(
-            "-t", "3", "-i", "in/cat.mp4",
-            "-map", "0:v:0", "-an", "-sn", "-dn",
-            "-vf", "scale=1920:1080,setsar=1,crop=1080:1080:420:0,scale=512:512:flags=lanczos,fps=30,format=yuv420p",
+            "-t", "2.983333", "-i", "in/cat.mp4",
+            "-filter_complex",
+            "[0:v:0]trim=end_frame=90,setpts=PTS-STARTPTS,fps=30,tpad=stop=-1:stop_mode=clone,trim=end_frame=90," +
+            "scale=1920:1080,setsar=1,crop=1080:1080:420:0:exact=1,scale=512:512:flags=lanczos,setsar=1,format=yuv420p[v]",
+            "-map", "[v]", "-an", "-sn", "-dn",
             "-c:v", "libvpx-vp9", "-pix_fmt", "yuv420p",
             "-crf", "31", "-b:v", "0",
             "-deadline", "good", "-cpu-used", "2", "-row-mt", "1",
@@ -62,14 +64,6 @@ public sealed class Vp9StickerArgumentsTests
     }
 
     [Fact]
-    public void Starts_later_in_the_source_when_the_sticker_does()
-    {
-        var render = Render with { Spec = Render.Spec with { StartSec = 1.25 } };
-
-        Vp9StickerArguments.For(render, 0, null).Should().StartWith(["-ss", "1.25", "-t", "3", "-i", "in/cat.mp4"]);
-    }
-
-    [Fact]
     public void Reads_the_alpha_of_vp9_with_libvpx_and_keeps_it()
     {
         var source = Media.Landscape with { Format = MediaFormat.Webm, Codec = "vp9", HasAlpha = true };
@@ -77,18 +71,8 @@ public sealed class Vp9StickerArgumentsTests
 
         var arguments = Vp9StickerArguments.For(render, 0, null);
 
-        arguments.Should().StartWith(["-c:v", "libvpx-vp9", "-t", "3", "-i", "in/cat.mp4"]);
+        arguments.Should().StartWith(["-c:v", "libvpx-vp9", "-t", "2.983333", "-i", "in/cat.mp4"]);
         arguments.Should().ContainInConsecutiveOrder("-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p");
-        Vp9StickerArguments.Filters(render).Should().EndWith("format=yuva420p");
-    }
-
-    [Fact]
-    public void Shrinks_the_picture_to_its_detail_before_it_is_scaled_to_the_sticker()
-    {
-        var render = Render with { Spec = Render.Spec with { Fps = 20, Detail = new PixelSize(384, 384) } };
-
-        Vp9StickerArguments.Filters(render).Should().Be(
-            "scale=1920:1080,setsar=1,crop=1080:1080:420:0,scale=384:384:flags=lanczos,scale=512:512:flags=lanczos,fps=20,format=yuv420p");
     }
 
     [Fact]
@@ -97,6 +81,6 @@ public sealed class Vp9StickerArgumentsTests
         var source = Media.Landscape with { Format = MediaFormat.Gif, Codec = "gif", HasAlpha = true };
         var render = Render with { Source = source, Spec = StickerSpec.Default(source, TelegramLimits.Current.Sticker) };
 
-        Vp9StickerArguments.For(render, 0, null).Should().StartWith(["-t", "3", "-i", "in/cat.mp4"]);
+        Vp9StickerArguments.For(render, 0, null).Should().StartWith(["-i", "in/cat.mp4"]);
     }
 }
