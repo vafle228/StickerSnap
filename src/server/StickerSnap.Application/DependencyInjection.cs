@@ -22,6 +22,7 @@ public static class DependencyInjection
         .AddSingleton<SegmentRenderService>()
         .AddSingleton<CorpusRenderService>()
         .AddSingleton<RenderPlanService>()
+        .AddSingleton<ProjectRenderService>()
         .AddSingleton<SourceFiles>()
         .AddSingleton<ValidationService>();
 }
