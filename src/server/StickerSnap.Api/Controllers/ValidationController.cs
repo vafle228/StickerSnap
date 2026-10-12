@@ -11,9 +11,9 @@ namespace StickerSnap.Api.Controllers;
 [Produces("application/json")]
 public sealed class ValidationController : ControllerBase
 {
-    private readonly ValidationService _service;
+    private readonly IValidationService _service;
 
-    public ValidationController(ValidationService service)
+    public ValidationController(IValidationService service)
     {
         _service = service;
     }

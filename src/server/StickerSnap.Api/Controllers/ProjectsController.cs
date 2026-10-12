@@ -15,10 +15,10 @@ namespace StickerSnap.Api.Controllers;
 [Tags("projects")]
 public sealed class ProjectsController : ControllerBase
 {
-    private readonly ProjectService _service;
+    private readonly IProjectService _service;
     private readonly IHostInfo _host;
 
-    public ProjectsController(ProjectService service, IHostInfo host)
+    public ProjectsController(IProjectService service, IHostInfo host)
     {
         _service = service;
         _host = host;

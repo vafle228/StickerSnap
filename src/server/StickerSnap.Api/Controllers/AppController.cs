@@ -11,9 +11,9 @@ namespace StickerSnap.Api.Controllers;
 [Produces("application/json")]
 public sealed class AppController : ControllerBase
 {
-    private readonly AppInfoService _service;
+    private readonly IAppInfoService _service;
 
-    public AppController(AppInfoService service)
+    public AppController(IAppInfoService service)
     {
         _service = service;
     }

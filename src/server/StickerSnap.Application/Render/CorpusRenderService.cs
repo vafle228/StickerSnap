@@ -13,8 +13,9 @@ namespace StickerSnap.Application.Render;
 /// result back: the size, what the file holds, how long it took, what Telegram would reject.
 /// The stage 0 render and fit spikes, and later the regression run of QA over the same corpus.
 /// </summary>
-public sealed class CorpusRenderService(IMediaProbe probe, IStickerRenderer renderer, StickerFitService fitter, TimeProvider time)
+public sealed class CorpusRenderService(IMediaProbe probe, IStickerRenderer renderer, IStickerFitService fitter, TimeProvider time) : ICorpusRenderService
 {
+    /// <inheritdoc />
     public async Task<CorpusReport> RunAsync(
         IReadOnlyList<string> sources,
         string outputDirectory,

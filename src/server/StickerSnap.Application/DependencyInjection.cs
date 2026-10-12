@@ -16,16 +16,16 @@ public static class DependencyInjection
     /// (repositories, the media engine, the Bot API) are implemented in StickerSnap.Infrastructure.
     /// </summary>
     public static IServiceCollection AddApplication(this IServiceCollection services) => services
-        .AddSingleton<AppInfoService>()
-        .AddSingleton<SettingsService>()
-        .AddSingleton<ProjectService>()
+        .AddSingleton<IAppInfoService, AppInfoService>()
+        .AddSingleton<ISettingsService, SettingsService>()
+        .AddSingleton<IProjectService, ProjectService>()
         .AddSingleton<IJobQueue, JobQueue>()
         .AddSingleton<IJobService, JobService>()
-        .AddSingleton<StickerFitService>()
-        .AddSingleton<SegmentRenderService>()
-        .AddSingleton<CorpusRenderService>()
-        .AddSingleton<RenderPlanService>()
-        .AddSingleton<ProjectRenderService>()
+        .AddSingleton<IStickerFitService, StickerFitService>()
+        .AddSingleton<ISegmentRenderService, SegmentRenderService>()
+        .AddSingleton<ICorpusRenderService, CorpusRenderService>()
+        .AddSingleton<IRenderPlanService, RenderPlanService>()
+        .AddSingleton<IProjectRenderService, ProjectRenderService>()
         .AddSingleton<SourceFiles>()
-        .AddSingleton<ValidationService>();
+        .AddSingleton<IValidationService, ValidationService>();
 }

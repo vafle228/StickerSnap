@@ -11,7 +11,7 @@ namespace StickerSnap.Application.Render;
 /// <see cref="FitLadder"/> at their CRF until one fits, renders that one in two passes at the
 /// target bitrate and corrects the bitrate while the file misses (see <see cref="FitLadder.Retarget"/>).
 /// </summary>
-public sealed class StickerFitService(IStickerRenderer renderer)
+public sealed class StickerFitService(IStickerRenderer renderer) : IStickerFitService
 {
     /// <summary>Two-pass renders of the chosen step before the last good one is rendered again.</summary>
     public const int MaxFinalAttempts = 3;
@@ -19,11 +19,7 @@ public sealed class StickerFitService(IStickerRenderer renderer)
     /// <summary>The share of the progress the estimates take; the two-pass renders take the rest.</summary>
     internal const double ProbeShare = 0.1;
 
-    /// <param name="progress">Gets the estimates as `probe`, then the passes of each render</param>
-    /// <exception cref="AppException">
-    /// `cannot_fit` when no two-pass render came under the limit; the engine's errors as
-    /// <see cref="IStickerRenderer.RenderAsync"/> has them
-    /// </exception>
+    /// <inheritdoc />
     public async Task<FittedSticker> FitAsync(StickerFit fit, IProgress<RenderProgress>? progress, CancellationToken cancellationToken)
     {
         var whole = ProgressPart.Whole(progress);
@@ -72,13 +68,7 @@ public sealed class StickerFitService(IStickerRenderer renderer)
         return new FittedSticker(fit.OutputPath, attempts[^1].Bytes, chosen, steps[^1].Fits, steps, attempts);
     }
 
-    /// <summary>
-    /// The preview of <see cref="FitAsync"/>: the same steps estimated from drafts, each kept at
-    /// the output path, so the draft of the step the final render would take is left there. No
-    /// step fitting leaves the last one, which the final render squeezes in with its two passes.
-    /// </summary>
-    /// <param name="progress">Gets each draft as `pass2`: a draft is the one pass the user waits for</param>
-    /// <exception cref="AppException">The engine's errors as <see cref="IStickerRenderer.RenderAsync"/> has them</exception>
+    /// <inheritdoc />
     public async Task<FittedSticker> DraftAsync(StickerFit fit, IProgress<RenderProgress>? progress, CancellationToken cancellationToken)
     {
         var whole = ProgressPart.Whole(progress);
