@@ -1,0 +1,389 @@
+name: Pipeline
+
+# One pipeline in four stages, the way a GitLab pipeline reads: check → build → test → release.
+# A job starts when every job of the stage before it has passed (needs); jobs of one stage run
+# in parallel. What runs when:
+#   pull_request → main   check, build, test (the slow server tests only if the server changed)
+#   push of a tag v*      all four stages, the installers are built and attached as artifacts
+#   workflow_dispatch     check, build, test; inputs add the heavy e2e and the installers
+on:
+  pull_request:
+    branches: [main]
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      e2e:
+        description: "Run the heavy browser e2e (Chromium on demo data)"
+        type: boolean
+        default: false
+      package:
+        description: "Build the Windows and Linux installers (release stage)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pipeline-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 22
+  DOTNET_VERSION: 10.0.x
+  DOTNET_NOLOGO: true
+
+jobs:
+  # ───────────────────────────── stage 1 · check ─────────────────────────────
+  # Fast static checks. Nothing is built here.
+
+  dependency-check:
+    name: Dependency check
+    runs-on: ubuntu-latest
+    # Reports vulnerable packages, never fails the pipeline (allow_failure)
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - run: npm audit --audit-level=high
+      - name: NuGet vulnerabilities
+        working-directory: src/server
+        run: |
+          dotnet list StickerSnap.slnx package --vulnerable --include-transitive | tee nuget-audit.txt
+          ! grep -q "has the following vulnerable packages" nuget-audit.txt
+
+  contract:
+    name: API contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # openapi.yaml is valid and schema.d.ts was regenerated after the last change
+      - run: npm run check:api
+      # generated types compile under TypeScript strict
+      - run: npm run typecheck:api
+
+  web-lint:
+    name: SPA lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # tokens.css was regenerated after the last change of tokens.json
+      - run: npm run check:tokens
+      - run: npm run format:check
+      - run: npm run lint
+
+  desktop-lint:
+    name: Desktop shell lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint -w src/desktop
+      # tsc strict over the main process, the preload, the tests and the e2e
+      - run: npm run typecheck -w src/desktop
+
+  # ───────────────────────────── stage 2 · build ─────────────────────────────
+  # Each job builds once and hands the result to the test and release stages as an artifact.
+
+  build-web:
+    name: Build SPA
+    needs: [contract, web-lint, desktop-lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # tsc -b (strict) + vite build into src/server/StickerSnap.Api/wwwroot
+      - run: npm run build
+      # the production build carries no demo data, dev bar or showcase
+      - run: npm run check:prod-build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spa-dist
+          path: src/server/StickerSnap.Api/wwwroot
+          retention-days: 7
+          if-no-files-found: error
+
+  build-server:
+    name: Build server
+    needs: [contract, web-lint, desktop-lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - run: dotnet build StickerSnap.slnx -c Release
+        working-directory: src/server
+      # bin and obj go in one tarball, so the test jobs get the same layout back
+      - run: find src/server -type d \( -name bin -o -name obj \) -prune -print0 | tar --null -czf server-build.tgz -T -
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-build
+          path: server-build.tgz
+          retention-days: 7
+          if-no-files-found: error
+
+  # ───────────────────────────── stage 3 · test ─────────────────────────────
+  # Fast tests first of all (the test pyramid): unit and integration tests wait for nothing slow.
+
+  web-unit:
+    name: SPA tests
+    needs: [build-web, build-server]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # unit and contract tests in node, component tests (*.test.tsx) in happy-dom
+      - run: npm test
+
+  desktop-unit:
+    name: Desktop shell tests
+    needs: [build-web, build-server]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # unit tests of the shell in node; the real app runs in the release stage
+      - run: npm test -w src/desktop
+
+  server-fast:
+    name: Server tests
+    needs: [build-web, build-server]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-build
+      - run: tar -xzf server-build.tgz
+      # xUnit on Microsoft.Testing.Platform (src/server/global.json): unit, architecture and
+      # WebApplicationFactory tests; the ones tagged Category=Slow run in "Slow server tests"
+      - run: dotnet test --solution StickerSnap.slnx -c Release --no-build --filter-not-trait "Category=Slow"
+        working-directory: src/server
+
+  # Required check of the main branch: its name must stay "Slow server tests".
+  # Real FFmpeg on clips the pinned build makes with lavfi, and the corpus of 30 GIFs rendered as
+  # stickers (90% gate). The job reports on every PR; a PR without server changes skips the work.
+  render-slow:
+    name: Slow server tests
+    needs: [build-web, build-server]
+    runs-on: ubuntu-latest
+    env:
+      StickerSnap__FfmpegDir: ${{ github.workspace }}/tools/ffmpeg/linux-x64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: changes
+        name: Look for server or FFmpeg changes
+        run: |
+          pattern='^(src/server/|tools/fetch-ffmpeg\.mjs$|\.github/workflows/pipeline\.yml$)'
+          if [ "${{ github.event_name }}" != "pull_request" ] ||
+             git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -qE "$pattern"; then
+            echo "server=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No server or FFmpeg changes: nothing to test"
+          fi
+
+      - uses: actions/setup-dotnet@v4
+        if: steps.changes.outputs.server == 'true'
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - uses: actions/setup-node@v4
+        if: steps.changes.outputs.server == 'true'
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - uses: actions/download-artifact@v4
+        if: steps.changes.outputs.server == 'true'
+        with:
+          name: server-build
+      - run: tar -xzf server-build.tgz
+        if: steps.changes.outputs.server == 'true'
+
+      # The pinned build and its SHA-256 live in the script, so the script is the cache key
+      - uses: actions/cache@v4
+        if: steps.changes.outputs.server == 'true'
+        with:
+          path: tools/ffmpeg/linux-x64
+          key: ffmpeg-linux-x64-${{ hashFiles('tools/fetch-ffmpeg.mjs') }}
+
+      - run: node tools/fetch-ffmpeg.mjs linux-x64
+        if: steps.changes.outputs.server == 'true'
+
+      - run: dotnet test --solution StickerSnap.slnx -c Release --no-build --filter-trait "Category=Slow"
+        if: steps.changes.outputs.server == 'true'
+        working-directory: src/server
+
+  # Heavy and manual (when: manual): a few whole user paths in Chromium against Vite on demo
+  # data. Nothing waits for it and nothing depends on it.
+  e2e:
+    name: E2E (Chromium)
+    if: github.event_name == 'workflow_dispatch' && inputs.e2e
+    needs: [build-web, build-server]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      # The browser comes from the cache; the system libraries are installed every time
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - run: npx playwright install --with-deps chromium
+        working-directory: src/web
+
+      - run: npm run e2e
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            src/web/playwright-report
+            src/web/test-results
+          retention-days: 7
+
+  # ───────────────────────────── stage 4 · release ─────────────────────────────
+  # Installers for Windows and Linux and a smoke e2e of each unpacked build. Only on a tag v*
+  # or by hand with the "package" input (when: manual).
+
+  package:
+    name: Installer (${{ matrix.name }})
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.package)
+    needs: [web-unit, desktop-unit, server-fast, render-slow]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            rid: win-x64
+            app: release/win-unpacked/StickerSnap.exe
+            installers: |
+              src/desktop/release/*.exe
+          - name: Linux
+            os: ubuntu-latest
+            rid: linux-x64
+            app: release/linux-unpacked/stickersnap
+            installers: |
+              src/desktop/release/*.AppImage
+              src/desktop/release/*.deb
+    steps:
+      - uses: actions/checkout@v4
+
+      # Electron 40+ and its download need Node 22
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - run: npm ci
+
+      # The production SPA of the build stage (never the dev build with the demo data)
+      - uses: actions/download-artifact@v4
+        with:
+          name: spa-dist
+          path: src/server/StickerSnap.Api/wwwroot
+
+      # The self-contained server into server-dist, then the installers
+      - run: npm run server -w src/desktop -- ${{ matrix.rid }}
+
+      - run: npm run dist -w src/desktop
+
+      # Ubuntu 24.04 forbids the user namespaces Chromium's sandbox needs on CI runners
+      - if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Smoke e2e
+        working-directory: src/desktop
+        shell: bash
+        env:
+          STICKERSNAP_APP: ${{ github.workspace }}/src/desktop/${{ matrix.app }}
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a npx playwright test; else npx playwright test; fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StickerSnap-${{ matrix.rid }}
+          path: ${{ matrix.installers }}
+          retention-days: 14
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-report-${{ matrix.rid }}
+          path: |
+            src/desktop/playwright-report
+            src/desktop/test-results
+          retention-days: 7
+
+  # One status for the whole pipeline: green when no job of any stage failed, skipped jobs
+  # (e2e, installers) do not count. Put this one into the required checks of main.
+  gate:
+    name: Pipeline passed
+    if: ${{ !cancelled() }}
+    needs: [contract, web-lint, desktop-lint, build-web, build-server, web-unit, desktop-unit, server-fast, render-slow, e2e, package]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any job failed or was cancelled
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "$RESULTS"
+          if echo "$RESULTS" | grep -qE '"(failure|cancelled)"'; then exit 1; fi
