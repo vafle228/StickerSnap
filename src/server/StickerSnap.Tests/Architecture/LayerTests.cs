@@ -62,6 +62,19 @@ public sealed class LayerTests
             .Check(Server);
     }
 
+    /// <summary>
+    /// The use cases reach the messenger through IStickerPublisher and IBotChat; how they are
+    /// carried (HTTP to the Bot API today) only the Infrastructure knows.
+    /// </summary>
+    [Fact]
+    public void Core_and_application_do_not_speak_http()
+    {
+        Types().That().Are(Core).Or().Are(Application)
+            .Should().NotDependOnAny(Types().That().ResideInNamespaceMatching(@"^System\.Net\.Http(\..*)?$"))
+            .WithoutRequiringPositiveResults()
+            .Check(Server);
+    }
+
     [Fact]
     public void Infrastructure_does_not_know_the_api()
     {
