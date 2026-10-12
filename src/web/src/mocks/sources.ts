@@ -54,16 +54,26 @@ export interface Facts {
   codec: string;
   width: number;
   height: number;
+  /** To the end of the last frame */
   durationSec: number;
+  /** What the WEBM header says (Info › Duration), when it differs: a long sticker of R19 */
+  declaredDurationSec?: number;
   fps: number;
   audio: string;
   alpha: string;
 }
 
-/** The rules of Telegram's table (plan, «Ограничения Telegram») applied to a file. Longer than
- *  3 s is a warning, not a failure: the long sticker of R19 is «экспериментальный». */
-export function validationOf(facts: Facts, limits: PresetLimits): ValidationReport {
+/** A frame at 30 fps: a container's duration rounds up to it. */
+const DURATION_SLACK = 1 / 30;
+
+/** The rules of Telegram's table (plan, «Ограничения Telegram») applied to a file, as the server's
+ *  validator does (contract, G4). A header that declares at most 3 s over frames that run longer
+ *  is a warning: the long sticker of R19 is «экспериментальный»; an honest 4 s file fails. An emoji
+ *  is a square of the preset's side, a sticker has one side of it. */
+export function validationOf(facts: Facts, limits: PresetLimits, emoji = false): ValidationReport {
   const side = Math.max(facts.width, facts.height);
+  const maxSec = limits.maxDurationSec + DURATION_SLACK;
+  const declared = facts.declaredDurationSec ?? facts.durationSec;
   const checks: ValidationReport["checks"] = [
     {
       rule: "container",
@@ -83,23 +93,30 @@ export function validationOf(facts: Facts, limits: PresetLimits): ValidationRepo
       expected: `≤ ${limits.maxBytes}`,
       actual: String(facts.bytes),
     },
-    {
-      rule: "dimensions",
-      status: side === limits.side ? "pass" : "fail",
-      expected: String(limits.side),
-      actual: `${facts.width}×${facts.height}`,
-    },
+    emoji
+      ? {
+          rule: "dimensions",
+          status: facts.width === limits.side && facts.height === limits.side ? "pass" : "fail",
+          expected: `${limits.side}×${limits.side}`,
+          actual: `${facts.width}×${facts.height}`,
+        }
+      : {
+          rule: "dimensions",
+          status: side === limits.side ? "pass" : "fail",
+          expected: String(limits.side),
+          actual: `${facts.width}×${facts.height}`,
+        },
     {
       rule: "duration",
-      status: facts.durationSec <= limits.maxDurationSec + 1e-6 ? "pass" : "warn",
+      status: declared > maxSec ? "fail" : facts.durationSec > maxSec ? "warn" : "pass",
       expected: `≤ ${limits.maxDurationSec}`,
-      actual: facts.durationSec.toFixed(2),
+      actual: String(Math.round(facts.durationSec * 100) / 100),
     },
     {
       rule: "fps",
-      status: facts.fps <= limits.maxFps ? "pass" : "fail",
+      status: facts.fps <= limits.maxFps + 0.01 ? "pass" : "fail",
       expected: `≤ ${limits.maxFps}`,
-      actual: String(Math.round(facts.fps)),
+      actual: String(Math.round(facts.fps * 100) / 100),
     },
     {
       rule: "audio",

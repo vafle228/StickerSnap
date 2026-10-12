@@ -44,6 +44,7 @@ export function checkValue(
         ? t("validator.side", { side: num(number) })
         : value.replace(/\s*[x×]\s*/i, " × ");
     case "audio":
+      if (value === "present") return t("validator.present");
       if (!NONE.has(value)) return value;
       return t(side === "expected" ? "validator.silent" : "validator.none");
     case "alpha":

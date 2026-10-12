@@ -12,9 +12,13 @@ describe("check values in plain Russian (R8)", () => {
     expect(checkValue("dimensions", "640×360")).toBe("640 × 360");
     expect(checkValue("codec", "vp9")).toBe("VP9");
     expect(checkValue("audio", "none")).toBe("нет");
+    expect(checkValue("audio", "present")).toBe("есть");
     expect(checkValue("audio", "opus")).toBe("opus");
+    expect(checkValue("dimensions", "100×100", "expected")).toBe("100 × 100");
+    expect(checkValue("duration", "20.73")).toBe("20,73 с");
     expect(checkValue("audio", "none", "expected")).toBe("без звука");
     expect(checkValue("alpha", "any")).toBe("любая");
+    expect(checkValue("alpha", "present")).toBe("есть");
     expect(checkValue("alpha", "yuva420p")).toBe("есть");
   });
 });
