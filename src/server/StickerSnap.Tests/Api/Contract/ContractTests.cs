@@ -22,7 +22,6 @@ public sealed partial class ContractTests
     /// </summary>
     public static readonly IReadOnlySet<string> NotYetOnServer = new HashSet<string>
     {
-        "estimateSegment",
         "getAccount", "startAccountLink", "deleteAccountLink", "checkAccount",
         "listPacks", "importPack", "checkPackName", "getPack", "deletePack", "syncPack",
         "deletePackSticker", "getPackStickerMedia",

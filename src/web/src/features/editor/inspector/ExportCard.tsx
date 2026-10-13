@@ -225,7 +225,12 @@ function OverLimit({ forecast, asIs }: { forecast: Estimate; asIs: boolean }) {
                   <Button
                     key="trim"
                     size="sm"
-                    onClick={() => editSegment((seg) => void (seg.outFrame = s.outFrame))}
+                    onClick={() =>
+                      editSegment((seg) => {
+                        seg.outFrame = s.outFrame;
+                        seg.excludedFrames = seg.excludedFrames.filter((f) => f <= s.outFrame);
+                      })
+                    }
                   >
                     {t("editor.over.shorten", { duration: num(s.durationSec, 1) })}
                   </Button>

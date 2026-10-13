@@ -108,11 +108,13 @@ export function useJob(id: string | undefined) {
 export function useEstimate(projectId: string | undefined, segment: Segment | undefined) {
   return useQuery({
     queryKey: ["estimate", projectId, segment],
-    queryFn: () =>
+    // An edit made since drops the forecast being measured: the server stops it too.
+    queryFn: ({ signal }) =>
       call(
         api.POST("/api/v1/projects/{id}/estimate", {
           params: { path: { id: projectId ?? "" } },
           body: { segment: segment as Segment },
+          signal,
         }),
       ),
     enabled: projectId !== undefined && segment !== undefined,
