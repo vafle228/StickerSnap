@@ -4,7 +4,7 @@ name: Pipeline
 # A job starts when every job of the stage before it has passed (needs); jobs of one stage run
 # in parallel. The tests always run, on every push to every branch, so the state of a branch
 # is always known:
-#   check → build → fast tests (SPA, desktop, server) → e2e and slow server tests
+#   check → build → fast tests (SPA, desktop, server) → e2e, e2e on the server, slow server tests
 # Only the release stage is manual: the installers are built on a tag v* or by hand.
 on:
   push:
@@ -268,6 +268,63 @@ jobs:
             src/web/test-results
           retention-days: 7
 
+  # The critical path in Chromium on the real server: the production SPA of the build stage, the
+  # server of the build stage and the pinned FFmpeg. Import, an edit, the exact preview and the
+  # export of a real WEBM (src/web/e2e-server). After the fast tests, beside the other e2e.
+  e2e-server:
+    name: E2E on the server
+    needs: [web-unit, desktop-unit, server-fast]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - run: npm ci
+
+      # The very builds of the build stage: the server (bin and obj) and the production SPA
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-build
+      - run: tar -xzf server-build.tgz
+      - uses: actions/download-artifact@v4
+        with:
+          name: spa-dist
+          path: src/server/StickerSnap.Api/wwwroot
+
+      - uses: actions/cache@v4
+        with:
+          path: tools/ffmpeg/linux-x64
+          key: ffmpeg-linux-x64-${{ hashFiles('tools/fetch-ffmpeg.mjs') }}
+      - run: node tools/fetch-ffmpeg.mjs linux-x64
+
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - run: npx playwright install --with-deps chromium
+        working-directory: src/web
+
+      # CI is set, so the server runs from the build stage's output (dotnet run --no-build)
+      - run: npm run e2e:server
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-server
+          path: |
+            src/web/playwright-report
+            src/web/test-results
+          retention-days: 7
+
   # ───────────────────────────── stage 4 · release ─────────────────────────────
   # Installers for Windows and Linux and a smoke e2e of each unpacked build. Manual: on a tag v*
   # or by hand with the "package" input.
@@ -277,7 +334,7 @@ jobs:
     # Running matrix jobs get "Installers (Windows, ...)" from GitHub itself.
     name: Installers
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.package)
-    needs: [render-slow, e2e]
+    needs: [render-slow, e2e, e2e-server]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -355,7 +412,7 @@ jobs:
   gate:
     name: Pipeline passed
     if: ${{ !cancelled() }}
-    needs: [contract, web-lint, desktop-lint, build-web, build-server, web-unit, desktop-unit, server-fast, render-slow, e2e, package]
+    needs: [contract, web-lint, desktop-lint, build-web, build-server, web-unit, desktop-unit, server-fast, render-slow, e2e, e2e-server, package]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any job failed or was cancelled

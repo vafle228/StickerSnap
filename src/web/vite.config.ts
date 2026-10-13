@@ -41,6 +41,8 @@ export default defineConfig(({ command, mode }) => ({
   define: {
     // main.tsx loads the demo data, the dev bar and the showcase only when this is true.
     "import.meta.env.DEV_TOOLS": JSON.stringify(command === "serve" || mode === DEV_BUILD),
+    // The server the dev bar names: the proxy's target under `vite`, the page's own origin in a build.
+    "import.meta.env.DEV_SERVER_URL": JSON.stringify(command === "serve" ? serverUrl : ""),
   },
   server: {
     host: "127.0.0.1",

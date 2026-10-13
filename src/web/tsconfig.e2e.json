@@ -5,5 +5,5 @@
     // Specs run in node, and the callbacks of page.evaluate run in the browser
     "lib": ["ES2023", "DOM", "DOM.Iterable"]
   },
-  "include": ["e2e"]
+  "include": ["e2e", "e2e-server"]
 }

@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:server": "playwright test -c playwright.server.config.ts"
   },
   "dependencies": {
     "@floating-ui/react-dom": "^2.1.9",
