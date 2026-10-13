@@ -1,0 +1,8 @@
+name: .NET SDK
+description: The .NET 10 SDK
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x

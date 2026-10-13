@@ -1,0 +1,10 @@
+name: Server build of the build stage
+description: Unpacks the server-build artifact (bin and obj) back into src/server
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: server-build
+    - run: tar -xzf server-build.tgz
+      shell: bash

@@ -1,0 +1,15 @@
+name: Playwright Chromium
+description: Chromium for Playwright from the cache; its system libraries are installed every time
+runs:
+  using: composite
+  steps:
+    - id: version
+      run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      shell: bash
+    - uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.version.outputs.version }}
+    - run: npx playwright install --with-deps chromium
+      shell: bash
+      working-directory: src/web

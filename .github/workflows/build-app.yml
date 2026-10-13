@@ -4,6 +4,7 @@ name: Build app
 # Builds the Windows and Linux installers from that branch, smoke-tests each unpacked app and
 # attaches them to the run (Artifacts at the bottom of the run page). Also runs on a tag v*.
 # The tests are not repeated here: "Pipeline" already runs them on every push.
+# Shared setup steps live in .github/actions.
 on:
   workflow_dispatch:
   push:
@@ -18,8 +19,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: 22
-  DOTNET_VERSION: 10.0.x
   DOTNET_NOLOGO: true
 
 jobs:
@@ -29,11 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
+      - uses: ./.github/actions/node
       - run: npm run build
       # the production build carries no demo data, dev bar or showcase
       - run: npm run check:prod-build
@@ -70,17 +65,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Electron 40+ and its download need Node 22
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - run: npm ci
+      - uses: ./.github/actions/node
+      - uses: ./.github/actions/dotnet
 
       # The production SPA of build-web (never the dev build with the demo data)
       - uses: actions/download-artifact@v4

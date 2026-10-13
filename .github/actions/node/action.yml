@@ -1,0 +1,12 @@
+name: Node + npm ci
+description: Node 22 with the npm cache, then npm ci
+runs:
+  using: composite
+  steps:
+    # Electron 40+ and its download need Node 22
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - run: npm ci
+      shell: bash
