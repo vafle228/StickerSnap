@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using StickerSnap.Application.Jobs;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Jobs;
@@ -35,7 +36,9 @@ public sealed class JobsEndpointTests : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
+        // The real executors render with FFmpeg: these stand in for them
         _server = _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services
+            .RemoveAll<IJobExecutor>()
             .AddSingleton<IJobExecutor>(_exports)
             .AddSingleton<IJobExecutor>(_previews)
             .AddSingleton<IJobExecutor>(_publications)));
