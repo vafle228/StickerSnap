@@ -180,10 +180,10 @@ public sealed class EstimateServiceTests : IDisposable
         var measuring = EstimateAsync(Sticker);
         var waiting = _service.EstimateAsync(Cat.Id, Sticker with { OutFrame = 19 }, givenUp.Token);
         await givenUp.CancelAsync();
+        await waiting.Invoking(task => task).Should().ThrowAsync<OperationCanceledException>();
         first.SetResult(170_000);
 
         (await measuring).Bytes.Should().Be(170_000);
-        await waiting.Invoking(task => task).Should().ThrowAsync<OperationCanceledException>();
         await _renderer.Received(1).EstimateAsync(Arg.Any<StickerProbe>(), Arg.Any<CancellationToken>());
     }
 }
