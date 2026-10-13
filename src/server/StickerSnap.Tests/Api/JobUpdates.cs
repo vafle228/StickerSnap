@@ -35,8 +35,8 @@ internal sealed class JobUpdates(HubConnection hub) : IAsyncDisposable
         return updates;
     }
 
-    /// <summary>The first job sent in <paramref name="state"/>; a guard of 10 s fails a test that hangs.</summary>
-    public Task<JsonElement> UntilAsync(string state)
+    /// <summary>The first job sent in <paramref name="state"/>; a guard of 10 s, or <paramref name="guard"/>, fails a test that hangs.</summary>
+    public Task<JsonElement> UntilAsync(string state, TimeSpan? guard = null)
     {
         lock (_gate)
         {
@@ -44,7 +44,7 @@ internal sealed class JobUpdates(HubConnection hub) : IAsyncDisposable
             if (sent.Count > 0) return Task.FromResult(sent[0]);
             var found = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
             _awaited.Add((state, found));
-            return found.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            return found.Task.WaitAsync(guard ?? TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         }
     }
 
