@@ -451,7 +451,11 @@ paths:
       tags: [media]
       operationId: getProjectCover
       summary: Обложка карточки, WebP
-      description: Артборд 6. Этап 1a.
+      description: >-
+        Артборд 6. Этап 1a. Средний кадр первого отрезка в его рамке (растяжение сплющивает
+        весь кадр), большая сторона до 384 px; без отрезков — середина видео. Сделанная однажды
+        обложка отдаётся и при пропавшем исходнике. coverUrl несёт ?v=, который меняется с
+        каждым сохранением. ETag по содержимому.
       responses:
         '200':
           description: Обложка
@@ -473,8 +477,9 @@ paths:
       operationId: getProjectMedia
       summary: Видео для <video> с поддержкой Range
       description: |
-        Артборд 3a VideoStage. Этап 1a. Исходник как есть или прокси-WEBM,
-        если браузер его не играет (GIF, WEBP, MOV).
+        Артборд 3a VideoStage. Этап 1a. Исходник как есть (MP4 с H.264, WEBM с VP8, VP9
+        или AV1 при постоянной частоте кадров) или прокси-WEBM с теми же кадрами: кадр n
+        стоит на n/fps (GIF, WEBP, MOV, переменная частота). ETag по содержимому.
       parameters:
         - name: Range
           in: header
@@ -485,14 +490,22 @@ paths:
         '200':
           description: Видео целиком
           content:
-            video/*:
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+            video/webm:
               schema:
                 type: string
                 format: binary
         '206':
           description: Запрошенный диапазон
           content:
-            video/*:
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+            video/webm:
               schema:
                 type: string
                 format: binary
@@ -510,7 +523,10 @@ paths:
       summary: Полоса кадров для таймлайна, одна картинка-спрайт
       description: >-
         Артборд 3b «Кадры». Этап 1a. В спрайте count кадров подряд начиная с from, в один ряд
-        слева направо; каждый кадр высотой height и шириной по пропорции источника.
+        слева направо; каждый кадр высотой height и шириной по пропорции источника. Кадр n —
+        n-й декодированный кадр источника, те же номера, что у сцены и рендера (G8). from + count
+        не больше frameCount, а ширина спрайта не больше 16383 px, иначе bad_request с полем
+        (out_of_range или too_wide). ETag по содержимому.
       parameters:
         - name: from
           in: query
@@ -526,6 +542,7 @@ paths:
           schema:
             type: integer
             minimum: 1
+            maximum: 120
         - name: height
           in: query
           required: true
@@ -533,6 +550,7 @@ paths:
           schema:
             type: integer
             minimum: 1
+            maximum: 720
       responses:
         '200':
           description: Спрайт с кадрами
