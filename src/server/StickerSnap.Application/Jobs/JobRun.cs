@@ -1,5 +1,6 @@
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Jobs;
+using StickerSnap.Core.Projects;
 
 namespace StickerSnap.Application.Jobs;
 
@@ -32,6 +33,10 @@ public sealed class JobRun
     /// <summary>A segment moved on: its state and its own share 0..1.</summary>
     public void Item(string segmentId, JobItemState state, double fraction) =>
         _queue.Report(this, job => job.WithItem(segmentId, state, fraction));
+
+    /// <summary>A segment is done, with what it made: a preview's draft or an export's sticker.</summary>
+    public void Done(string segmentId, PreviewFile? preview = null, SegmentExport? export = null) =>
+        _queue.Report(this, job => job.WithDone(segmentId, preview, export));
 
     /// <summary>A segment failed; the job goes on with the others and ends partial.</summary>
     public void ItemFailed(string segmentId, AppException error) =>

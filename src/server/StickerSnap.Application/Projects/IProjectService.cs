@@ -61,6 +61,13 @@ public interface IProjectService
     Task<SavedScene> SaveSceneAsync(Guid id, int revision, Scene scene, CancellationToken cancellationToken);
 
     /// <summary>
+    /// An export's result into the project's file, as the last export of its segment (contract,
+    /// Project.exports). The revision stays (G7), so the editor's next autosave is not refused.
+    /// </summary>
+    /// <exception cref="AppException">project_not_found; save_failed, disk_full</exception>
+    Task RecordExportAsync(Guid id, SegmentExport export, CancellationToken cancellationToken);
+
+    /// <summary>
     /// DELETE /projects/{id}: off the list, and with <see cref="RemoveMode.Trash"/> its .ssproj to
     /// the system's trash. The source video and the exported stickers are never touched.
     /// </summary>

@@ -37,7 +37,7 @@ public sealed record ProjectSummary(
 /// <summary>A whole project (schema Project): GET /api/v1/projects/{id}, POST /api/v1/projects/open.</summary>
 /// <param name="Path">The .ssproj</param>
 /// <param name="MediaUrl">For the editor's &lt;video&gt;</param>
-/// <param name="Exports">The last export of each segment by its id; none until exports arrive (B16)</param>
+/// <param name="Exports">The last export of each segment by its id; stale once the segment was edited since</param>
 public sealed record Project(
     Guid Id,
     string Name,
@@ -61,7 +61,8 @@ public sealed record Project(
             SourceOf(project.Source, opened.SourceStatus, mode),
             ProjectUrls.Media(project.Id),
             Scene.From(project.Scene),
-            new Dictionary<string, ExportResult>());
+            project.Exports.ToDictionary(
+                pair => pair.Key, pair => ExportResult.From(pair.Value, pair.Value.IsStaleIn(project), mode), StringComparer.Ordinal));
     }
 
     /// <summary>Without its path in web mode: the browser has no use for the server's paths.</summary>

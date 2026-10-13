@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using StickerSnap.Application.Jobs;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Jobs;
@@ -35,7 +36,9 @@ public sealed class JobsEndpointTests : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
+        // The real executors render with FFmpeg: these stand in for them
         _server = _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services
+            .RemoveAll<IJobExecutor>()
             .AddSingleton<IJobExecutor>(_exports)
             .AddSingleton<IJobExecutor>(_previews)
             .AddSingleton<IJobExecutor>(_publications)));
@@ -78,65 +81,6 @@ public sealed class JobsEndpointTests : IAsyncLifetime
         var response = await CreateAsync(request);
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
         return (await Json(response))["id"]!.GetValue<string>();
-    }
-
-    /// <summary>A client of /hubs/events that keeps every jobUpdated and can await one.</summary>
-    private sealed class JobUpdates(HubConnection hub) : IAsyncDisposable
-    {
-        private readonly Lock _gate = new();
-        private readonly List<JsonElement> _received = [];
-        private readonly List<(string State, TaskCompletionSource<JsonElement> Found)> _awaited = [];
-
-        public IReadOnlyList<JsonElement> Received
-        {
-            get
-            {
-                lock (_gate) return [.. _received];
-            }
-        }
-
-        public static async Task<JobUpdates> ConnectAsync(TestServer server)
-        {
-            var hub = new HubConnectionBuilder()
-                .WithUrl(new Uri(server.BaseAddress, "hubs/events"), options =>
-                {
-                    options.Transports = HttpTransportType.LongPolling;
-                    options.HttpMessageHandlerFactory = _ => server.CreateHandler();
-                })
-                .Build();
-            var updates = new JobUpdates(hub);
-            hub.On<JsonElement>("jobUpdated", updates.Add);
-            await hub.StartAsync(Cancel);
-            return updates;
-        }
-
-        /// <summary>The first job sent in <paramref name="state"/>; a guard of 10 s fails a test that hangs.</summary>
-        public Task<JsonElement> UntilAsync(string state)
-        {
-            lock (_gate)
-            {
-                var sent = _received.Where(job => job.GetProperty("state").GetString() == state).ToList();
-                if (sent.Count > 0) return Task.FromResult(sent[0]);
-                var found = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
-                _awaited.Add((state, found));
-                return found.Task.WaitAsync(TimeSpan.FromSeconds(10), Cancel);
-            }
-        }
-
-        private void Add(JsonElement job)
-        {
-            lock (_gate)
-            {
-                _received.Add(job);
-                foreach (var awaited in _awaited.Where(awaited => awaited.State == job.GetProperty("state").GetString()).ToList())
-                {
-                    awaited.Found.TrySetResult(job);
-                    _awaited.Remove(awaited);
-                }
-            }
-        }
-
-        public ValueTask DisposeAsync() => hub.DisposeAsync();
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using StickerSnap.Api.Contracts;
+using StickerSnap.Application.App;
 using StickerSnap.Application.Jobs;
 
 namespace StickerSnap.Api.Controllers;
@@ -14,10 +15,12 @@ namespace StickerSnap.Api.Controllers;
 public sealed class JobsController : ControllerBase
 {
     private readonly IJobService _service;
+    private readonly IHostInfo _host;
 
-    public JobsController(IJobService service)
+    public JobsController(IJobService service, IHostInfo host)
     {
         _service = service;
+        _host = host;
     }
 
     /// <summary>
@@ -35,7 +38,7 @@ public sealed class JobsController : ControllerBase
     public async Task<IActionResult> Create([FromBody] Contracts.JobRequest request, CancellationToken cancellationToken)
     {
         var job = await _service.CreateAsync(request.ToRequest(), cancellationToken);
-        return Accepted(Job.From(job));
+        return Accepted(Job.From(job, _host.Mode));
     }
 
     /// <summary>The jobs running, waiting and finished in the last 10 minutes, newest first: after F5.</summary>
@@ -43,7 +46,7 @@ public sealed class JobsController : ControllerBase
     [Produces("application/json")]
     [ProducesResponseType(typeof(IReadOnlyList<Job>), StatusCodes.Status200OK)]
     [ProducesDefaultResponseType(typeof(ProblemDetails))]
-    public IActionResult List() => Ok(_service.List().Select(Job.From).ToList());
+    public IActionResult List() => Ok(_service.List().Select(job => Job.From(job, _host.Mode)).ToList());
 
     /// <summary>A job as it is now: the SPA polls it while the hub is down.</summary>
     [HttpGet("{jobId}", Name = "getJob")]
@@ -51,7 +54,7 @@ public sealed class JobsController : ControllerBase
     [ProducesResponseType(typeof(Job), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesDefaultResponseType(typeof(ProblemDetails))]
-    public IActionResult Get(string jobId) => Ok(Job.From(_service.Get(jobId)));
+    public IActionResult Get(string jobId) => Ok(Job.From(_service.Get(jobId), _host.Mode));
 
     /// <summary>Cancels a job; stickers already sent stay in the pack.</summary>
     [HttpPost("{jobId}/cancel", Name = "cancelJob")]
@@ -59,7 +62,7 @@ public sealed class JobsController : ControllerBase
     [ProducesResponseType(typeof(Job), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesDefaultResponseType(typeof(ProblemDetails))]
-    public IActionResult Cancel(string jobId) => Ok(Job.From(_service.Cancel(jobId)));
+    public IActionResult Cancel(string jobId) => Ok(Job.From(_service.Cancel(jobId), _host.Mode));
 
     /// <summary>«Повторить сейчас»: the segments a job left undone, if the project is still at its revision.</summary>
     [HttpPost("{jobId}/retry", Name = "retryJob")]
@@ -71,6 +74,6 @@ public sealed class JobsController : ControllerBase
     public async Task<IActionResult> Retry(string jobId, CancellationToken cancellationToken)
     {
         var job = await _service.RetryAsync(jobId, cancellationToken);
-        return Accepted(Job.From(job));
+        return Accepted(Job.From(job, _host.Mode));
     }
 }

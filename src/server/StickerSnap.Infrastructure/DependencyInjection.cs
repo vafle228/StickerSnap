@@ -1,12 +1,15 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StickerSnap.Application.Account;
+using StickerSnap.Application.Exports;
+using StickerSnap.Application.Files;
 using StickerSnap.Application.Media;
 using StickerSnap.Application.Packs;
 using StickerSnap.Application.Projects;
 using StickerSnap.Application.Settings;
 using StickerSnap.Application.Sources;
 using StickerSnap.Infrastructure.Ffmpeg;
+using StickerSnap.Infrastructure.Files;
 using StickerSnap.Infrastructure.Projects;
 using StickerSnap.Infrastructure.Settings;
 using StickerSnap.Infrastructure.Sources;
@@ -34,6 +37,8 @@ public static class DependencyInjection
         services.Configure<UploadOptions>(configuration.GetSection(UploadOptions.Section));
         services.AddSingleton<IUploadStore, UploadStore>();
         services.AddSingleton<IFileFingerprint, SampledFileFingerprint>();
+        services.AddSingleton<IRenderedFiles, RenderedFileStore>();
+        services.AddSingleton<IStickerFolder, StickerFolder>();
         // The desktop builds are Windows and Linux; every other Unix keeps the same trash as Linux
         services.AddSingleton<ITrash>(provider => OperatingSystem.IsWindows()
             ? new WindowsRecycleBin()

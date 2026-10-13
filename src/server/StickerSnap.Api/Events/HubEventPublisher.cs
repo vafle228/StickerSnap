@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using StickerSnap.Api.Contracts;
+using StickerSnap.Application.App;
 using StickerSnap.Application.Events;
 using StickerSnap.Application.Projects;
 using StickerSnap.Core.Settings;
@@ -11,7 +12,7 @@ namespace StickerSnap.Api.Events;
 /// Sends the events to every client of <see cref="EventsHub"/> under the contract's names, with
 /// the contract's payloads. A failed send is logged and dropped: the SPA rereads after a reconnect.
 /// </summary>
-public sealed class HubEventPublisher(IHubContext<EventsHub> hub, ILogger<HubEventPublisher> logger) : IEventPublisher
+public sealed class HubEventPublisher(IHubContext<EventsHub> hub, IHostInfo host, ILogger<HubEventPublisher> logger) : IEventPublisher
 {
     public Task SettingsChangedAsync(UserSettings settings, CancellationToken cancellationToken) =>
         SendAsync("settingsChanged", Settings.From(settings), cancellationToken);
@@ -23,7 +24,7 @@ public sealed class HubEventPublisher(IHubContext<EventsHub> hub, ILogger<HubEve
         SendAsync("projectRemoved", new ProjectRemovedEvent(id), cancellationToken);
 
     public Task JobUpdatedAsync(Core.Jobs.Job job, CancellationToken cancellationToken) =>
-        SendAsync("jobUpdated", Job.From(job), cancellationToken);
+        SendAsync("jobUpdated", Job.From(job, host.Mode), cancellationToken);
 
     private async Task SendAsync(string name, object payload, CancellationToken cancellationToken)
     {

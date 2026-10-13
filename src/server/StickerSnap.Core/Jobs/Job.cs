@@ -1,4 +1,5 @@
 using StickerSnap.Core.Errors;
+using StickerSnap.Core.Projects;
 
 namespace StickerSnap.Core.Jobs;
 
@@ -54,14 +55,13 @@ public sealed record Job(
 
     /// <summary>A segment of a running job moved on; the job's share is the mean of its segments'.</summary>
     /// <exception cref="ArgumentException">The job has no such segment</exception>
-    public Job WithItem(string segmentId, JobItemState state, double fraction, JobError? error = null)
-    {
-        Ensure(State == JobState.Running, "report a segment");
-        var index = IndexOf(segmentId);
-        var items = Items.ToArray();
-        items[index] = new JobItem(segmentId, state, state == JobItemState.Done ? 1 : Math.Clamp(fraction, 0, 1), error);
-        return this with { Items = items, Progress = Progress with { Fraction = MeanOf(items) } };
-    }
+    public Job WithItem(string segmentId, JobItemState state, double fraction, JobError? error = null) =>
+        Put(new JobItem(segmentId, state, state == JobItemState.Done ? 1 : Math.Clamp(fraction, 0, 1), error));
+
+    /// <summary>A segment of a running job is done, with what it made: a preview's draft or an export's sticker.</summary>
+    /// <exception cref="ArgumentException">The job has no such segment</exception>
+    public Job WithDone(string segmentId, PreviewFile? preview = null, SegmentExport? export = null) =>
+        Put(new JobItem(segmentId, JobItemState.Done, 1, Preview: preview, Export: export));
 
     /// <summary>What a running job is busy with now; its share stays the segments'.</summary>
     public Job WithStage(JobStage stage, JobAttempt? attempt = null, DateTimeOffset? retryAt = null)
@@ -129,6 +129,14 @@ public sealed record Job(
             Progress = JobProgress.None with { Fraction = MeanOf(items) },
             Error = null,
         };
+    }
+
+    private Job Put(JobItem item)
+    {
+        Ensure(State == JobState.Running, "report a segment");
+        var items = Items.ToArray();
+        items[IndexOf(item.SegmentId)] = item;
+        return this with { Items = items, Progress = Progress with { Fraction = MeanOf(items) } };
     }
 
     private int IndexOf(string segmentId)
