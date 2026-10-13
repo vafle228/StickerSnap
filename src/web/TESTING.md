@@ -16,7 +16,8 @@ cd src/server && dotnet test --solution StickerSnap.slnx   # тесты серв
 CI (`.github/workflows/pipeline.yml`) идёт на каждый push: проверки → сборка → быстрые тесты
 (`npm test`, тесты оболочки, `dotnet test` без медленных) → e2e на демо-данных, e2e на настоящем
 сервере и медленные тесты сервера. E2E ждут быстрые тесты, а не наоборот; при падении к запуску
-прикладывается отчёт Playwright с трейсом.
+прикладывается отчёт Playwright с трейсом. Установщики собирает отдельный ручной workflow
+«Build app» (`.github/workflows/build-app.yml`): Actions → Build app → Run workflow.
 
 ## Что тестируем
 

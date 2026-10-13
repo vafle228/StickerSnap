@@ -1,0 +1,113 @@
+name: Build app
+
+# The GitLab "play" button: Actions → "Build app" → "Run workflow" → pick a branch → Run.
+# Builds the Windows and Linux installers from that branch, smoke-tests each unpacked app and
+# attaches them to the run (Artifacts at the bottom of the run page). Also runs on a tag v*.
+# The tests are not repeated here: "Pipeline" already runs them on every push.
+# Shared setup steps live in .github/actions.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-app-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+
+jobs:
+  # The production SPA, built once for both installers
+  build-web:
+    name: Build SPA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/node
+      - run: npm run build
+      # the production build carries no demo data, dev bar or showcase
+      - run: npm run check:prod-build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spa-dist
+          path: src/server/StickerSnap.Api/wwwroot
+          retention-days: 1
+          if-no-files-found: error
+
+  package:
+    # Static name: GitHub appends the matrix values itself, "Installer (Windows, ...)"
+    name: Installer
+    needs: build-web
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            rid: win-x64
+            app: release/win-unpacked/StickerSnap.exe
+            installers: |
+              src/desktop/release/*.exe
+          - name: Linux
+            os: ubuntu-latest
+            rid: linux-x64
+            app: release/linux-unpacked/stickersnap
+            installers: |
+              src/desktop/release/*.AppImage
+              src/desktop/release/*.deb
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/node
+      - uses: ./.github/actions/dotnet
+
+      # The production SPA of build-web (never the dev build with the demo data)
+      - uses: actions/download-artifact@v4
+        with:
+          name: spa-dist
+          path: src/server/StickerSnap.Api/wwwroot
+
+      # The self-contained server into server-dist, then the installers
+      - run: npm run server -w src/desktop -- ${{ matrix.rid }}
+
+      - run: npm run dist -w src/desktop
+
+      # Ubuntu 24.04 forbids the user namespaces Chromium's sandbox needs on CI runners
+      - if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Smoke e2e
+        working-directory: src/desktop
+        shell: bash
+        env:
+          STICKERSNAP_APP: ${{ github.workspace }}/src/desktop/${{ matrix.app }}
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a npx playwright test; else npx playwright test; fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StickerSnap-${{ matrix.rid }}
+          path: ${{ matrix.installers }}
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Where to download
+        shell: bash
+        env:
+          LINE: "✅ ${{ matrix.name }}: the installer is the artifact StickerSnap-${{ matrix.rid }} at the bottom of this page"
+        run: echo "$LINE" >> "$GITHUB_STEP_SUMMARY"
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-report-${{ matrix.rid }}
+          path: |
+            src/desktop/playwright-report
+            src/desktop/test-results
+          retention-days: 7

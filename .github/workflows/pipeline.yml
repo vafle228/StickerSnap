@@ -1,21 +1,21 @@
 name: Pipeline
 
-# One pipeline in four stages, the way a GitLab pipeline reads: check → build → test → release.
-# A job starts when every job of the stage before it has passed (needs); jobs of one stage run
-# in parallel. The tests always run, on every push to every branch, so the state of a branch
-# is always known:
-#   check → build → fast tests (SPA, desktop, server) → e2e, e2e on the server, slow server tests
-# Only the release stage is manual: the installers are built on a tag v* or by hand.
+# The tests of every push to every branch, in three stages the way a GitLab pipeline reads:
+#
+#   check ─→ build ─→ test ─→ test-slow ─→ Pipeline passed
+#
+# A job starts when the jobs it needs have passed; jobs of one stage run in parallel. Fast tests
+# come first and the slow ones (e2e, real FFmpeg) only after them, so a slow or flaky e2e never
+# holds up the fast loop (the test pyramid). "Pipeline passed" is the one required check of main.
+#
+# The installers are not built here: that is the manual workflow "Build app" (build-app.yml).
+# Shared setup steps live in .github/actions.
 on:
   push:
     branches: ["**"]
     tags: ["v*"]
+  # "Run workflow" re-runs the tests of any branch by hand
   workflow_dispatch:
-    inputs:
-      package:
-        description: "Build the Windows and Linux installers (release stage)"
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -25,48 +25,19 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: 22
-  DOTNET_VERSION: 10.0.x
   DOTNET_NOLOGO: true
 
 jobs:
-  # ───────────────────────────── stage 1 · check ─────────────────────────────
-  # Fast static checks. Nothing is built here.
-
-  dependency-check:
-    name: Dependency check
-    runs-on: ubuntu-latest
-    # Reports vulnerable packages, never fails the pipeline (allow_failure)
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-      - run: npm audit --audit-level=high
-      - name: NuGet vulnerabilities
-        working-directory: src/server
-        run: |
-          dotnet list StickerSnap.slnx package --vulnerable --include-transitive | tee nuget-audit.txt
-          ! grep -q "has the following vulnerable packages" nuget-audit.txt
+  # ─────────────────────── check · static checks, nothing is built ───────────────────────
 
   contract:
     name: API contract
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
-      # openapi.yaml is valid and schema.d.ts was regenerated after the last change
+      - uses: ./.github/actions/node
+      # openapi.yaml is valid, schema.d.ts was regenerated after its last change and compiles strict
       - run: npm run check:api
-      # generated types compile under TypeScript strict
       - run: npm run typecheck:api
 
   web-lint:
@@ -74,11 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
+      - uses: ./.github/actions/node
       # tokens.css was regenerated after the last change of tokens.json
       - run: npm run check:tokens
       - run: npm run format:check
@@ -89,17 +56,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
+      - uses: ./.github/actions/node
       - run: npm run lint -w src/desktop
       # tsc strict over the main process, the preload, the tests and the e2e
       - run: npm run typecheck -w src/desktop
 
-  # ───────────────────────────── stage 2 · build ─────────────────────────────
-  # Each job builds once and hands the result to the test and release stages as an artifact.
+  # Reports vulnerable packages; never fails the pipeline (GitLab's allow_failure)
+  dependency-check:
+    name: Dependency check
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/node
+      - uses: ./.github/actions/dotnet
+      - run: npm audit --audit-level=high
+      - name: NuGet vulnerabilities
+        working-directory: src/server
+        run: |
+          dotnet list StickerSnap.slnx package --vulnerable --include-transitive | tee nuget-audit.txt
+          ! grep -q "has the following vulnerable packages" nuget-audit.txt
+
+  # ─────────────────────── build · once, handed on as artifacts ───────────────────────
 
   build-web:
     name: Build SPA
@@ -107,11 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
+      - uses: ./.github/actions/node
       # tsc -b (strict) + vite build into src/server/StickerSnap.Api/wwwroot
       - run: npm run build
       # the production build carries no demo data, dev bar or showcase
@@ -129,12 +103,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - uses: ./.github/actions/dotnet
       - run: dotnet build StickerSnap.slnx -c Release
         working-directory: src/server
-      # bin and obj go in one tarball, so the test jobs get the same layout back
+      # bin and obj in one tarball, so the test jobs get the same layout back (actions/server-build)
       - run: find src/server -type d \( -name bin -o -name obj \) -prune -print0 | tar --null -czf server-build.tgz -T -
       - uses: actions/upload-artifact@v4
         with:
@@ -143,8 +115,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  # ───────────────────────────── stage 3 · test ─────────────────────────────
-  # Fast tests first of all (the test pyramid): unit and integration tests wait for nothing slow.
+  # ─────────────────────── test · fast unit and integration tests ───────────────────────
 
   web-unit:
     name: SPA tests
@@ -152,11 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
+      - uses: ./.github/actions/node
       # unit and contract tests in node, component tests (*.test.tsx) in happy-dom
       - run: npm test
 
@@ -166,12 +133,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
-      # unit tests of the shell in node; the real app runs in the release stage
+      - uses: ./.github/actions/node
+      # unit tests of the shell in node; the real app is smoke-tested in "Build app"
       - run: npm test -w src/desktop
 
   server-fast:
@@ -180,22 +143,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: server-build
-      - run: tar -xzf server-build.tgz
-      # No --no-build: dotnet test finds no test projects in unpacked build output, so it checks
-      # the unpacked bin/obj are up to date and builds only what is not.
-      # xUnit on Microsoft.Testing.Platform (src/server/global.json): unit, architecture and
-      # WebApplicationFactory tests; the ones tagged Category=Slow run in "Slow server tests"
-      - run: dotnet test --solution StickerSnap.slnx -c Release --filter-not-trait "Category=Slow"
-        working-directory: src/server
+      - uses: ./.github/actions/dotnet
+      - uses: ./.github/actions/server-build
+      # Unit, architecture and WebApplicationFactory tests; Category=Slow runs in test-slow.
+      # The test project is an xUnit v3 executable with its own runner (-trait- excludes a trait):
+      # it runs straight from the build stage's output, nothing is compiled again. (dotnet test --no-build finds
+      # "no test projects" in an unpacked build, and without --no-build it recompiles everything.)
+      - run: dotnet StickerSnap.Tests.dll -trait- "Category=Slow"
+        working-directory: src/server/StickerSnap.Tests/bin/Release/net10.0
 
-  # Runs after the fast tests, on every push. Real FFmpeg on clips the pinned build makes with
-  # lavfi, and the corpus of 30 GIFs rendered as stickers (90% gate).
+  # ─────────────────────── test-slow · after the fast tests, in parallel ───────────────────────
+
+  # Real FFmpeg on clips the pinned build makes with lavfi, and the corpus of 30 GIFs (90% gate)
   render-slow:
     name: Slow server tests
     needs: [web-unit, desktop-unit, server-fast]
@@ -204,33 +163,17 @@ jobs:
       StickerSnap__FfmpegDir: ${{ github.workspace }}/tools/ffmpeg/linux-x64
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: 22
+      - uses: ./.github/actions/dotnet
+      - uses: ./.github/actions/server-build
+      - uses: ./.github/actions/pinned-ffmpeg
+      # Straight from the build stage's output, as in "Server tests"
+      - run: dotnet StickerSnap.Tests.dll -trait "Category=Slow"
+        working-directory: src/server/StickerSnap.Tests/bin/Release/net10.0
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: server-build
-      - run: tar -xzf server-build.tgz
-
-      # The pinned build and its SHA-256 live in the script, so the script is the cache key
-      - uses: actions/cache@v4
-        with:
-          path: tools/ffmpeg/linux-x64
-          key: ffmpeg-linux-x64-${{ hashFiles('tools/fetch-ffmpeg.mjs') }}
-
-      - run: node tools/fetch-ffmpeg.mjs linux-x64
-
-      - run: dotnet test --solution StickerSnap.slnx -c Release --filter-trait "Category=Slow"
-        working-directory: src/server
-
-  # A few whole user paths in Chromium against Vite on demo data. Runs after the fast tests, in
-  # parallel with the slow server tests, so a slow or flaky e2e never holds up the fast loop.
+  # A few whole user paths in Chromium against Vite on demo data
   e2e:
     name: E2E (Chromium)
     needs: [web-unit, desktop-unit, server-fast]
@@ -238,27 +181,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
-
-      - name: Playwright version
-        id: playwright
-        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
-
-      # The browser comes from the cache; the system libraries are installed every time
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-
-      - run: npx playwright install --with-deps chromium
-        working-directory: src/web
-
+      - uses: ./.github/actions/node
+      - uses: ./.github/actions/playwright
       - run: npm run e2e
-
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -268,9 +193,9 @@ jobs:
             src/web/test-results
           retention-days: 7
 
-  # The critical path in Chromium on the real server: the production SPA of the build stage, the
-  # server of the build stage and the pinned FFmpeg. Import, an edit, the exact preview and the
-  # export of a real WEBM (src/web/e2e-server). After the fast tests, beside the other e2e.
+  # The critical path in Chromium on the real server: the production SPA and the server of the
+  # build stage and the pinned FFmpeg. Import, an edit, the exact preview and the export of a
+  # real WEBM (src/web/e2e-server).
   e2e-server:
     name: E2E on the server
     needs: [web-unit, desktop-unit, server-fast]
@@ -278,44 +203,17 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-      - run: npm ci
-
-      # The very builds of the build stage: the server (bin and obj) and the production SPA
-      - uses: actions/download-artifact@v4
-        with:
-          name: server-build
-      - run: tar -xzf server-build.tgz
+      - uses: ./.github/actions/node
+      - uses: ./.github/actions/dotnet
+      - uses: ./.github/actions/server-build
       - uses: actions/download-artifact@v4
         with:
           name: spa-dist
           path: src/server/StickerSnap.Api/wwwroot
-
-      - uses: actions/cache@v4
-        with:
-          path: tools/ffmpeg/linux-x64
-          key: ffmpeg-linux-x64-${{ hashFiles('tools/fetch-ffmpeg.mjs') }}
-      - run: node tools/fetch-ffmpeg.mjs linux-x64
-
-      - name: Playwright version
-        id: playwright
-        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-      - run: npx playwright install --with-deps chromium
-        working-directory: src/web
-
+      - uses: ./.github/actions/pinned-ffmpeg
+      - uses: ./.github/actions/playwright
       # CI is set, so the server runs from the build stage's output (dotnet run --no-build)
       - run: npm run e2e:server
-
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -325,94 +223,13 @@ jobs:
             src/web/test-results
           retention-days: 7
 
-  # ───────────────────────────── stage 4 · release ─────────────────────────────
-  # Installers for Windows and Linux and a smoke e2e of each unpacked build. Manual: on a tag v*
-  # or by hand with the "package" input.
+  # ─────────────────────── one status for the whole pipeline ───────────────────────
 
-  package:
-    # A static name: a skipped job shows it as is, a template in it would stay unexpanded.
-    # Running matrix jobs get "Installers (Windows, ...)" from GitHub itself.
-    name: Installers
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.package)
-    needs: [render-slow, e2e, e2e-server]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Windows
-            os: windows-latest
-            rid: win-x64
-            app: release/win-unpacked/StickerSnap.exe
-            installers: |
-              src/desktop/release/*.exe
-          - name: Linux
-            os: ubuntu-latest
-            rid: linux-x64
-            app: release/linux-unpacked/stickersnap
-            installers: |
-              src/desktop/release/*.AppImage
-              src/desktop/release/*.deb
-    steps:
-      - uses: actions/checkout@v4
-
-      # Electron 40+ and its download need Node 22
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - run: npm ci
-
-      # The production SPA of the build stage (never the dev build with the demo data)
-      - uses: actions/download-artifact@v4
-        with:
-          name: spa-dist
-          path: src/server/StickerSnap.Api/wwwroot
-
-      # The self-contained server into server-dist, then the installers
-      - run: npm run server -w src/desktop -- ${{ matrix.rid }}
-
-      - run: npm run dist -w src/desktop
-
-      # Ubuntu 24.04 forbids the user namespaces Chromium's sandbox needs on CI runners
-      - if: runner.os == 'Linux'
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-
-      - name: Smoke e2e
-        working-directory: src/desktop
-        shell: bash
-        env:
-          STICKERSNAP_APP: ${{ github.workspace }}/src/desktop/${{ matrix.app }}
-        run: |
-          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a npx playwright test; else npx playwright test; fi
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: StickerSnap-${{ matrix.rid }}
-          path: ${{ matrix.installers }}
-          retention-days: 14
-
-      - if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: desktop-report-${{ matrix.rid }}
-          path: |
-            src/desktop/playwright-report
-            src/desktop/test-results
-          retention-days: 7
-
-  # One status for the whole pipeline: green when no job of any stage failed, skipped jobs
-  # (e2e, installers) do not count. Put this one into the required checks of main.
+  # Green when no job failed or was cancelled. The required check of main.
   gate:
     name: Pipeline passed
     if: ${{ !cancelled() }}
-    needs: [contract, web-lint, desktop-lint, build-web, build-server, web-unit, desktop-unit, server-fast, render-slow, e2e, e2e-server, package]
+    needs: [contract, web-lint, desktop-lint, build-web, build-server, web-unit, desktop-unit, server-fast, render-slow, e2e, e2e-server]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any job failed or was cancelled
