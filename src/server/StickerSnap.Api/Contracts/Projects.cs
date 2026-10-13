@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using StickerSnap.Api.Json;
 using StickerSnap.Application.App;
+using StickerSnap.Application.ProjectMedia;
 using StickerSnap.Application.Projects;
 using StickerSnap.Core.Media;
 using StickerSnap.Core.Projects;
@@ -30,7 +31,7 @@ public sealed record ProjectSummary(
         item.Card.SegmentCount,
         item.Card.Preset,
         item.Card.DurationSec,
-        ProjectUrls.Cover(item.Card.Id),
+        ProjectUrls.Cover(item.Card),
         item.SourceStatus);
 }
 
@@ -59,7 +60,7 @@ public sealed record Project(
             project.Revision,
             project.SavedAt,
             SourceOf(project.Source, opened.SourceStatus, mode),
-            ProjectUrls.Media(project.Id),
+            ProjectUrls.Media(project),
             Scene.From(project.Scene),
             project.Exports.ToDictionary(
                 pair => pair.Key, pair => ExportResult.From(pair.Value, pair.Value.IsStaleIn(project), mode), StringComparer.Ordinal));
@@ -237,10 +238,16 @@ public sealed record ReplaceSourceResponse(Project Project, IReadOnlyList<string
         new(Project.From(replaced.Opened, mode), replaced.SegmentsOutOfRange);
 }
 
-/// <summary>The addresses the browser loads by itself; the SPA adds the token to them.</summary>
+/// <summary>
+/// The addresses the browser loads by itself; the SPA adds the token to them. `v` changes with what
+/// they show, so an &lt;img&gt; or a &lt;video&gt; given the new address loads it again: the cover with
+/// every save, the video with a new source. The server answers whatever `v` says.
+/// </summary>
 public static class ProjectUrls
 {
-    public static string Cover(Guid id) => $"/api/v1/projects/{id}/cover";
+    public static string Cover(ProjectCard card) =>
+        $"/api/v1/projects/{card.Id}/cover?v={card.UpdatedAt.ToUnixTimeMilliseconds()}";
 
-    public static string Media(Guid id) => $"/api/v1/projects/{id}/media";
+    public static string Media(Domain.Project project) =>
+        $"/api/v1/projects/{project.Id}/media?v={MediaKeys.Of("source", project.Source.Fingerprint)[..12]}";
 }
