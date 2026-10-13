@@ -2,21 +2,16 @@ name: Pipeline
 
 # One pipeline in four stages, the way a GitLab pipeline reads: check → build → test → release.
 # A job starts when every job of the stage before it has passed (needs); jobs of one stage run
-# in parallel. What runs when:
-#   pull_request → main   check, build, test (the slow server tests only if the server changed)
-#   push of a tag v*      all four stages, the installers are built and attached as artifacts
-#   workflow_dispatch     check, build, test; inputs add the heavy e2e and the installers
+# in parallel. The tests always run, on every push to every branch, so the state of a branch
+# is always known:
+#   check → build → fast tests (SPA, desktop, server) → e2e and slow server tests
+# Only the release stage is manual: the installers are built on a tag v* or by hand.
 on:
-  pull_request:
-    branches: [main]
   push:
+    branches: ["**"]
     tags: ["v*"]
   workflow_dispatch:
     inputs:
-      e2e:
-        description: "Run the heavy browser e2e (Chromium on demo data)"
-        type: boolean
-        default: false
       package:
         description: "Build the Windows and Linux installers (release stage)"
         type: boolean
@@ -199,68 +194,46 @@ jobs:
       - run: dotnet test --solution StickerSnap.slnx -c Release --filter-not-trait "Category=Slow"
         working-directory: src/server
 
-  # Required check of the main branch: its name must stay "Slow server tests".
-  # Real FFmpeg on clips the pinned build makes with lavfi, and the corpus of 30 GIFs rendered as
-  # stickers (90% gate). The job reports on every PR; a PR without server changes skips the work.
+  # Runs after the fast tests, on every push. Real FFmpeg on clips the pinned build makes with
+  # lavfi, and the corpus of 30 GIFs rendered as stickers (90% gate).
   render-slow:
     name: Slow server tests
-    needs: [build-web, build-server]
+    needs: [web-unit, desktop-unit, server-fast]
     runs-on: ubuntu-latest
     env:
       StickerSnap__FfmpegDir: ${{ github.workspace }}/tools/ffmpeg/linux-x64
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - id: changes
-        name: Look for server or FFmpeg changes
-        run: |
-          pattern='^(src/server/|tools/fetch-ffmpeg\.mjs$|\.github/workflows/pipeline\.yml$)'
-          if [ "${{ github.event_name }}" != "pull_request" ] ||
-             git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -qE "$pattern"; then
-            echo "server=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "No server or FFmpeg changes: nothing to test"
-          fi
 
       - uses: actions/setup-dotnet@v4
-        if: steps.changes.outputs.server == 'true'
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - uses: actions/setup-node@v4
-        if: steps.changes.outputs.server == 'true'
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - uses: actions/download-artifact@v4
-        if: steps.changes.outputs.server == 'true'
         with:
           name: server-build
       - run: tar -xzf server-build.tgz
-        if: steps.changes.outputs.server == 'true'
 
       # The pinned build and its SHA-256 live in the script, so the script is the cache key
       - uses: actions/cache@v4
-        if: steps.changes.outputs.server == 'true'
         with:
           path: tools/ffmpeg/linux-x64
           key: ffmpeg-linux-x64-${{ hashFiles('tools/fetch-ffmpeg.mjs') }}
 
       - run: node tools/fetch-ffmpeg.mjs linux-x64
-        if: steps.changes.outputs.server == 'true'
 
       - run: dotnet test --solution StickerSnap.slnx -c Release --filter-trait "Category=Slow"
-        if: steps.changes.outputs.server == 'true'
         working-directory: src/server
 
-  # Heavy and manual (when: manual): a few whole user paths in Chromium against Vite on demo
-  # data. Nothing waits for it and nothing depends on it.
+  # A few whole user paths in Chromium against Vite on demo data. Runs after the fast tests, in
+  # parallel with the slow server tests, so a slow or flaky e2e never holds up the fast loop.
   e2e:
     name: E2E (Chromium)
-    if: github.event_name == 'workflow_dispatch' && inputs.e2e
-    needs: [build-web, build-server]
+    needs: [web-unit, desktop-unit, server-fast]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -296,13 +269,13 @@ jobs:
           retention-days: 7
 
   # ───────────────────────────── stage 4 · release ─────────────────────────────
-  # Installers for Windows and Linux and a smoke e2e of each unpacked build. Only on a tag v*
-  # or by hand with the "package" input (when: manual).
+  # Installers for Windows and Linux and a smoke e2e of each unpacked build. Manual: on a tag v*
+  # or by hand with the "package" input.
 
   package:
     name: Installer (${{ matrix.name }})
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.package)
-    needs: [web-unit, desktop-unit, server-fast, render-slow]
+    needs: [render-slow, e2e]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
