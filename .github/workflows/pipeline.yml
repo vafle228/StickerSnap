@@ -145,9 +145,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/dotnet
       - uses: ./.github/actions/server-build
-      # Unit, architecture and WebApplicationFactory tests; Category=Slow runs in test-slow
-      - run: dotnet test --solution StickerSnap.slnx -c Release --no-build --filter-not-trait "Category=Slow"
-        working-directory: src/server
+      # Unit, architecture and WebApplicationFactory tests; Category=Slow runs in test-slow.
+      # The test project is an xUnit v3 executable (Microsoft.Testing.Platform): it runs straight
+      # from the build stage's output, nothing is compiled again. (dotnet test --no-build finds
+      # "no test projects" in an unpacked build, and without --no-build it recompiles everything.)
+      - run: dotnet StickerSnap.Tests.dll --filter-not-trait "Category=Slow"
+        working-directory: src/server/StickerSnap.Tests/bin/Release/net10.0
 
   # ─────────────────────── test-slow · after the fast tests, in parallel ───────────────────────
 
@@ -166,8 +169,9 @@ jobs:
       - uses: ./.github/actions/dotnet
       - uses: ./.github/actions/server-build
       - uses: ./.github/actions/pinned-ffmpeg
-      - run: dotnet test --solution StickerSnap.slnx -c Release --no-build --filter-trait "Category=Slow"
-        working-directory: src/server
+      # Straight from the build stage's output, as in "Server tests"
+      - run: dotnet StickerSnap.Tests.dll --filter-trait "Category=Slow"
+        working-directory: src/server/StickerSnap.Tests/bin/Release/net10.0
 
   # A few whole user paths in Chromium against Vite on demo data
   e2e:
