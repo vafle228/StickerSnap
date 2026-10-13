@@ -7,6 +7,9 @@ type Source = "server" | Scenario;
 
 const HEIGHT = "48px";
 
+/** host:port of the server the data comes from without ?mock */
+const SERVER = new URL(import.meta.env.DEV_SERVER_URL || location.origin).host;
+
 const ITEMS = [
   { value: "server" as const, label: "Сервер" },
   ...Object.entries(SCENARIOS).map(([value, label]) => ({ value: value as Scenario, label })),
@@ -42,7 +45,7 @@ export function DevBar({ scenario }: { scenario?: Scenario }) {
         onChange={go}
       />
       <span className={styles.hint}>
-        {scenario ? "MSW и демо-хаб по контракту, F5 сбрасывает правки" : "127.0.0.1:5180"}
+        {scenario ? "MSW и демо-хаб по контракту, F5 сбрасывает правки" : SERVER}
       </span>
       <a className={styles.link} href="/?showcase">
         Витрина ДС
