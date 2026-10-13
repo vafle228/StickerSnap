@@ -1,0 +1,12 @@
+name: Pinned FFmpeg
+description: The pinned FFmpeg build for linux-x64 in tools/ffmpeg, from the cache when it is there
+runs:
+  using: composite
+  steps:
+    # The pinned build and its SHA-256 live in the script, so the script is the cache key
+    - uses: actions/cache@v4
+      with:
+        path: tools/ffmpeg/linux-x64
+        key: ffmpeg-linux-x64-${{ hashFiles('tools/fetch-ffmpeg.mjs') }}
+    - run: node tools/fetch-ffmpeg.mjs linux-x64
+      shell: bash

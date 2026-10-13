@@ -167,7 +167,7 @@ jobs:
           node-version: 22
       - uses: ./.github/actions/dotnet
       - uses: ./.github/actions/server-build
-      - uses: ./.github/actions/ffmpeg
+      - uses: ./.github/actions/pinned-ffmpeg
       - run: dotnet test --solution StickerSnap.slnx -c Release --filter-trait "Category=Slow"
         working-directory: src/server
 
@@ -208,7 +208,7 @@ jobs:
         with:
           name: spa-dist
           path: src/server/StickerSnap.Api/wwwroot
-      - uses: ./.github/actions/ffmpeg
+      - uses: ./.github/actions/pinned-ffmpeg
       - uses: ./.github/actions/playwright
       # CI is set, so the server runs from the build stage's output (dotnet run --no-build)
       - run: npm run e2e:server
