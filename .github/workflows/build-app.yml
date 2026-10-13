@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
   push:
     tags: ["v*"]
+    branches: ["claude/project-thread-56ewtp"]  # TEMP: test run before merge, removed next commit
 
 permissions:
   contents: read
