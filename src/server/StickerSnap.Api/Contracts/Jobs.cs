@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using StickerSnap.Api.Json;
 using StickerSnap.Api.Problems;
+using StickerSnap.Application.App;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Jobs;
 using StickerSnap.Core.Packs;
@@ -82,14 +83,15 @@ public sealed record Job(
     string? Pack,
     ProblemBody? Error)
 {
-    public static Job From(Domain.Job job) => new(
+    /// <param name="mode">An export's path is the desktop's</param>
+    public static Job From(Domain.Job job, AppMode mode) => new(
         job.Id,
         job.Kind,
         job.ProjectId,
         job.State,
         job.CreatedAt,
         JobProgress.From(job.Progress),
-        [.. job.Items.Select(item => JobItem.From(item, job.Id))],
+        [.. job.Items.Select(item => JobItem.From(item, job.Id, mode))],
         job.Pack,
         ProblemBody.From(job.Error, job.Id));
 }
@@ -108,7 +110,7 @@ public sealed record JobProgress(double Fraction, JobStage Stage, JobAttempt? At
 
 public sealed record JobAttempt(int N, IReadOnlyList<Concession> Concessions);
 
-/// <summary>One segment of a job (schema JobItem). The results arrive with their executors (B16, B24).</summary>
+/// <summary>One segment of a job (schema JobItem); a publication's sticker arrives with B24.</summary>
 /// <param name="Preview">preview: «Точное · 186 КБ»</param>
 public sealed record JobItem(
     string SegmentId,
@@ -119,8 +121,15 @@ public sealed record JobItem(
     StickerRef? Sticker,
     ProblemBody? Error)
 {
-    public static JobItem From(Domain.JobItem item, string jobId) =>
-        new(item.SegmentId, item.State, item.Fraction, null, null, null, ProblemBody.From(item.Error, jobId));
+    /// <summary>An export just made is of the segment as it was saved: not stale.</summary>
+    public static JobItem From(Domain.JobItem item, string jobId, AppMode mode) => new(
+        item.SegmentId,
+        item.State,
+        item.Fraction,
+        item.Preview is { } preview ? new JobItemPreview(FileUrls.Of(preview.FileId), preview.Bytes) : null,
+        item.Export is { } export ? ExportResult.From(export, stale: false, mode) : null,
+        null,
+        ProblemBody.From(item.Error, jobId));
 }
 
 /// <param name="FileUrl">GET /api/v1/files/{fileId}</param>

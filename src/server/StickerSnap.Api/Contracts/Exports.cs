@@ -1,11 +1,12 @@
 using System.Text.Json.Serialization;
+using StickerSnap.Application.App;
 using StickerSnap.Application.Validation;
+using StickerSnap.Core.Projects;
 using StickerSnap.Core.Validation;
 
 namespace StickerSnap.Api.Contracts;
 
-// The results of an export (contract, ExportResult) as Project.exports carries them. The export
-// itself comes with B16; until then a project has none and these only give the schema its shape.
+// The results of an export (contract, ExportResult), as Project.exports and an export's job carry them.
 
 /// <summary>The last export of a segment (schema ExportResult).</summary>
 /// <param name="SceneRevision">The revision of the scene the export was made from</param>
@@ -23,7 +24,29 @@ public sealed record ExportResult(
     int Crf,
     IReadOnlyList<Concession> Concessions,
     IReadOnlyList<LadderStep> Ladder,
-    ValidationReport Validation);
+    ValidationReport Validation)
+{
+    /// <param name="stale">Whether the segment was edited since: only the project knows</param>
+    /// <param name="mode">The path is the desktop's: the browser downloads the file instead (R9)</param>
+    public static ExportResult From(SegmentExport export, bool stale, AppMode mode) => new(
+        export.SegmentId,
+        export.SceneRevision,
+        stale,
+        mode == AppMode.Desktop ? export.Path : null,
+        FileUrls.Of(export.FileId),
+        export.Bytes,
+        new OutputSpec(export.Output.Width, export.Output.Height, export.Output.Fps, export.Output.DurationSec),
+        export.Crf,
+        [.. export.Concessions.Select(Concession.Of)],
+        [.. export.Ladder.Select(step => new LadderStep([.. step.Rung.Concessions.Select(Concession.Of)], step.Bytes))],
+        ValidationReport.From(new FileValidation(export.FileName, export.Bytes, export.Validation)));
+}
+
+/// <summary>The address of a rendered file: GET /api/v1/files/{fileId}.</summary>
+public static class FileUrls
+{
+    public static string Of(string fileId) => $"/api/v1/files/{fileId}";
+}
 
 /// <summary>What the sticker came out as (schema OutputSpec).</summary>
 public sealed record OutputSpec(int Width, int Height, double Fps, double DurationSec);
