@@ -5,6 +5,7 @@ using StickerSnap.Application.Exports;
 using StickerSnap.Application.Files;
 using StickerSnap.Application.Media;
 using StickerSnap.Application.Packs;
+using StickerSnap.Application.ProjectMedia;
 using StickerSnap.Application.Projects;
 using StickerSnap.Application.Settings;
 using StickerSnap.Application.Sources;
@@ -39,6 +40,7 @@ public static class DependencyInjection
         services.AddSingleton<IFileFingerprint, SampledFileFingerprint>();
         services.AddSingleton<IRenderedFiles, RenderedFileStore>();
         services.AddSingleton<IStickerFolder, StickerFolder>();
+        services.AddSingleton<IMediaCache, MediaCache>();
         // The desktop builds are Windows and Linux; every other Unix keeps the same trash as Linux
         services.AddSingleton<ITrash>(provider => OperatingSystem.IsWindows()
             ? new WindowsRecycleBin()
@@ -52,6 +54,7 @@ public static class DependencyInjection
         services.AddSingleton<IMediaEngine, FfmpegEngine>();
         services.AddSingleton<IMediaProbe, FfprobeMediaProbe>();
         services.AddSingleton<IStickerRenderer, FfmpegStickerRenderer>();
+        services.AddSingleton<IEditorMedia, FfmpegEditorMedia>();
 
         services.Configure<BotOptions>(configuration.GetSection(BotOptions.Section));
         services.AddSingleton<BotToken>();

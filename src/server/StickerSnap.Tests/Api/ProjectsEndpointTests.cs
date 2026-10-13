@@ -69,7 +69,8 @@ public sealed class ProjectsEndpointTests : IDisposable
         project["name"]!.GetValue<string>().Should().Be("Кот и клавиатура");
         project["path"]!.GetValue<string>().Should().Be(path);
         project["revision"]!.GetValue<int>().Should().Be(12);
-        project["mediaUrl"]!.GetValue<string>().Should().Be($"/api/v1/projects/{CatId}/media");
+        // v follows the source's content, so a new video is loaded again by the <video>
+        project["mediaUrl"]!.GetValue<string>().Should().MatchRegex($@"^/api/v1/projects/{CatId}/media\?v=[0-9a-f]{{12}}$");
         project["exports"]!.AsObject().Should().BeEmpty();
         var source = project["source"]!;
         source["status"]!.GetValue<string>().Should().Be("ok");
@@ -94,7 +95,8 @@ public sealed class ProjectsEndpointTests : IDisposable
         card["segmentCount"]!.GetValue<int>().Should().Be(2);
         card["preset"]!.GetValue<string>().Should().Be("mixed");
         card["durationSec"]!.GetValue<double>().Should().Be(3);
-        card["coverUrl"]!.GetValue<string>().Should().Be($"/api/v1/projects/{CatId}/cover");
+        // v follows the last save, so the card's <img> loads the new cover after an edit
+        card["coverUrl"]!.GetValue<string>().Should().Be($"/api/v1/projects/{CatId}/cover?v=1791797400000");
         card["sourceStatus"]!.GetValue<string>().Should().Be("missing");
         card["updatedAt"]!.GetValue<DateTimeOffset>().Should().Be(new DateTimeOffset(2026, 10, 12, 9, 30, 0, TimeSpan.Zero));
     }

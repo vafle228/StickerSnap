@@ -231,7 +231,7 @@ export interface paths {
         };
         /**
          * Обложка карточки, WebP
-         * @description Артборд 6. Этап 1a.
+         * @description Артборд 6. Этап 1a. Средний кадр первого отрезка в его рамке (растяжение сплющивает весь кадр), большая сторона до 384 px; без отрезков — середина видео. Сделанная однажды обложка отдаётся и при пропавшем исходнике. coverUrl несёт ?v=, который меняется с каждым сохранением. ETag по содержимому.
          */
         get: operations["getProjectCover"];
         put?: never;
@@ -254,8 +254,9 @@ export interface paths {
         };
         /**
          * Видео для <video> с поддержкой Range
-         * @description Артборд 3a VideoStage. Этап 1a. Исходник как есть или прокси-WEBM,
-         *     если браузер его не играет (GIF, WEBP, MOV).
+         * @description Артборд 3a VideoStage. Этап 1a. Исходник как есть (MP4 с H.264, WEBM с VP8, VP9
+         *     или AV1 при постоянной частоте кадров) или прокси-WEBM с теми же кадрами: кадр n
+         *     стоит на n/fps (GIF, WEBP, MOV, переменная частота). ETag по содержимому.
          */
         get: operations["getProjectMedia"];
         put?: never;
@@ -278,7 +279,7 @@ export interface paths {
         };
         /**
          * Полоса кадров для таймлайна, одна картинка-спрайт
-         * @description Артборд 3b «Кадры». Этап 1a. В спрайте count кадров подряд начиная с from, в один ряд слева направо; каждый кадр высотой height и шириной по пропорции источника.
+         * @description Артборд 3b «Кадры». Этап 1a. В спрайте count кадров подряд начиная с from, в один ряд слева направо; каждый кадр высотой height и шириной по пропорции источника. Кадр n — n-й декодированный кадр источника, те же номера, что у сцены и рендера (G8). from + count не больше frameCount, а ширина спрайта не больше 16383 px, иначе bad_request с полем (out_of_range или too_wide). ETag по содержимому.
          */
         get: operations["getProjectFrames"];
         put?: never;
@@ -1802,7 +1803,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "video/*": string;
+                    "video/mp4": string;
+                    "video/webm": string;
                 };
             };
             /** @description Запрошенный диапазон */
@@ -1811,7 +1813,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "video/*": string;
+                    "video/mp4": string;
+                    "video/webm": string;
                 };
             };
             404: components["responses"]["NotFound"];
