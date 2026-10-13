@@ -155,6 +155,15 @@ public sealed class ProjectService(
         }, cancellationToken);
 
     /// <inheritdoc />
+    public Task RecordExportAsync(Guid id, SegmentExport export, CancellationToken cancellationToken) =>
+        UnderLockAsync(id, async () =>
+        {
+            var (card, project) = await ReadAsync(id, cancellationToken);
+            await store.WriteAsync(card.Path, project.WithExport(export), cancellationToken);
+            return true;
+        }, cancellationToken);
+
+    /// <inheritdoc />
     public Task RemoveAsync(Guid id, RemoveMode mode, CancellationToken cancellationToken) =>
         UnderLockAsync(id, async () =>
         {

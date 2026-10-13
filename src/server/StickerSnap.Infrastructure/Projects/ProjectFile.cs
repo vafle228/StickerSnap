@@ -5,6 +5,8 @@ using System.Text.Json.Serialization;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Media;
 using StickerSnap.Core.Projects;
+using StickerSnap.Core.Render;
+using StickerSnap.Core.Validation;
 
 namespace StickerSnap.Infrastructure.Projects;
 
@@ -129,7 +131,7 @@ internal sealed class ProjectFile
         DateTimeOffset SavedAt,
         StoredSource Source,
         StoredScene Scene,
-        JsonObject Exports)
+        IReadOnlyDictionary<string, StoredExport> Exports)
     {
         public static StoredProject From(Project project, int version) => new(
             version,
@@ -139,9 +141,19 @@ internal sealed class ProjectFile
             project.SavedAt,
             StoredSource.From(project.Source),
             StoredScene.From(project.Scene),
-            []);
+            project.Exports.ToDictionary(pair => pair.Key, pair => StoredExport.From(pair.Value), StringComparer.Ordinal));
 
-        public Project ToProject() => new(Id, Name, Revision, SavedAt, Source.ToSource(), Scene.ToScene());
+        public Project ToProject() => new(
+            Id,
+            Name,
+            Revision,
+            SavedAt,
+            Source.ToSource(),
+            Scene.ToScene(),
+            Exports.ToDictionary(
+                pair => pair.Key,
+                pair => (pair.Value ?? throw Broken($"$.exports.{pair.Key}", "An export is null")).ToExport(pair.Key),
+                StringComparer.Ordinal));
     }
 
     private sealed record StoredSource(string Path, string FileName, long SizeBytes, string Fingerprint, StoredMedia Media)
@@ -289,6 +301,111 @@ internal sealed class ProjectFile
     {
         public override SegmentFrame ToFrame() => new SegmentFrame.Stretch(Preset, new FrameAspect(Aspect.Width, Aspect.Height));
     }
+
+    /// <summary>The last export of a segment (contract, «Файл .ssproj», exports), under the segment's id.</summary>
+    private sealed record StoredExport(
+        int SceneRevision,
+        string Signature,
+        string FileId,
+        string Path,
+        long Bytes,
+        StoredOutput Output,
+        int Crf,
+        IReadOnlyList<StoredConcession> Concessions,
+        IReadOnlyList<StoredTry> Ladder,
+        StoredValidation Validation)
+    {
+        public static StoredExport From(SegmentExport export) => new(
+            export.SceneRevision,
+            export.Signature,
+            export.FileId,
+            export.Path,
+            export.Bytes,
+            new StoredOutput(export.Output.Width, export.Output.Height, export.Output.Fps, export.Output.DurationSec),
+            export.Crf,
+            [.. export.Concessions.Select(StoredConcession.Of)],
+            [.. export.Ladder.Select(StoredTry.From)],
+            StoredValidation.From(export.Validation));
+
+        public SegmentExport ToExport(string segmentId) => new(
+            segmentId,
+            SceneRevision,
+            Signature,
+            FileId,
+            Path,
+            Bytes,
+            new StickerOutput(Output.Width, Output.Height, Output.Fps, Output.DurationSec),
+            Crf,
+            [.. Concessions.Select(concession => concession.ToConcession())],
+            [.. Ladder.Select(step => step.ToTry())],
+            Validation.ToValidation());
+    }
+
+    private sealed record StoredOutput(int Width, int Height, int Fps, double DurationSec);
+
+    [JsonPolymorphic(TypeDiscriminatorPropertyName = "kind")]
+    [JsonDerivedType(typeof(StoredFpsConcession), "fps")]
+    [JsonDerivedType(typeof(StoredCrfConcession), "crf")]
+    [JsonDerivedType(typeof(StoredScaleConcession), "scale")]
+    private abstract record StoredConcession
+    {
+        public static StoredConcession Of(Concession concession) => concession switch
+        {
+            Concession.Fps fps => new StoredFpsConcession(fps.From, fps.To),
+            Concession.Crf crf => new StoredCrfConcession(crf.From, crf.To),
+            Concession.Scale scale => new StoredScaleConcession(scale.From, scale.To),
+            _ => throw new ArgumentOutOfRangeException(nameof(concession), concession, "A concession the format does not know"),
+        };
+
+        public abstract Concession ToConcession();
+    }
+
+    private sealed record StoredFpsConcession(int From, int To) : StoredConcession
+    {
+        public override Concession ToConcession() => new Concession.Fps(From, To);
+    }
+
+    private sealed record StoredCrfConcession(int From, int To) : StoredConcession
+    {
+        public override Concession ToConcession() => new Concession.Crf(From, To);
+    }
+
+    private sealed record StoredScaleConcession(int From, int To) : StoredConcession
+    {
+        public override Concession ToConcession() => new Concession.Scale(From, To);
+    }
+
+    /// <summary>A step of the ladder tried: the step itself and what the sticker weighed there.</summary>
+    private sealed record StoredTry(int Fps, int Crf, StoredSize Detail, IReadOnlyList<StoredConcession> Concessions, long Bytes)
+    {
+        public static StoredTry From(LadderTry step) => new(
+            step.Rung.Fps,
+            step.Rung.Crf,
+            new StoredSize(step.Rung.Detail.Width, step.Rung.Detail.Height),
+            [.. step.Rung.Concessions.Select(StoredConcession.Of)],
+            step.Bytes);
+
+        public LadderTry ToTry() => new(
+            new FitRung(Fps, Crf, new PixelSize(Detail.Width, Detail.Height), [.. Concessions.Select(concession => concession.ToConcession())]),
+            Bytes);
+    }
+
+    private sealed record StoredSize(int Width, int Height);
+
+    private sealed record StoredValidation(SegmentPreset Preset, ValidationVerdict Verdict, IReadOnlyList<StoredCheck> Checks)
+    {
+        public static StoredValidation From(StickerValidation validation) => new(
+            validation.Preset,
+            validation.Verdict,
+            [.. validation.Checks.Select(check => new StoredCheck(check.Rule, check.Status, check.Expected, check.Actual))]);
+
+        public StickerValidation ToValidation() => new(
+            Preset,
+            Verdict,
+            [.. Checks.Select(check => new RuleCheck(check.Rule, check.Status, check.Expected, check.Actual))]);
+    }
+
+    private sealed record StoredCheck(ValidationRule Rule, CheckStatus Status, string Expected, string Actual);
 
     private sealed record StoredRect(double X, double Y, double Width, double Height);
 
