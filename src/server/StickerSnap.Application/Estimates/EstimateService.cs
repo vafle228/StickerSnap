@@ -5,6 +5,7 @@ using StickerSnap.Core.Errors;
 using StickerSnap.Core.Media;
 using StickerSnap.Core.Projects;
 using StickerSnap.Core.Render;
+using StickerSnap.Core.Telegram;
 
 namespace StickerSnap.Application.Estimates;
 
@@ -19,6 +20,9 @@ public sealed class EstimateService(IProjectService projects, IStickerRenderer r
 {
     /// <summary>Forecasts kept in memory: the segments of a few editing sessions.</summary>
     internal const int Kept = 256;
+
+    /// <summary>Drafts of one suggested edit before it is given up: each about a fifth of a second.</summary>
+    internal const int MeasuresPerSuggestion = 3;
 
     private static readonly LadderProfile Profile = LadderProfile.Sticker;
 
@@ -79,7 +83,46 @@ public sealed class EstimateService(IProjectService projects, IStickerRenderer r
             fits,
             new StickerOutput(first.Width, first.Height, first.Fps, first.DurationSec),
             likely,
-            fits ? [] : SizeForecast.Suggestions(segment, source.Media, limits, Profile, bytes, allowance));
+            fits ? [] : await SuggestAsync(segment, source, limits, bytes, allowance, cancellationToken));
+    }
+
+    /// <summary>
+    /// The edits of <see cref="SizeForecast.Suggestions"/>, each measured as it would be after the
+    /// click: the bytes of a clip are not spread evenly over its frames, so an edit found by the
+    /// proportion may still be over. One over is worked out again from its own measure, which
+    /// gives up a little more, at most <see cref="MeasuresPerSuggestion"/> times; an edit that
+    /// never fits is not offered.
+    /// </summary>
+    private async Task<IReadOnlyList<SizeSuggestion>> SuggestAsync(
+        Segment segment,
+        ProjectSource source,
+        PresetLimits limits,
+        long bytes,
+        long allowance,
+        CancellationToken cancellationToken)
+    {
+        List<SizeSuggestion> settled = [];
+        foreach (var first in SizeForecast.Suggestions(segment, source.Media, limits, Profile, bytes, allowance))
+        {
+            SizeSuggestion? suggestion = first;
+            for (var measures = 0; suggestion is not null && measures < MeasuresPerSuggestion; measures++)
+            {
+                var edited = suggestion.ApplyTo(segment);
+                var spec = SceneCompiler.Compile(edited, source.Media, limits);
+                var weight = await MeasureAsync(source, spec, FitLadder.Rungs(spec, Profile)[0], cancellationToken);
+                if (weight <= allowance)
+                {
+                    settled.Add(suggestion);
+                    break;
+                }
+
+                var kind = suggestion.GetType();
+                suggestion = SizeForecast.Suggestions(edited, source.Media, limits, Profile, weight, allowance)
+                    .FirstOrDefault(next => next.GetType() == kind);
+            }
+        }
+
+        return settled;
     }
 
     private Task<long> MeasureAsync(ProjectSource source, StickerSpec spec, FitRung rung, CancellationToken cancellationToken) =>

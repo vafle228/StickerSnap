@@ -93,9 +93,5 @@ public static class SizeForecast
     }
 
     /// <summary>The segment ended at <paramref name="outFrame"/>, without the excluded frames past it.</summary>
-    private static Segment EndAt(Segment segment, int outFrame) => segment with
-    {
-        OutFrame = outFrame,
-        ExcludedFrames = [.. segment.ExcludedFrames.Where(frame => frame <= outFrame)],
-    };
+    private static Segment EndAt(Segment segment, int outFrame) => new SizeSuggestion.Trim(outFrame, 0).ApplyTo(segment);
 }

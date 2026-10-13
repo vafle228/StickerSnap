@@ -25,8 +25,14 @@ public sealed class EstimateServiceTests : IDisposable
     private readonly List<StickerProbe> _probes = [];
     private readonly EstimateService _service;
 
-    /// <summary>The final file at each CRF of the ladder; the detail steps take 4% off CRF 52.</summary>
+    /// <summary>
+    /// The final file of the 30 frames at each CRF of the ladder, less for fewer frames in
+    /// proportion over <see cref="_fixedBytes"/>; the detail steps take 4% off CRF 52.
+    /// </summary>
     private Dictionary<int, long> _bytesByCrf = new() { [40] = 180_000, [46] = 120_000, [52] = 80_000 };
+
+    /// <summary>Bytes a sticker weighs whatever its length, like the first frame of a clip.</summary>
+    private long _fixedBytes;
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -37,7 +43,8 @@ public sealed class EstimateServiceTests : IDisposable
         {
             var probe = call.Arg<StickerProbe>();
             _probes.Add(probe);
-            return Task.FromResult(probe.Spec.Detail is null ? _bytesByCrf[probe.Crf] : (long)(_bytesByCrf[probe.Crf] * 0.96));
+            var whole = probe.Spec.Detail is null ? _bytesByCrf[probe.Crf] : (long)(_bytesByCrf[probe.Crf] * 0.96);
+            return Task.FromResult(_fixedBytes + (whole - _fixedBytes) * probe.Spec.PlayedFrames / 30);
         });
         _service = new EstimateService(_projects, _renderer);
     }
@@ -48,6 +55,9 @@ public sealed class EstimateServiceTests : IDisposable
         _projects.GetAsync(Cat.Id, Arg.Any<CancellationToken>()).Returns(new OpenedProject(Cat, "/projects/cat.ssproj", source));
 
     private Task<SegmentEstimate> EstimateAsync(Segment segment) => _service.EstimateAsync(Cat.Id, segment, Cancel);
+
+    /// <summary>The steps of the ladder measured for the whole segment, not for a suggested edit.</summary>
+    private IEnumerable<StickerProbe> LadderProbes => _probes.Where(probe => probe.Spec.PlayedFrames == 30);
 
     [Fact]
     public async Task Measures_the_first_step_of_the_ladder_from_the_project_s_source()
@@ -75,7 +85,7 @@ public sealed class EstimateServiceTests : IDisposable
 
         var estimate = await EstimateAsync(Sticker);
 
-        _probes.Select(probe => probe.Crf).Should().Equal(40, 46);
+        LadderProbes.Select(probe => probe.Crf).Should().Equal(40, 46);
         (estimate.Bytes, estimate.Fits).Should().Be((300_000, false));
         estimate.LikelyConcessions.Should().Equal(new Concession.Crf(40, 46));
     }
@@ -87,7 +97,7 @@ public sealed class EstimateServiceTests : IDisposable
 
         var estimate = await EstimateAsync(Sticker);
 
-        _probes.Should().HaveCount(5);
+        LadderProbes.Should().HaveCount(5);
         estimate.LikelyConcessions.Should().Equal(new Concession.Crf(40, 52), new Concession.Scale(512, 384));
     }
 
@@ -124,6 +134,34 @@ public sealed class EstimateServiceTests : IDisposable
         over.LikelyConcessions.Should().BeEmpty();
         // 13 333 B a frame of the 30: 19 frames fit in 262 144 B
         over.Suggestions.Should().Equal(new SizeSuggestion.Trim(18, 1.9));
+    }
+
+    [Fact]
+    public async Task Works_out_again_a_suggestion_its_draft_finds_over()
+    {
+        // 360 000 B for 30 frames, of which 60 000 B whatever the length: by the proportion 20 frames
+        // fit, but weigh 260 000 B; from that 19, which weigh 250 000 B; from that 18, which fit
+        _fixedBytes = 60_000;
+        _bytesByCrf = new() { [40] = 360_000, [46] = 240_000, [52] = 160_000 };
+
+        var over = await EstimateAsync(Sticker);
+
+        over.Suggestions.Should().Equal(new SizeSuggestion.Trim(17, 1.8));
+        _probes.Where(probe => probe.Spec.PlayedFrames < 30).Select(probe => probe.Spec.PlayedFrames).Should().Equal(20, 19, 18);
+    }
+
+    [Fact]
+    public async Task Does_not_offer_a_suggestion_that_stays_over_after_its_drafts()
+    {
+        _fixedBytes = 300_000;
+        _bytesByCrf = new() { [40] = 300_000, [46] = 240_000, [52] = 160_000 };
+
+        var over = await EstimateAsync(Sticker);
+
+        over.Suggestions.Should().BeEmpty();
+        // The trim is drafted three times; 4× (23 frames) once, since nothing is faster
+        var trims = _probes.Where(probe => probe.Spec.PlayedFrames < 30 && probe.Spec.Clip.Speed == 1);
+        trims.Should().HaveCount(EstimateService.MeasuresPerSuggestion);
     }
 
     [Fact]

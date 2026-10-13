@@ -73,6 +73,22 @@ public sealed class RealEstimateTests(RealFfmpeg ffmpeg) : IClassFixture<RealFfm
         export.Concessions.Should().Equal(estimate.LikelyConcessions);
         // The same draft measures the first step for both; an encoder's threads may move it a little
         estimate.Bytes.Should().BeCloseTo(export.Ladder[0].Bytes, (ulong)(export.Ladder[0].Bytes / 50));
-        estimate.Suggestions.OfType<SizeSuggestion.Trim>().Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Suggests_edits_after_which_the_sticker_fits()
+    {
+        var project = await ProjectAsync("12-anime.gif");
+        var segment = project.Scene.Segments[0];
+        using var service = new EstimateService(_projects, new FfmpegStickerRenderer(ffmpeg.Ffmpeg));
+
+        var estimate = await service.EstimateAsync(project.Id, segment, Cancel);
+
+        estimate.Suggestions.Should().NotBeEmpty();
+        foreach (var suggestion in estimate.Suggestions)
+        {
+            var edited = await service.EstimateAsync(project.Id, suggestion.ApplyTo(segment), Cancel);
+            edited.Fits.Should().BeTrue($"after {suggestion} the sticker weighs {edited.Bytes} B");
+        }
     }
 }
