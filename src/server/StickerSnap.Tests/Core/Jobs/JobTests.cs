@@ -1,5 +1,7 @@
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Jobs;
+using StickerSnap.Tests.Core.Projects;
+using StickerSnap.Tests.Infrastructure.Projects;
 
 namespace StickerSnap.Tests.Core.Jobs;
 
@@ -214,5 +216,23 @@ public sealed class JobTests
         job.Items.Should().Equal(
             new JobItem("seg-1", JobItemState.Done, 1),
             new JobItem("seg-2", JobItemState.Queued, 0));
+    }
+
+    [Fact]
+    public void Keeps_what_a_segment_made_once_it_is_done_and_through_a_retry()
+    {
+        var export = SampleExports.Of(Scenes.Segment, SampleProjects.Sample.Source);
+        var draft = new PreviewFile("0f8e1d2c3b4a59687766554433221100", 190_464);
+
+        var job = Running("seg-1", "seg-2")
+            .WithDone("seg-1", export: export)
+            .WithDone("seg-2", preview: draft);
+        var retried = Running("seg-1", "seg-2").WithDone("seg-1", export: export).Finish(DiskFull).Retry();
+
+        job.Items.Should().Equal(
+            new JobItem("seg-1", JobItemState.Done, 1, Export: export),
+            new JobItem("seg-2", JobItemState.Done, 1, Preview: draft));
+        job.Progress.Fraction.Should().Be(1);
+        retried.Items[0].Export.Should().BeSameAs(export);
     }
 }

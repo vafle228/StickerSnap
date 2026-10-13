@@ -2,6 +2,8 @@ using System.Text;
 using System.Text.Json.Nodes;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Projects;
+using StickerSnap.Core.Render;
+using StickerSnap.Core.Validation;
 using StickerSnap.Infrastructure.Projects;
 using StickerSnap.Tests.Core.Projects;
 
@@ -41,6 +43,38 @@ public sealed class ProjectFileTests
         };
 
         Read(Format.Write(project)).Should().BeEquivalentTo(project, SampleProjects.ByValue);
+    }
+
+    [Fact]
+    public void Reads_back_the_last_export_of_each_segment()
+    {
+        var sample = SampleProjects.Sample;
+        var project = sample
+            .WithExport(SampleExports.Of(sample.Scene.Segments[0], sample.Source))
+            .WithExport(SampleExports.Of(sample.Scene.Segments[1], sample.Source) with
+            {
+                Validation = SampleExports.Green with { Preset = SegmentPreset.Emoji, Verdict = ValidationVerdict.Experimental },
+            });
+
+        var read = Read(Format.Write(project));
+
+        read.Should().BeEquivalentTo(project, SampleProjects.ByValue);
+        read.Exports["seg-1"].Ladder[^1].Rung.Concessions.Should().Equal(new Concession.Fps(30, 24));
+    }
+
+    [Fact]
+    public void Writes_an_export_under_its_segment_s_id_in_the_words_of_the_contract()
+    {
+        var sample = SampleProjects.Sample;
+
+        var text = Write(sample.WithExport(SampleExports.Of(sample.Scene.Segments[0], sample.Source)));
+
+        var export = JsonNode.Parse(text)!["exports"]!["seg-1"]!;
+        export["sceneRevision"]!.GetValue<int>().Should().Be(12);
+        export["signature"]!.GetValue<string>().Should().StartWith("v1:");
+        export["concessions"]!.ToJsonString().Should().Be("""[{"kind":"fps","from":30,"to":24}]""");
+        export["validation"]!["verdict"]!.GetValue<string>().Should().Be("pass");
+        export["segmentId"].Should().BeNull();
     }
 
     [Fact]

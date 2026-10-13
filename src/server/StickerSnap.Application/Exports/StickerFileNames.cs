@@ -12,7 +12,9 @@ public static class StickerFileNames
     /// </summary>
     public static IEnumerable<string> Candidates(string projectName, string segmentName)
     {
-        var stem = SafeFileNames.Of($"{projectName.Trim()} — {segmentName.Trim()}");
+        // A slash in a name is a character, not a folder: it must not cut the name short
+        var name = $"{projectName.Trim()} — {segmentName.Trim()}".Replace('/', '_').Replace('\\', '_');
+        var stem = SafeFileNames.Of(name);
         yield return stem + Extension;
         for (var n = 2; ; n++) yield return $"{stem} ({n}){Extension}";
     }

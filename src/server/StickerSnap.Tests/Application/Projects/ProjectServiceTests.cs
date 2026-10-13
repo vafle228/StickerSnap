@@ -251,6 +251,33 @@ public sealed class ProjectServiceTests
     }
 
     [Fact]
+    public async Task Records_an_export_in_the_file_without_a_new_revision_or_an_announcement()
+    {
+        await ListedAsync(Cat, CatPath);
+        var export = SampleExports.Of(Cat.Scene.Segments[0], Cat.Source);
+
+        await _service.RecordExportAsync(Cat.Id, export, Cancel);
+
+        var file = _files[CatPath];
+        file.Revision.Should().Be(Cat.Revision);
+        file.SavedAt.Should().Be(Cat.SavedAt);
+        file.Scene.Should().Be(Cat.Scene);
+        file.Exports.Should().ContainKey("seg-1").WhoseValue.Should().BeSameAs(export);
+        await _events.DidNotReceive().ProjectChangedAsync(Arg.Any<ProjectListItem>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Keeps_the_exports_when_the_scene_is_saved()
+    {
+        var export = SampleExports.Of(Cat.Scene.Segments[0], Cat.Source);
+        await ListedAsync(Cat.WithExport(export), CatPath);
+
+        await _service.SaveSceneAsync(Cat.Id, Cat.Revision, Scenes.Of(Scenes.Segment with { OutFrame = 9 }), Cancel);
+
+        _files[CatPath].Exports["seg-1"].Should().BeSameAs(export);
+    }
+
+    [Fact]
     public async Task Refuses_a_save_made_over_an_old_revision()
     {
         await ListedAsync(Cat, CatPath);
