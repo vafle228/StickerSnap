@@ -273,7 +273,9 @@ jobs:
   # or by hand with the "package" input.
 
   package:
-    name: Installer (${{ matrix.name }})
+    # A static name: a skipped job shows it as is, a template in it would stay unexpanded.
+    # Running matrix jobs get "Installers (Windows, ...)" from GitHub itself.
+    name: Installers
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.package)
     needs: [render-slow, e2e]
     runs-on: ${{ matrix.os }}
