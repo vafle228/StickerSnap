@@ -22,16 +22,11 @@ public sealed partial class ContractTests
     /// </summary>
     public static readonly IReadOnlySet<string> NotYetOnServer = new HashSet<string>
     {
-        "listPacks", "importPack", "checkPackName", "getPack", "deletePack", "syncPack",
-        "deletePackSticker", "getPackStickerMedia",
         "getPublishDraft",
     };
 
     /// <summary>The events of x-events the hub does not send yet. The list only shrinks, as above.</summary>
-    private static readonly IReadOnlySet<string> EventsNotYetSent = new HashSet<string>
-    {
-        "packChanged",
-    };
+    private static readonly IReadOnlySet<string> EventsNotYetSent = new HashSet<string>();
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 

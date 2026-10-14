@@ -21,7 +21,7 @@ public sealed class ContractComparerTests
     [Fact]
     public async Task Notices_a_renamed_field()
     {
-        var differences = await CompareWithTrimmed("listPacks");
+        var differences = await CompareWithTrimmed("listStickers");
 
         differences.Should().Contain([
             "getSettings 200 required: missing on the server: recent",
@@ -34,7 +34,7 @@ public sealed class ContractComparerTests
     [Fact]
     public async Task Notices_operations_the_contract_does_not_have()
     {
-        var differences = await CompareWithTrimmed("listPacks");
+        var differences = await CompareWithTrimmed("listStickers");
 
         differences.Should().Contain([
             "getApp (GET /api/v1/app) is on the server but not in the contract",
@@ -48,13 +48,13 @@ public sealed class ContractComparerTests
         var differences = await CompareWithTrimmed();
 
         differences.Should().Contain(
-            "listPacks (GET /api/v1/packs) is in the contract but not on the server, nor among the operations not yet on the server");
+            "listStickers (GET /api/v1/stickers) is in the contract but not on the server, nor among the operations not yet on the server");
     }
 
     [Fact]
     public async Task Notices_an_operation_served_while_still_listed_as_not_yet_on_the_server()
     {
-        var differences = await CompareWithTrimmed("listPacks", "getSettings", "renamedLongAgo");
+        var differences = await CompareWithTrimmed("listStickers", "getSettings", "renamedLongAgo");
 
         differences.Should().Contain([
             "getSettings (GET /api/v1/settings) is on the server: strike it from the operations not yet on the server",
@@ -76,6 +76,42 @@ public sealed class ContractComparerTests
         differences.Should().Equal(
             "getSettings 200 theme enum: missing on the server: system",
             "getSettings 200 accent variants: missing on the server: custom");
+    }
+
+    [Fact]
+    public async Task Compares_an_all_of_by_the_properties_of_its_parts()
+    {
+        var contract = await ContractDocuments.TestFileAsync("Contract/trimmed.yaml", Cancel);
+        var server = await ContractDocuments.TestFileAsync("Contract/trimmed.yaml", Cancel);
+        var folders = (OpenApiSchema)Property(contract, "folders");
+        Settings(contract).Properties!["folders"] = new OpenApiSchema
+        {
+            AllOf =
+            [
+                new OpenApiSchema
+                {
+                    Type = JsonSchemaType.Object,
+                    Required = new HashSet<string> { "projects" },
+                    Properties = new Dictionary<string, IOpenApiSchema> { ["projects"] = folders.Properties!["projects"] },
+                },
+                new OpenApiSchema
+                {
+                    Type = JsonSchemaType.Object,
+                    Required = new HashSet<string> { "stickers", "trash" },
+                    Properties = new Dictionary<string, IOpenApiSchema>
+                    {
+                        ["stickers"] = folders.Properties!["stickers"],
+                        ["trash"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                    },
+                },
+            ],
+        };
+
+        var differences = new ContractComparer(contract, server, new HashSet<string>()).Compare();
+
+        differences.Should().Equal(
+            "getSettings 200 folders required: missing on the server: trash",
+            "getSettings 200 folders properties: missing on the server: trash");
     }
 
     private static OpenApiSchema Settings(OpenApiDocument document) => (OpenApiSchema)document.Components!.Schemas!["Settings"];

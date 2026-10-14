@@ -7,7 +7,7 @@ namespace StickerSnap.Tests.Api.Contract;
 /// Finds where the server's OpenAPI document departs from the contract's: operations by method,
 /// path and operationId, their parameters, request bodies and response codes, and the schemas of
 /// bodies and successful answers by property names, required fields, types, enum values and the
-/// discriminator values of polymorphic types. Schemas are compared by shape from each operation
+/// discriminator values of polymorphic types; an allOf counts as one object of all its parts. Schemas are compared by shape from each operation
 /// down, not by component name, so the server may name its types as C# does. Bodies of errors are
 /// the Problem the Problems tests check; here only their codes count.
 /// </summary>
@@ -132,6 +132,7 @@ public sealed class ContractComparer(OpenApiDocument contract, OpenApiDocument s
             return;
         }
         if (depth > MaxDepth) return;
+        (expected, actual) = (Merged(expected), Merged(actual));
 
         if (Branches(expected).Count > 0 || Branches(actual).Count > 0)
         {
@@ -160,6 +161,23 @@ public sealed class ContractComparer(OpenApiDocument contract, OpenApiDocument s
 
         if (expected.AdditionalProperties is not null || actual.AdditionalProperties is not null)
             CompareSchema(operation, $"{path}{{}}", expected.AdditionalProperties, actual.AdditionalProperties, depth + 1);
+    }
+
+    /// <summary>An allOf as the one object it describes: the properties and required fields of every part.</summary>
+    private static IOpenApiSchema Merged(IOpenApiSchema schema)
+    {
+        if (schema.AllOf is not { Count: > 0 } parts) return schema;
+
+        var merged = parts.Select(Merged).ToList();
+        return new OpenApiSchema
+        {
+            Type = JsonSchemaType.Object,
+            Required = merged.SelectMany(part => part.Required ?? new HashSet<string>()).ToHashSet(),
+            Properties = merged
+                .SelectMany(part => part.Properties ?? new Dictionary<string, IOpenApiSchema>())
+                .GroupBy(property => property.Key)
+                .ToDictionary(group => group.Key, group => group.First().Value),
+        };
     }
 
     private static IList<IOpenApiSchema> Branches(IOpenApiSchema schema) =>

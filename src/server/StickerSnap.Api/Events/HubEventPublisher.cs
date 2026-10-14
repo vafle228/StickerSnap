@@ -39,6 +39,9 @@ public sealed class HubEventPublisher(
             JsonSerializer.SerializeToElement(AccountLink.From(link), json.Value.PayloadSerializerOptions),
             cancellationToken);
 
+    public Task PackChangedAsync(Core.Packs.Pack pack, CancellationToken cancellationToken) =>
+        SendAsync("packChanged", PackSummary.From(pack), cancellationToken);
+
     private async Task SendAsync(string name, object payload, CancellationToken cancellationToken)
     {
         try
