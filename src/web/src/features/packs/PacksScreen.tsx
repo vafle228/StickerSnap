@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Banner, Button, Card, Collapse, Icon } from "../../ds";
 import { useApp } from "../../app/store";
 import { useAccount, useAppInfo, usePacks } from "../../shared/api/queries";
 import { notifyProblem } from "../../shared/notify";
 import { t } from "../../shared/strings/ru";
+import { AddByLinkDialog } from "./AddByLinkDialog";
 import { PackList } from "./PackList";
 import { PackView } from "./PackView";
 import styles from "./PacksScreen.module.css";
@@ -11,8 +12,8 @@ import { PublishDialog } from "./PublishDialog";
 import { usePacksUi } from "./store";
 
 /** Artboard 7: the packs the app made on the left, the open pack as a grid of stickers on the
- *  right. Packs are born with their first stickers, so «Создать пак» opens the publish window.
- *  Talking to Telegram (adding a pack by link, sending stickers) comes in stage 1c. */
+ *  right. Packs are born with their first stickers, so «Создать пак» opens the publish window;
+ *  one made before, or on another computer, comes back by «Добавить по ссылке…». */
 export function PacksScreen() {
   const packs = usePacks();
   const account = useAccount().data;
@@ -21,6 +22,7 @@ export function PacksScreen() {
   const open = usePacksUi((s) => s.open);
   const openPack = usePacksUi((s) => s.openPack);
   const startPublish = usePacksUi((s) => s.startPublish);
+  const [byLink, setByLink] = useState(false);
 
   useEffect(() => {
     if (packs.error) {
@@ -61,8 +63,7 @@ export function PacksScreen() {
             </button>
           </p>
         </div>
-        {/* Checking a link asks Telegram: stage 1c */}
-        <Button icon="link" disabled>
+        <Button icon="link" onClick={() => setByLink(true)}>
           {t("packs.addByLink")}
         </Button>
         {!empty && (
@@ -109,6 +110,7 @@ export function PacksScreen() {
       )}
 
       <PublishDialog />
+      {byLink && <AddByLinkDialog onClose={() => setByLink(false)} />}
     </div>
   );
 }

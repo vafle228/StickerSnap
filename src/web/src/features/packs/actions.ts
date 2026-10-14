@@ -7,6 +7,7 @@ import type { Pack, PackSticker, PackSummary, Project } from "../../shared/api/t
 import { confirm, notify, notifyProblem } from "../../shared/notify";
 import { platform } from "../../shared/platform";
 import { t } from "../../shared/strings/ru";
+import { usePacksUi } from "./store";
 
 /** What «Мои паки» does with packs and their stickers (artboard 7). Every action reports its
  *  own failure as the popup of artboard 8; none throws. */
@@ -21,15 +22,30 @@ export function usePackActions() {
       );
     };
 
-    /** «обновить»: the pack as Telegram has it now. */
-    const sync = async (name: string) => {
+    /** «обновить», and opening a pack: the pack as Telegram has it now. On opening a failure
+     *  stays quiet, the pack shows its last check. */
+    const sync = async (name: string, { quiet = false } = {}) => {
       try {
         putPack(
           await call(api.POST("/api/v1/packs/{pack}/sync", { params: { path: { pack: name } } })),
         );
       } catch (error) {
-        notifyProblem(error, { key: "pack-sync" });
+        if (!quiet) notifyProblem(error, { key: "pack-sync" });
       }
+    };
+
+    /** «Добавить по ссылке…»: throws, so the window can show what is wrong with the link. */
+    const importPack = async (link: string) => {
+      const pack = await call(api.POST("/api/v1/packs/import", { body: { link } }));
+      client.setQueryData(keys.pack(pack.name), pack);
+      // A Pack is a PackSummary with its stickers, as putPack keeps it too
+      client.setQueryData<PackSummary[]>(keys.packs, (list = []) =>
+        list.some((p) => p.name === pack.name)
+          ? list.map((p) => (p.name === pack.name ? { ...p, ...pack } : p))
+          : [...list, pack],
+      );
+      usePacksUi.getState().openPack(pack.name);
+      return pack;
     };
 
     /** «Убрать из списка» (7-8): the app forgets the pack, Telegram is not touched. */
@@ -115,6 +131,6 @@ export function usePackActions() {
       }
     };
 
-    return { sync, forget, removeSticker, revealWebm, retry };
+    return { sync, importPack, forget, removeSticker, revealWebm, retry };
   }, [client]);
 }
