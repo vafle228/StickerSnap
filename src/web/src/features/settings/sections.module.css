@@ -94,6 +94,64 @@
   color: var(--ink);
 }
 
+/* The account's buttons on the card: «Проверить связь», «Отвязать» in red ink */
+.accountActions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.unlink {
+  color: var(--danger);
+}
+
+/* Telegram: the steps of linking, as on the four states under artboard 5 */
+.linkStep {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.stepTitle {
+  margin: 0;
+  font: 600 17px/24px var(--font-sans);
+  color: var(--ink);
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: 20px;
+  font: 500 13px/18px var(--font-sans);
+  color: var(--ink);
+}
+
+.stepActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* «Ждём ответа от бота…» in a sunken strip, the spinner in the accent */
+.waiting {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-inset);
+  font: 600 13px/18px var(--font-sans);
+  color: var(--ink);
+}
+
+.waiting :global(.ss-icon) {
+  color: var(--primary);
+}
+
 /* Folders: the path in a mono field, the buttons beside it */
 .folderLine {
   display: flex;

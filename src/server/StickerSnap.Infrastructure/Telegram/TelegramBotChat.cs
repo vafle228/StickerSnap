@@ -2,7 +2,7 @@ using StickerSnap.Application.Account;
 
 namespace StickerSnap.Infrastructure.Telegram;
 
-/// <summary>The chat with @StickerSnapAppBot in Telegram: getMe, long polling with getUpdates, sendMessage.</summary>
+/// <summary>The chat with @StickerSnapAppBot in Telegram: getMe, long polling with getUpdates, sendMessage, sendChatAction.</summary>
 internal sealed class TelegramBotChat(BotApiClient api) : IBotChat
 {
     /// <summary>The longest wait getUpdates is asked for; well within <see cref="BotApiClient.Timeout"/>.</summary>
@@ -34,6 +34,9 @@ internal sealed class TelegramBotChat(BotApiClient api) : IBotChat
 
     public Task SendAsync(long chatId, string text, CancellationToken cancellationToken) =>
         api.CallAsync<BotMessage>("sendMessage", new { ChatId = chatId, Text = text }, cancellationToken);
+
+    public Task CheckChatAsync(long chatId, CancellationToken cancellationToken) =>
+        api.CallAsync<bool>("sendChatAction", new { ChatId = chatId, Action = "choose_sticker" }, cancellationToken);
 
     private static ChatUser UserOf(BotUser user) => new(user.Id, user.FirstName, user.LastName, user.Username);
 }

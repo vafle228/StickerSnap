@@ -761,6 +761,7 @@ paths:
       description: |
         Артборды 5-1, 5-2. Этап 1c. Ссылка вида `t.me/StickerSnapAppBot?start=<код>`;
         дальше сервер ждёт Start. Итог — событие SignalR `accountChanged` (Start нажат, код истёк).
+        Без токена бота у сервера — `bot_unavailable` (503), без связи с Telegram — `network_unavailable` (503).
       responses:
         '200':
           description: Привязка в состоянии `pending`
@@ -776,10 +777,12 @@ paths:
       tags: [account]
       operationId: deleteAccountLink
       summary: «Отмена» ожидания или «Отвязать»
-      description: Артборд 5. Этап 1c.
+      description: |
+        Артборд 5. Этап 1c. Во время ожидания Start отменяет его и возвращает привязку, какой
+        она была до ссылки; иначе отвязывает аккаунт.
       responses:
         '200':
-          description: Привязка в состоянии `unlinked`
+          description: Привязка после отмены или отвязки (`unlinked`, если аккаунта не было)
           content:
             application/json:
               schema:
@@ -1125,7 +1128,7 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     ServiceUnavailable:
-      description: '`network_unavailable`, `ffmpeg_missing`'
+      description: '`network_unavailable`, `bot_unavailable`, `ffmpeg_missing`'
       content:
         application/problem+json:
           schema:
@@ -2245,6 +2248,7 @@ components:
         | account_not_linked | 409 |
         | bot_blocked | 403 |
         | network_unavailable | 503 |
+        | bot_unavailable | 503 |
         | pack_name_invalid | 422 |
         | pack_name_taken | 409 |
         | pack_full | 409 |
@@ -2273,6 +2277,7 @@ components:
         - account_not_linked
         - bot_blocked
         - network_unavailable
+        - bot_unavailable
         - pack_name_invalid
         - pack_name_taken
         - pack_full

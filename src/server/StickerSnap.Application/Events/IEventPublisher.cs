@@ -1,4 +1,5 @@
 using StickerSnap.Application.Projects;
+using StickerSnap.Core.Account;
 using StickerSnap.Core.Jobs;
 using StickerSnap.Core.Settings;
 
@@ -22,4 +23,7 @@ public interface IEventPublisher
 
     /// <summary>jobUpdated: a job's state or progress changed, no more than 10 times a second; its end always.</summary>
     Task JobUpdatedAsync(Job job, CancellationToken cancellationToken);
+
+    /// <summary>accountChanged: a link given out, Start pressed, a code expired, «Отмена», «Отвязать», a check that changed the state.</summary>
+    Task AccountChangedAsync(AccountLink link, CancellationToken cancellationToken);
 }

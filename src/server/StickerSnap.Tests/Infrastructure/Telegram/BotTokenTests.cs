@@ -55,7 +55,7 @@ public sealed class BotTokenTests : IDisposable
         var reading = () => BotApiStub.TokenOf(token: null, _data.FullName).Value;
 
         var error = reading.Should().Throw<AppException>().Which;
-        error.Code.Should().Be(ErrorCode.TelegramError);
+        error.Code.Should().Be(ErrorCode.BotUnavailable);
         error.Message.Should().NotContain("AAH");
     }
 

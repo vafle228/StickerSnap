@@ -21,6 +21,13 @@ public interface IBotChat
 
     /// <exception cref="Core.Errors.AppException">bot_blocked when the user has stopped the bot</exception>
     Task SendAsync(long chatId, string text, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Whether the bot can still write to the chat, without a message in it: the user sees at most
+    /// a short «choosing a sticker…».
+    /// </summary>
+    /// <exception cref="Core.Errors.AppException">bot_blocked when the user has stopped the bot</exception>
+    Task CheckChatAsync(long chatId, CancellationToken cancellationToken);
 }
 
 /// <param name="Id">The user's id in the messenger: who owns the packs</param>

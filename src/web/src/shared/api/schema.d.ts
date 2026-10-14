@@ -465,11 +465,13 @@ export interface paths {
          * Одноразовый код и ссылка на бота
          * @description Артборды 5-1, 5-2. Этап 1c. Ссылка вида `t.me/StickerSnapAppBot?start=<код>`;
          *     дальше сервер ждёт Start. Итог — событие SignalR `accountChanged` (Start нажат, код истёк).
+         *     Без токена бота у сервера — `bot_unavailable` (503), без связи с Telegram — `network_unavailable` (503).
          */
         post: operations["startAccountLink"];
         /**
          * «Отмена» ожидания или «Отвязать»
-         * @description Артборд 5. Этап 1c.
+         * @description Артборд 5. Этап 1c. Во время ожидания Start отменяет его и возвращает привязку, какой
+         *     она была до ссылки; иначе отвязывает аккаунт.
          */
         delete: operations["deleteAccountLink"];
         options?: never;
@@ -1277,6 +1279,7 @@ export interface components {
          *     | account_not_linked | 409 |
          *     | bot_blocked | 403 |
          *     | network_unavailable | 503 |
+         *     | bot_unavailable | 503 |
          *     | pack_name_invalid | 422 |
          *     | pack_name_taken | 409 |
          *     | pack_full | 409 |
@@ -1288,7 +1291,7 @@ export interface components {
          *     | internal | 500 |
          * @enum {string}
          */
-        ErrorCode: "source_unreadable" | "format_unsupported" | "source_not_found" | "project_not_found" | "project_invalid" | "project_too_new" | "save_failed" | "revision_conflict" | "disk_full" | "render_failed" | "cannot_fit" | "ffmpeg_missing" | "job_not_found" | "file_not_found" | "validation_failed" | "account_not_linked" | "bot_blocked" | "network_unavailable" | "pack_name_invalid" | "pack_name_taken" | "pack_full" | "pack_not_found" | "not_our_pack" | "rate_limited" | "telegram_error" | "bad_request" | "internal";
+        ErrorCode: "source_unreadable" | "format_unsupported" | "source_not_found" | "project_not_found" | "project_invalid" | "project_too_new" | "save_failed" | "revision_conflict" | "disk_full" | "render_failed" | "cannot_fit" | "ffmpeg_missing" | "job_not_found" | "file_not_found" | "validation_failed" | "account_not_linked" | "bot_blocked" | "network_unavailable" | "bot_unavailable" | "pack_name_invalid" | "pack_name_taken" | "pack_full" | "pack_not_found" | "not_our_pack" | "rate_limited" | "telegram_error" | "bad_request" | "internal";
     };
     responses: {
         /** @description Ошибка (`bad_request`, `internal` и прочие коды из `ErrorCode`) */
@@ -1372,7 +1375,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description `network_unavailable`, `ffmpeg_missing` */
+        /** @description `network_unavailable`, `bot_unavailable`, `ffmpeg_missing` */
         ServiceUnavailable: {
             headers: {
                 [name: string]: unknown;
@@ -2085,7 +2088,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Привязка в состоянии `unlinked` */
+            /** @description Привязка после отмены или отвязки (`unlinked`, если аккаунта не было) */
             200: {
                 headers: {
                     [name: string]: unknown;
