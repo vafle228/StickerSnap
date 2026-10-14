@@ -79,6 +79,8 @@ ffprobe.exe
 ffmpeg-*/
 *.webm
 !.github/**/*.webm
+# small samples the server tests read as resources
+!src/server/StickerSnap.Tests/TestData/**/*.webm
 renders/
 tmp/
 temp/

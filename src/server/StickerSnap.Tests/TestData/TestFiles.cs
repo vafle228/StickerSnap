@@ -26,6 +26,14 @@ public static class TestFiles
         return reader.ReadToEnd();
     }
 
+    public static byte[] ReadBytes(string path)
+    {
+        using var stream = Open(path);
+        using var copy = new MemoryStream();
+        stream.CopyTo(copy);
+        return copy.ToArray();
+    }
+
     /// <summary>Copies <paramref name="path"/> into <paramref name="directory"/> under its own name.</summary>
     /// <returns>The full path of the copy</returns>
     public static async Task<string> CopyToAsync(string path, string directory, CancellationToken cancellationToken)
