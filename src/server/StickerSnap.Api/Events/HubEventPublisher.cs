@@ -26,6 +26,9 @@ public sealed class HubEventPublisher(IHubContext<EventsHub> hub, IHostInfo host
     public Task JobUpdatedAsync(Core.Jobs.Job job, CancellationToken cancellationToken) =>
         SendAsync("jobUpdated", Job.From(job, host.Mode), cancellationToken);
 
+    public Task AccountChangedAsync(Core.Account.AccountLink link, CancellationToken cancellationToken) =>
+        SendAsync("accountChanged", AccountLink.From(link), cancellationToken);
+
     private async Task SendAsync(string name, object payload, CancellationToken cancellationToken)
     {
         try
