@@ -47,7 +47,7 @@ jobs:
   # anything is built, when it is not on main or its tag is taken
   version:
     name: Version
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.pick.outputs.version }}
       release: ${{ steps.pick.outputs.release }}
@@ -94,7 +94,7 @@ jobs:
   # The Pipeline run that passed on this commit and still has its production SPA (7 days)
   pipeline:
     name: Pipeline of the commit
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 50
     outputs:
       run-id: ${{ steps.find.outputs.run-id }}
@@ -142,7 +142,7 @@ jobs:
             installers: |
               src/desktop/release/*.exe
           - name: Linux
-            os: ubuntu-24.04
+            os: ubuntu-latest
             rid: linux-x64
             app: release/linux-unpacked/stickersnap
             installers: |
@@ -212,7 +212,7 @@ jobs:
     name: Release
     needs: [version, package]
     if: needs.version.outputs.release == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:

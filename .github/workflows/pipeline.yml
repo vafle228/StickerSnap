@@ -33,7 +33,7 @@ jobs:
 
   contract:
     name: API contract
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/node
@@ -43,7 +43,7 @@ jobs:
 
   web-lint:
     name: SPA lint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/node
@@ -54,7 +54,7 @@ jobs:
 
   desktop-lint:
     name: Desktop shell lint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/node
@@ -65,7 +65,7 @@ jobs:
   # Reports vulnerable packages; never fails the pipeline (GitLab's allow_failure)
   dependency-check:
     name: Dependency check
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     continue-on-error: true
     steps:
       - uses: actions/checkout@v7
@@ -83,7 +83,7 @@ jobs:
   build-web:
     name: Build SPA
     needs: [contract, web-lint, desktop-lint]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/node
@@ -101,7 +101,7 @@ jobs:
   build-server:
     name: Build server
     needs: [contract, web-lint, desktop-lint]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/dotnet
@@ -121,7 +121,7 @@ jobs:
   web-unit:
     name: SPA tests
     needs: [build-web, build-server]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/node
@@ -131,7 +131,7 @@ jobs:
   desktop-unit:
     name: Desktop shell tests
     needs: [build-web, build-server]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/node
@@ -141,7 +141,7 @@ jobs:
   server-fast:
     name: Server tests
     needs: [build-web, build-server]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/dotnet
@@ -159,7 +159,7 @@ jobs:
   render-slow:
     name: Slow server tests
     needs: [web-unit, desktop-unit, server-fast]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     env:
       StickerSnap__FfmpegDir: ${{ github.workspace }}/tools/ffmpeg/linux-x64
     steps:
@@ -178,7 +178,7 @@ jobs:
   e2e:
     name: E2E (Chromium)
     needs: [web-unit, desktop-unit, server-fast]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -200,7 +200,7 @@ jobs:
   e2e-server:
     name: E2E on the server
     needs: [web-unit, desktop-unit, server-fast]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -231,7 +231,7 @@ jobs:
     name: Pipeline passed
     if: ${{ !cancelled() }}
     needs: [contract, web-lint, desktop-lint, build-web, build-server, web-unit, desktop-unit, server-fast, render-slow, e2e, e2e-server]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Fail if any job failed or was cancelled
         env:
