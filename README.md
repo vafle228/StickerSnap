@@ -115,8 +115,8 @@ with, pinned by version and SHA-256 (`tools/fetch-ffmpeg.mjs`); the binaries are
 
 ### Desktop app
 
-The Electron shell lives in `src/desktop` (TypeScript, Electron 44); Electron and electron-builder
-need Node.js 22.12 or newer.
+The Electron shell lives in `src/desktop` (TypeScript, Electron 44); its tooling runs on Node.js 24,
+the current LTS that `.nvmrc` pins (CI takes the same file).
 It starts the local server on 127.0.0.1 with a one-time token, shows the SPA the server serves and
 gives it `window.stickersnap` for system dialogs, paths and the file manager.
 
@@ -131,7 +131,7 @@ npm run package -w src/desktop -- --installer   # installers: NSIS on Windows, A
 VS Code has the same four builds in Terminal → Run Task («Приложение: прод», «Приложение: dev»,
 «Установщик: прод», «Установщик: dev»). `npm run package` builds the SPA (`npm run build`, or
 `npm run build:dev` with `--dev`), publishes the self-contained server and runs electron-builder,
-taking a Node 22 from npx when the installed one is older. The production SPA never carries the demo
+taking a Node 24 from npx when the installed one is older. The production SPA never carries the demo
 data or the dev bar: `npm run check:prod-build` checks `src/server/StickerSnap.Api/wwwroot`, and CI runs it after
 every build. CI packages only production: the installers for both systems come from the manual
 workflow «Build app» (GitHub → Actions → Build app → Run workflow → pick a branch → Run, or a tag

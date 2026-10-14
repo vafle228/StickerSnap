@@ -16,14 +16,12 @@ const desktop = fileURLToPath(new URL("..", import.meta.url));
 
 const run = (command: string, cwd = repo) => execSync(command, { cwd, stdio: "inherit" });
 
-/** electron-builder 26 needs Node 22.12+; on an older Node it runs on a Node 22 from npx. */
-function node22(): string {
-  const [major = 0, minor = 0] = process.versions.node.split(".").map(Number);
-  if (major > 22 || (major === 22 && minor >= 12)) return process.execPath;
-  console.log(
-    `Node ${process.versions.node} is too old for electron-builder, taking Node 22 from npx`,
-  );
-  return execSync('npx -y node@22 -p "process.execPath"', { encoding: "utf8" }).trim();
+/** electron-builder runs on the repo's Node (.nvmrc, the current LTS); an older one takes Node 24 from npx. */
+function toolNode(): string {
+  const major = Number(process.versions.node.split(".")[0]);
+  if (major >= 24) return process.execPath;
+  console.log(`Node ${process.versions.node} is older than Node 24, taking Node 24 from npx`);
+  return execSync('npx -y node@24 -p "process.execPath"', { encoding: "utf8" }).trim();
 }
 
 const DEV_CONFIG = [
@@ -44,7 +42,7 @@ run("npm run server", desktop);
 run("npm run fetch:ffmpeg");
 run("npm run build", desktop);
 execFileSync(
-  node22(),
+  toolNode(),
   [
     fileURLToPath(new URL("../../../node_modules/electron-builder/cli.js", import.meta.url)),
     ...(installer ? [] : ["--dir"]),

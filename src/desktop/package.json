@@ -25,7 +25,7 @@
     "e2e": "playwright test"
   },
   "engines": {
-    "node": ">=22.12"
+    "node": ">=24"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
