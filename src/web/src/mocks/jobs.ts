@@ -168,6 +168,8 @@ function exportResult(
         width: output.width,
         height: output.height,
         durationSec: output.durationSec,
+        // A long sticker (R19) declares 2.9 s in its header, as the server writes it
+        declaredDurationSec: output.durationSec > limits.maxDurationSec + 1e-9 ? 2.9 : undefined,
         fps: output.fps,
         audio: "none",
         alpha: project.source.hasAlpha ? "present" : "none",

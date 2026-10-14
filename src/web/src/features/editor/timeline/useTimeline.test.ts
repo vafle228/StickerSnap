@@ -40,6 +40,7 @@ function info(): TimelineInfo {
     fps,
     total,
     maxDuration: MAX_SEC,
+    newDuration: MAX_SEC,
     bounds: { total, max },
   };
 }

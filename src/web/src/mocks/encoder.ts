@@ -87,7 +87,9 @@ export function ladder(
 ): Rung[] {
   const fps = Math.min(Math.round(sourceFps(source)), limits.maxFps);
   const duration = stickerDuration(segment, sourceFps(source));
-  const lower = [24, 20].filter((f) => f < fps);
+  // A long sticker (R19) goes on down to 15 and 12 fps before the CRF rises, as the server does
+  const rates = duration > limits.maxDurationSec + 1e-9 ? [24, 20, 15, 12] : [24, 20];
+  const lower = rates.filter((f) => f < fps);
   const last = lower.at(-1) ?? fps;
   const side = limits.side;
   const attempts: Attempt[] = [
