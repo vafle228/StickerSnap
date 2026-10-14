@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notifyProblem } from "../notify/problems";
 import { api, call } from "./client";
-import type { Segment, Settings, SettingsPatch } from "./types";
+import type { AccountLink, Segment, Settings, SettingsPatch } from "./types";
 
 /** Query keys of the server's resources. Lists and items have their own roots, so refetching
  *  a list after a reconnect never refetches the project open in the editor. */
@@ -65,6 +65,30 @@ export function useAccount() {
     queryFn: () => call(api.GET("/api/v1/account")),
     staleTime: Infinity,
   });
+}
+
+/** The actions of «Публикация в Telegram». Each answers with the link, which goes to the cache;
+ *  a failure is the screen's to show (bot_unavailable and network_unavailable sit in the section). */
+export function useAccountActions() {
+  const client = useQueryClient();
+  const onSuccess = (link: AccountLink) => client.setQueryData(keys.account, link);
+  return {
+    /** A one-time code in a link to the bot; Start pressed comes as accountChanged */
+    start: useMutation({
+      mutationFn: () => call(api.POST("/api/v1/account/link")),
+      onSuccess,
+    }),
+    /** «Отмена» while waiting for Start, otherwise «Отвязать» */
+    drop: useMutation({
+      mutationFn: () => call(api.DELETE("/api/v1/account/link")),
+      onSuccess,
+    }),
+    /** «Проверить связь» */
+    check: useMutation({
+      mutationFn: () => call(api.POST("/api/v1/account/check")),
+      onSuccess,
+    }),
+  };
 }
 
 export function useProjects() {

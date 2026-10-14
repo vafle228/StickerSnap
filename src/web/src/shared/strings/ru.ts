@@ -470,12 +470,28 @@ export const ru = {
   "settings.bot.linked": "Привязан",
   "settings.bot.linkedDot": "Аккаунт привязан",
   "settings.bot.unlinked": "Аккаунт не привязан",
-  "settings.bot.unlinkedText":
-    "Без привязки стикеры можно экспортировать в .webm, но не публиковать.",
   "settings.bot.pending": "Ждём ответа от бота…",
   "settings.bot.bot_blocked": "Бот остановлен в Telegram",
   "settings.bot.network_unavailable": "Нет связи с Telegram",
   "settings.bot.loading": "Проверяю привязку…",
+  "settings.bot.link.title": "Привяжите аккаунт Telegram",
+  "settings.bot.link.text":
+    "Без этого стикеры можно экспортировать в .webm, но не публиковать. Нужно один раз.",
+  "settings.bot.link.step1": "Нажмите кнопку ниже, откроется бот в Telegram",
+  "settings.bot.link.step2": "Нажмите там «Start»",
+  "settings.bot.link.step3": "Вернитесь сюда, остальное приложение сделает само",
+  "settings.bot.open": "Открыть бота в Telegram",
+  "settings.bot.wait.title": "Нажмите «Start» в боте",
+  "settings.bot.wait.text":
+    "Бот открыт по ссылке с одноразовым кодом: так приложение узнает именно ваш аккаунт, даже если ботом пользуются другие.",
+  "settings.bot.openAgain": "Открыть бота ещё раз",
+  "settings.bot.done": "Аккаунт {name} привязан. Паки будут создаваться на него.",
+  "settings.bot.toEditor": "Вернуться в редактор",
+  "settings.bot.check": "Проверить связь",
+  "settings.bot.unlink": "Отвязать",
+  "settings.bot.bot_blocked.text":
+    "Вы остановили или заблокировали бота, и он не может создавать паки. Откройте его и нажмите «Start» снова.",
+  "settings.bot.network_unavailable.text": "Проверьте интернет и повторите. Привязка не сбросится.",
   "settings.bot.after":
     "Опубликованные паки остаются в Telegram и после отвязки. Привязать можно другой аккаунт: старые паки останутся на прежнем.",
   "settings.theme": "Тема",
@@ -548,6 +564,9 @@ export const ru = {
   "error.bot_blocked.text": "Откройте бота в Telegram и нажмите «Перезапустить».",
   "error.network_unavailable.title": "Нет связи с Telegram",
   "error.network_unavailable.text": "Проверьте интернет и повторите.",
+  "error.bot_unavailable.title": "Бот StickerSnap не настроен",
+  "error.bot_unavailable.text":
+    "У приложения нет токена бота, поэтому публикация недоступна. Положите токен в secrets.json в папке данных приложения и повторите.",
   "error.pack_name_invalid.title": "Такая ссылка не подойдёт",
   "error.pack_name_invalid.text": "Латинские буквы, цифры и подчёркивание, начинается с буквы.",
   "error.pack_name_taken.title": "Ссылка уже занята",
