@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,6 +7,11 @@ import type { DesktopBridge } from "../src/bridge.js";
 
 // No trailing slash: on Windows a trailing backslash escapes the closing quote of the argument.
 const appDir = dirname(dirname(fileURLToPath(import.meta.url)));
+
+/** The FFmpeg the app ships: the version pinned in tools/fetch-ffmpeg.mjs, without its "n" */
+const pinnedFfmpeg = /const VERSION = "n?([^"]+)"/.exec(
+  readFileSync(join(appDir, "..", "..", "tools", "fetch-ffmpeg.mjs"), "utf8"),
+)?.[1];
 
 /** The app as a user starts it, on a fresh profile unless `userData` is given. */
 function launch(userData = mkdtempSync(join(tmpdir(), "stickersnap-e2e-"))) {
@@ -66,6 +71,23 @@ test("opens the SPA from its own server, which lets in only this window", async 
   }, seen.server?.token ?? "");
   expect(statuses[0]).toBe(401);
   expect(statuses[1]).not.toBe(401);
+});
+
+test("renders with the FFmpeg it ships, not whatever is on PATH", async () => {
+  running = await launch().app;
+  const page = await running.firstWindow();
+  await expect(page.getByRole("navigation", { name: "Разделы приложения" })).toBeVisible();
+
+  const ffmpeg = await page.evaluate(async () => {
+    const bridge = (window as unknown as { stickersnap?: DesktopBridge }).stickersnap;
+    const response = await fetch("/api/v1/app", {
+      headers: { Authorization: `Bearer ${bridge?.server.token ?? ""}` },
+    });
+    return ((await response.json()) as { ffmpeg: { status: string; version?: string } }).ffmpeg;
+  });
+  expect(pinnedFfmpeg).toBeTruthy();
+  expect(ffmpeg.status).toBe("ok");
+  expect(ffmpeg.version).toContain(pinnedFfmpeg);
 });
 
 test("never leaves the app for a file and keeps one window", async () => {

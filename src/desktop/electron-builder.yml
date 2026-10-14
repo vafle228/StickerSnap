@@ -1,5 +1,6 @@
 # Installers for Windows and Linux (plan, stage 1b): npm run dist -w src/desktop after
-# `npm run build` (the SPA into the server's wwwroot) and `npm run server -w src/desktop`.
+# `npm run build` (the SPA into the server's wwwroot), `npm run server -w src/desktop` and
+# `npm run fetch:ffmpeg` (the pinned FFmpeg into tools/ffmpeg). npm run package does all of it.
 appId: app.stickersnap.desktop
 productName: StickerSnap
 copyright: Copyright © 2026 StickerSnap
@@ -16,9 +17,16 @@ files:
   - assets/icon.ico
 
 # The self-contained server with the SPA in its wwwroot, outside the asar archive: it runs as is.
+# The pinned FFmpeg lies next to it, where the server looks before PATH (FfmpegLocator.cs).
 extraResources:
   - from: server-dist/${os}-${arch}
     to: server
+  - from: ../../tools/ffmpeg/${os}-${arch}
+    to: server
+    filter: ["ffmpeg", "ffmpeg.exe", "ffprobe", "ffprobe.exe"]
+  # FFmpeg is LGPL: its license goes with it
+  - from: ../../tools/ffmpeg/${os}-${arch}/LICENSE.txt
+    to: server/FFmpeg-LICENSE.txt
 
 win:
   target:

@@ -17,7 +17,8 @@ CI (`.github/workflows/pipeline.yml`) идёт на каждый push: пров�
 (`npm test`, тесты оболочки, `dotnet test` без медленных) → e2e на демо-данных, e2e на настоящем
 сервере и медленные тесты сервера. E2E ждут быстрые тесты, а не наоборот; при падении к запуску
 прикладывается отчёт Playwright с трейсом. Установщики собирает отдельный ручной workflow
-«Build app» (`.github/workflows/build-app.yml`): Actions → Build app → Run workflow.
+«Build app» (`.github/workflows/build-app.yml`): Actions → Build app → Run workflow. Он собирает
+только коммит, на котором Pipeline прошёл, и берёт из этого прогона собранный SPA.
 
 ## Что тестируем
 

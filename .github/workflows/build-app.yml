@@ -3,7 +3,13 @@ name: Build app
 # The GitLab "play" button: Actions → "Build app" → "Run workflow" → pick a branch → Run.
 # Builds the Windows and Linux installers from that branch, smoke-tests each unpacked app and
 # attaches them to the run (Artifacts at the bottom of the run page). Also runs on a tag v*.
-# The tests are not repeated here: "Pipeline" already runs them on every push.
+#
+# Only a commit "Pipeline" passed gets installers, and they carry what that run built and tested:
+# the production SPA comes from its artifact spa-dist, nothing is built twice and the tests are not
+# repeated. When Pipeline is still running on the commit (a tag pushed with a new commit), this
+# waits for it. The server is published here, self-contained and single-file for each system:
+# that is another build than Pipeline's portable `dotnet build`, so there is nothing to take over.
+# The pinned FFmpeg goes in next to the server (tools/fetch-ffmpeg.mjs, checked by SHA-256).
 # Shared setup steps live in .github/actions.
 on:
   workflow_dispatch:
@@ -12,6 +18,8 @@ on:
 
 permissions:
   contents: read
+  # to find the Pipeline run of the commit and download its artifact
+  actions: read
 
 concurrency:
   group: build-app-${{ github.ref }}
@@ -21,27 +29,44 @@ env:
   DOTNET_NOLOGO: true
 
 jobs:
-  # The production SPA, built once for both installers
-  build-web:
-    name: Build SPA
+  # The Pipeline run that passed on this commit and still has its production SPA (7 days)
+  pipeline:
+    name: Pipeline of the commit
     runs-on: ubuntu-latest
+    timeout-minutes: 50
+    outputs:
+      run-id: ${{ steps.find.outputs.run-id }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/node
-      - run: npm run build
-      # the production build carries no demo data, dev bar or showcase
-      - run: npm run check:prod-build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: spa-dist
-          path: src/server/StickerSnap.Api/wwwroot
-          retention-days: 1
-          if-no-files-found: error
+      - id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          for attempt in $(seq 1 90); do
+            runs=$(gh run list -R "$REPO" --workflow pipeline.yml --commit "$SHA" -L 50               --json databaseId,status,conclusion)
+            for id in $(jq -r '.[] | select(.conclusion == "success") | .databaseId' <<<"$runs"); do
+              spa=$(gh api "repos/$REPO/actions/runs/$id/artifacts"                 --jq '[.artifacts[] | select(.name == "spa-dist" and (.expired | not))] | length')
+              if [ "$spa" != 0 ]; then
+                echo "run-id=$id" >> "$GITHUB_OUTPUT"
+                echo "✅ Pipeline run $id passed on $SHA: its SPA goes into the installers" >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              fi
+            done
+            if [ "$(jq '[.[] | select(.status != "completed")] | length' <<<"$runs")" = 0 ]; then
+              echo "::error::No Pipeline run passed on $SHA with its SPA still kept (7 days): run Pipeline on this branch (Actions → Pipeline → Run workflow), then this again"
+              exit 1
+            fi
+            echo "Pipeline is still running on $SHA, waiting for it"
+            sleep 30
+          done
+          echo "::error::Pipeline did not finish on $SHA in 45 minutes"
+          exit 1
 
   package:
     # Static name: GitHub appends the matrix values itself, "Installer (Windows, ...)"
     name: Installer
-    needs: build-web
+    needs: pipeline
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -67,14 +92,20 @@ jobs:
       - uses: ./.github/actions/node
       - uses: ./.github/actions/dotnet
 
-      # The production SPA of build-web (never the dev build with the demo data)
+      # The production SPA Pipeline built, checked and tested (never the dev build with the demo data)
       - uses: actions/download-artifact@v4
         with:
           name: spa-dist
           path: src/server/StickerSnap.Api/wwwroot
+          run-id: ${{ needs.pipeline.outputs.run-id }}
+          github-token: ${{ github.token }}
 
       # The self-contained server into server-dist, then the installers
       - run: npm run server -w src/desktop -- ${{ matrix.rid }}
+
+      - uses: ./.github/actions/pinned-ffmpeg
+        with:
+          rid: ${{ matrix.rid }}
 
       - run: npm run dist -w src/desktop
 

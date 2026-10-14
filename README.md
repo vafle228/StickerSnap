@@ -135,7 +135,10 @@ taking a Node 22 from npx when the installed one is older. The production SPA ne
 data or the dev bar: `npm run check:prod-build` checks `src/server/StickerSnap.Api/wwwroot`, and CI runs it after
 every build. CI packages only production: the installers for both systems come from the manual
 workflow «Build app» (GitHub → Actions → Build app → Run workflow → pick a branch → Run, or a tag
-`v*`); they are attached to the run under Artifacts.
+`v*`); they are attached to the run under Artifacts. It builds only a commit Pipeline passed, and
+takes the production SPA from that Pipeline run. Each installer carries the pinned FFmpeg next to the
+server (`npm run fetch:ffmpeg`, which `npm run package` runs too); the smoke test checks the app
+renders with it and not with an FFmpeg on PATH.
 
 The development window opens `http://127.0.0.1:5176/?mock=desktop`; F12 opens the developer tools
 outside the installed app. `npm run start -w src/desktop` runs the shell from the repository over the
