@@ -28,6 +28,7 @@ export const PROBLEMS: Record<ErrorCode, { tone: Tone; form: ProblemForm }> = {
   account_not_linked: { tone: "warning", form: "banner" },
   bot_blocked: { tone: "danger", form: "banner" },
   network_unavailable: { tone: "danger", form: "banner" },
+  bot_unavailable: { tone: "danger", form: "banner" },
   pack_name_invalid: { tone: "warning", form: "field" },
   pack_name_taken: { tone: "danger", form: "field" },
   pack_full: { tone: "warning", form: "mark" },

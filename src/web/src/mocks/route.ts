@@ -75,6 +75,7 @@ const STATUS: Record<ErrorCode, number> = {
   account_not_linked: 409,
   bot_blocked: 403,
   network_unavailable: 503,
+  bot_unavailable: 503,
   pack_name_invalid: 422,
   pack_name_taken: 409,
   pack_full: 409,
