@@ -16,6 +16,7 @@ using StickerSnap.Infrastructure.Settings;
 using StickerSnap.Infrastructure.Sources;
 using StickerSnap.Infrastructure.Storage;
 using StickerSnap.Infrastructure.Telegram;
+using StickerSnap.Infrastructure.Webm;
 
 namespace StickerSnap.Infrastructure;
 
@@ -55,6 +56,7 @@ public static class DependencyInjection
         services.AddSingleton<IMediaProbe, FfprobeMediaProbe>();
         services.AddSingleton<IStickerRenderer, FfmpegStickerRenderer>();
         services.AddSingleton<IEditorMedia, FfmpegEditorMedia>();
+        services.AddSingleton<IStickerHeader, WebmStickerHeader>();
 
         services.Configure<BotOptions>(configuration.GetSection(BotOptions.Section));
         services.AddSingleton<BotToken>();

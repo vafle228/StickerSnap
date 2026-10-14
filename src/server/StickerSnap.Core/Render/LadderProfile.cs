@@ -1,3 +1,5 @@
+using StickerSnap.Core.Telegram;
+
 namespace StickerSnap.Core.Render;
 
 /// <summary>
@@ -24,4 +26,19 @@ public sealed record LadderProfile(IReadOnlyList<int> FrameRates, IReadOnlyList<
     /// size, a frame rate step 5–15%, a detail step only 4%: it is the last resort, before blocks.
     /// </summary>
     public static readonly LadderProfile Sticker = new([30, 24, 20], [40, 46, 52], [0.875, 0.75]);
+
+    /// <summary>
+    /// A long sticker (R19) of up to 10 s: the same steps with the frame rate going on down to
+    /// 15 and 12 fps before the CRF rises. Its 256 KB are spread over up to three times as many
+    /// seconds, and a rate step costs a long clip less than a CRF one; @fStikBot fits 20 s at 15 fps
+    /// (spike B6, 12 October).
+    /// </summary>
+    public static readonly LadderProfile Long = new([30, 24, 20, 15, 12], [40, 46, 52], [0.875, 0.75]);
+
+    /// <summary>
+    /// The ladder of a sticker: <see cref="Long"/> when it plays longer than Telegram's limit,
+    /// so a long sticker that is short anyway climbs the ladder of any other.
+    /// </summary>
+    public static LadderProfile For(StickerSpec spec, PresetLimits limits) =>
+        LongSticker.DeclaredFor(spec.DurationSec, limits) is null ? Sticker : Long;
 }

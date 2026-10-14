@@ -11,7 +11,7 @@ namespace StickerSnap.Core.Render;
 /// One forward run of <paramref name="Frames"/> at <paramref name="Speed"/>: their number over the
 /// source's frame rate and the speed
 /// </param>
-/// <param name="MaxSec">The longest a loop may play: Telegram's 3 s</param>
+/// <param name="MaxSec">The longest a loop may play: Telegram's 3 s, or the 10 s of a long sticker (R19)</param>
 public sealed record StickerClip(SourceFrames Frames, double Speed, bool PingPong, double ForwardSec, double MaxSec)
 {
     /// <summary>

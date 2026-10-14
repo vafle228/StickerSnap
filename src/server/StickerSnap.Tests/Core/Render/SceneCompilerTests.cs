@@ -92,6 +92,24 @@ public sealed class SceneCompilerTests
     }
 
     [Fact]
+    public void Plays_a_long_sticker_past_3_seconds()
+    {
+        var spec = Compile(Whole with { OutFrame = 149, LongSticker = true });
+
+        spec.Clip.Should().Be(new StickerClip(new SourceFrames(0, 149, []), 1, false, 5, 10));
+        (spec.PlayedFrames, spec.DurationSec).Should().Be((150, 5));
+    }
+
+    [Fact]
+    public void Cuts_a_long_sticker_at_10_seconds()
+    {
+        var spec = Compile(Whole with { OutFrame = 149, Speed = 0.25, LongSticker = true });
+
+        spec.Clip.Frames.Should().Be(new SourceFrames(0, 74, []));
+        spec.DurationSec.Should().Be(10);
+    }
+
+    [Fact]
     public void Plays_a_slowed_segment_at_the_rate_its_frames_come_at_and_cuts_it_at_3_seconds()
     {
         var spec = Compile(Whole with { Speed = 0.5 });

@@ -4,6 +4,7 @@ import {
   fitSpeed,
   frameInput,
   outputSize,
+  playLimit,
   segmentDuration,
   sourceCrop,
   squareCrop,
@@ -89,6 +90,17 @@ describe("timing", () => {
     // 4,84 s at 30 fps into 3 s: 1,6133… → 1,62×
     expect(fitSpeed({ ...segment, outFrame: 144 }, 30, 3)).toBe(1.62);
     expect(segmentDuration({ ...segment, outFrame: 144, speed: 1.62 }, 30)).toBeLessThanOrEqual(3);
+  });
+
+  it("lets a long sticker play its own 10 s and any other segment 3 s (R19)", () => {
+    const limits = { maxDurationSec: 3, longMaxDurationSec: 10 };
+    expect(playLimit(limits, { longSticker: true })).toBe(10);
+    expect(playLimit(limits, { longSticker: false })).toBe(3);
+    expect(playLimit(limits, undefined)).toBe(3);
+    // 4,84 s fits a long sticker at its own speed
+    expect(
+      fitSpeed({ ...segment, outFrame: 144 }, 30, playLimit(limits, { longSticker: true })),
+    ).toBe(0.49);
   });
 
   it("keeps «Вписать целиком» between 0,25× and 4×", () => {

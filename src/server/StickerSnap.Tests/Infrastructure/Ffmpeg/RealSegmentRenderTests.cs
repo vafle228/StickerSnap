@@ -5,6 +5,7 @@ using StickerSnap.Core.Render;
 using StickerSnap.Core.Telegram;
 using StickerSnap.Core.Validation;
 using StickerSnap.Infrastructure.Ffmpeg;
+using StickerSnap.Infrastructure.Webm;
 
 namespace StickerSnap.Tests.Infrastructure.Ffmpeg;
 
@@ -27,7 +28,7 @@ public sealed class RealSegmentRenderTests(RealFfmpeg ffmpeg) : IClassFixture<Re
         get
         {
             var renderer = new FfmpegStickerRenderer(ffmpeg.Ffmpeg);
-            return new SegmentRenderService(new StickerFitService(renderer), renderer, ffmpeg.Probe);
+            return new SegmentRenderService(new StickerFitService(renderer), renderer, ffmpeg.Probe, new WebmStickerHeader());
         }
     }
 
@@ -42,6 +43,9 @@ public sealed class RealSegmentRenderTests(RealFfmpeg ffmpeg) : IClassFixture<Re
             "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-b:v", "8M"),
         "portrait.mp4" => ffmpeg.MakeAsync(name,
             "-f", "lavfi", "-i", "testsrc2=s=405x720:r=60:d=4", "-c:v", "libopenh264", "-pix_fmt", "yuv420p"),
+        // The longest a long sticker plays (R19), with a little noise so the ladder has work to do
+        "long.mp4" => ffmpeg.MakeAsync(name,
+            "-f", "lavfi", "-i", "testsrc2=s=1280x720:r=30:d=10,noise=alls=8:allf=t", "-c:v", "libopenh264", "-b:v", "4M"),
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, null),
     };
 
@@ -92,6 +96,22 @@ public sealed class RealSegmentRenderTests(RealFfmpeg ffmpeg) : IClassFixture<Re
 
         preview.Validation.Should().BeNull();
         read.Should().BeEquivalentTo(new { preview.Output.Width, preview.Output.Height, Fps = new Rational(preview.Output.Fps, 1), SizeBytes = preview.Bytes });
+    }
+
+    [Fact]
+    public async Task Renders_a_long_sticker_of_10_seconds_that_declares_2_9_and_plays_every_frame()
+    {
+        var request = await RequestAsync("long.mp4", Segment with { LongSticker = true }, RenderEffort.Final);
+
+        var sticker = await Engine.RenderAsync(request, progress: null, Cancel);
+        var read = await ffmpeg.Probe.ProbeAsync(sticker.Path, Cancel);
+
+        sticker.Validation!.Verdict.Should().Be(ValidationVerdict.Experimental, string.Join("; ", sticker.Validation.Problems));
+        sticker.Output.DurationSec.Should().BeApproximately(10, 1e-9);
+        read.DeclaredDurationSec.Should().BeApproximately(LongSticker.DeclaredSec, 1e-6);
+        read.DurationSec.Should().BeApproximately(10, 0.04);
+        read.Fps.Should().Be(new Rational(sticker.Output.Fps, 1));
+        sticker.Bytes.Should().Be(read.SizeBytes).And.BeLessThanOrEqualTo(TelegramLimits.Current.Sticker.MaxBytes);
     }
 
     [Fact]

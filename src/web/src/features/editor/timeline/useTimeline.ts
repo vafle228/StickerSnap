@@ -14,7 +14,7 @@ import {
   stepTime,
 } from "../model/timeline";
 import type { Bounds, Edge } from "../model/timeline";
-import { fitSpeed, fpsOf, frameCount, SPEED_MAX } from "../model/frame";
+import { fitSpeed, fpsOf, frameCount, playLimit, SPEED_MAX } from "../model/frame";
 import { editSegment, useEditor, useSegment, type Stop } from "../model/store";
 
 /** What every part of the timeline works with: the segments, the selected one and its frame
@@ -27,8 +27,11 @@ export interface TimelineInfo {
   fps: number;
   /** Frames in the source */
   total: number;
-  /** The selected segment's preset limit, seconds; unknown until GET /api/v1/app answers */
+  /** How long the selected segment may play, seconds: its preset's limit, or a long sticker's
+   *  (R19); unknown until GET /api/v1/app answers */
   maxDuration?: number;
+  /** The limit of a new segment, which is never a long sticker */
+  newDuration?: number;
   bounds: Bounds;
 }
 
@@ -42,10 +45,22 @@ export function useTimeline(): TimelineInfo | undefined {
 
   const fps = fpsOf(source);
   const total = Math.max(1, source.frameCount);
-  const maxDuration = limits?.[segment?.preset ?? "sticker"].maxDurationSec;
+  const preset = limits?.[segment?.preset ?? "sticker"];
+  const maxDuration = preset && playLimit(preset, segment);
   const speed = segment?.speed ?? 1;
   const max = maxDuration === undefined ? Infinity : maxFrames(maxDuration, fps, speed);
-  return { projectId, source, segments, segment, fps, total, maxDuration, bounds: { total, max } };
+  const newDuration = preset?.maxDurationSec;
+  return {
+    projectId,
+    source,
+    segments,
+    segment,
+    fps,
+    total,
+    maxDuration,
+    newDuration,
+    bounds: { total, max },
+  };
 }
 
 /** The stop hint shows while its edge still sits at the limit (a faster speed lets it go). */
@@ -107,9 +122,9 @@ export function fitStop({ segment, fps, total, maxDuration }: TimelineInfo) {
 }
 
 /** «+ Отрезок» and «Сделать отрезком»: a new segment from the selection or the playhead. */
-export function addSegment({ source, segments, segment, fps, total, maxDuration }: TimelineInfo) {
+export function addSegment({ source, segments, segment, fps, total, newDuration }: TimelineInfo) {
   const { time, selection, edit, select, setTime, setSelection } = useEditor.getState();
-  const max = maxDuration === undefined ? Infinity : maxFrames(maxDuration, fps, 1);
+  const max = newDuration === undefined ? Infinity : maxFrames(newDuration, fps, 1);
   const range = newRange(frameAt(time, fps), selection, { total, max });
   const name = t("editor.segment.name", { n: nextNumber(segments.map((s) => s.name)) });
   const created = newSegment(segment, source, range, crypto.randomUUID(), name);

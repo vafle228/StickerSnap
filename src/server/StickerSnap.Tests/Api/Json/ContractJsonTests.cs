@@ -37,7 +37,7 @@ public sealed class ContractJsonTests
         var web = ContractJson.Apply(new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
         var read = () => JsonSerializer.Deserialize<PresetLimits>(
-            """{"maxBytes":"262144","side":512,"maxDurationSec":3,"maxFps":30}""", web);
+            """{"maxBytes":"262144","side":512,"maxDurationSec":3,"longMaxDurationSec":10,"maxFps":30}""", web);
 
         read.Should().Throw<JsonException>();
     }

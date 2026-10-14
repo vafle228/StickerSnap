@@ -724,7 +724,10 @@ export interface components {
             maxBytes: number;
             /** @description Сторона в px, 512 для стикера и 100 для эмодзи */
             side: number;
+            /** @description 3 с, предел Telegram */
             maxDurationSec: number;
+            /** @description 10 с, предел длинного стикера R19 (`Segment.longSticker`). Сервер пишет в заголовок WEBM 2,9 с, кадры идут до конца, проверка даёт `experimental`. */
+            longMaxDurationSec: number;
             maxFps: number;
         };
         Settings: {

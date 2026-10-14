@@ -100,6 +100,14 @@ export function segmentDuration(
 export const SPEED_MIN = 0.25;
 export const SPEED_MAX = 4;
 
+/** How long a segment may play: Telegram's 3 s, or the 10 s of a long sticker (R19). */
+export function playLimit(
+  limits: Pick<PresetLimits, "maxDurationSec" | "longMaxDurationSec">,
+  segment: Pick<Segment, "longSticker"> | undefined,
+): number {
+  return segment?.longSticker ? limits.longMaxDurationSec : limits.maxDurationSec;
+}
+
 /** «Вписать целиком»: the slowest speed at which the whole segment fits the limit. */
 export function fitSpeed(
   segment: Pick<Segment, "inFrame" | "outFrame" | "excludedFrames">,

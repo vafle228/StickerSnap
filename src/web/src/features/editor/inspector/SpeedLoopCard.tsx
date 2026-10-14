@@ -3,7 +3,7 @@ import { useAppInfo } from "../../../shared/api/queries";
 import type { Segment } from "../../../shared/api/types";
 import { t } from "../../../shared/strings/ru";
 import { speed as speedText } from "../format";
-import { fitSpeed, fpsOf, frameCount, SPEED_MAX, SPEED_MIN } from "../model/frame";
+import { fitSpeed, fpsOf, frameCount, playLimit, SPEED_MAX, SPEED_MIN } from "../model/frame";
 import { editSegment, useEditor, useSegment } from "../model/store";
 import styles from "./Inspector.module.css";
 
@@ -22,7 +22,7 @@ export function SpeedLoopCard() {
   if (!segment || !source) return null;
 
   const fps = fpsOf(source);
-  const maxDuration = limits?.[segment.preset].maxDurationSec;
+  const maxDuration = limits && playLimit(limits[segment.preset], segment);
   const fit = maxDuration !== undefined ? fitSpeed(segment, fps, maxDuration) : undefined;
   // Even at 4× the segment runs past the limit: «Вписать» cannot help, the timeline must trim.
   const tooLong =

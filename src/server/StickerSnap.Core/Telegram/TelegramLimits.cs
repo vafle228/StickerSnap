@@ -12,10 +12,12 @@ public sealed record TelegramLimits(
     /// <summary>
     /// 256 KB, 3 s and 30 fps for both; 512 px for a sticker, 100 px for a custom emoji.
     /// The emoji gets the sticker's 256 KB too (contract, decided 11 October, gap G3).
+    /// A long sticker plays up to 10 s: the longest the owner checked on Telegram Desktop,
+    /// Android and iOS (spike B6, 12 October; contract, decided 14 October, B18).
     /// </summary>
     public static readonly TelegramLimits Current = new(
-        Sticker: new PresetLimits(MaxBytes: 262_144, Side: 512, MaxDurationSec: 3, MaxFps: 30),
-        Emoji: new PresetLimits(MaxBytes: 262_144, Side: 100, MaxDurationSec: 3, MaxFps: 30),
+        Sticker: new PresetLimits(MaxBytes: 262_144, Side: 512, MaxDurationSec: 3, LongMaxDurationSec: 10, MaxFps: 30),
+        Emoji: new PresetLimits(MaxBytes: 262_144, Side: 100, MaxDurationSec: 3, LongMaxDurationSec: 10, MaxFps: 30),
         RegularPackCapacity: 120,
         EmojiPackCapacity: 200);
 

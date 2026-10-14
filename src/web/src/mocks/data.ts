@@ -25,8 +25,8 @@ export const app: AppInfo = {
   mode: "web",
   botUsername: BOT,
   limits: {
-    sticker: { maxBytes: 262144, side: 512, maxDurationSec: 3, maxFps: 30 },
-    emoji: { maxBytes: 262144, side: 100, maxDurationSec: 3, maxFps: 30 },
+    sticker: { maxBytes: 262144, side: 512, maxDurationSec: 3, longMaxDurationSec: 10, maxFps: 30 },
+    emoji: { maxBytes: 262144, side: 100, maxDurationSec: 3, longMaxDurationSec: 10, maxFps: 30 },
     packCapacity: { regular: 120, custom_emoji: 200 },
   },
 };

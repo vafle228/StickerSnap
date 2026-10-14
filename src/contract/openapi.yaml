@@ -1197,7 +1197,7 @@ components:
 
     PresetLimits:
       type: object
-      required: [maxBytes, side, maxDurationSec, maxFps]
+      required: [maxBytes, side, maxDurationSec, longMaxDurationSec, maxFps]
       properties:
         maxBytes:
           type: integer
@@ -1207,6 +1207,12 @@ components:
           description: Сторона в px, 512 для стикера и 100 для эмодзи
         maxDurationSec:
           type: number
+          description: 3 с, предел Telegram
+        longMaxDurationSec:
+          type: number
+          description: >-
+            10 с, предел длинного стикера R19 (`Segment.longSticker`). Сервер пишет в заголовок
+            WEBM 2,9 с, кадры идут до конца, проверка даёт `experimental`.
         maxFps:
           type: integer
 
