@@ -35,7 +35,7 @@ jobs:
     name: API contract
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/node
       # openapi.yaml is valid, schema.d.ts was regenerated after its last change and compiles strict
       - run: npm run check:api
@@ -45,7 +45,7 @@ jobs:
     name: SPA lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/node
       # tokens.css was regenerated after the last change of tokens.json
       - run: npm run check:tokens
@@ -56,7 +56,7 @@ jobs:
     name: Desktop shell lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/node
       - run: npm run lint -w src/desktop
       # tsc strict over the main process, the preload, the tests and the e2e
@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/node
       - uses: ./.github/actions/dotnet
       - run: npm audit --audit-level=high
@@ -85,13 +85,13 @@ jobs:
     needs: [contract, web-lint, desktop-lint]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/node
       # tsc -b (strict) + vite build into src/server/StickerSnap.Api/wwwroot
       - run: npm run build
       # the production build carries no demo data, dev bar or showcase
       - run: npm run check:prod-build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: spa-dist
           path: src/server/StickerSnap.Api/wwwroot
@@ -103,13 +103,13 @@ jobs:
     needs: [contract, web-lint, desktop-lint]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/dotnet
       - run: dotnet build StickerSnap.slnx -c Release
         working-directory: src/server
       # bin and obj in one tarball, so the test jobs get the same layout back (actions/server-build)
       - run: find src/server -type d \( -name bin -o -name obj \) -prune -print0 | tar --null -czf server-build.tgz -T -
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: server-build
           path: server-build.tgz
@@ -123,7 +123,7 @@ jobs:
     needs: [build-web, build-server]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/node
       # unit and contract tests in node, component tests (*.test.tsx) in happy-dom
       - run: npm test
@@ -133,7 +133,7 @@ jobs:
     needs: [build-web, build-server]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/node
       # unit tests of the shell in node; the real app is smoke-tested in "Build app"
       - run: npm test -w src/desktop
@@ -143,7 +143,7 @@ jobs:
     needs: [build-web, build-server]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/dotnet
       - uses: ./.github/actions/server-build
       # Unit, architecture and WebApplicationFactory tests; Category=Slow runs in test-slow.
@@ -163,8 +163,8 @@ jobs:
     env:
       StickerSnap__FfmpegDir: ${{ github.workspace }}/tools/ffmpeg/linux-x64
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
       - uses: ./.github/actions/dotnet
@@ -181,12 +181,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/node
       - uses: ./.github/actions/playwright
       - run: npm run e2e
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: |
@@ -203,11 +203,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/node
       - uses: ./.github/actions/dotnet
       - uses: ./.github/actions/server-build
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: spa-dist
           path: src/server/StickerSnap.Api/wwwroot
@@ -216,7 +216,7 @@ jobs:
       # CI is set, so the server runs from the build stage's output (dotnet run --no-build)
       - run: npm run e2e:server
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report-server
           path: |
