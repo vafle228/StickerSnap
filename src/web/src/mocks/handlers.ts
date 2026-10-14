@@ -1,4 +1,4 @@
-import type { Job, PackNameCheck, Settings } from "../shared/api/types";
+import type { AccountLink, Job, PackNameCheck, Settings } from "../shared/api/types";
 import { app, packSummary, summaryOf, type MockDb } from "./data";
 import { fakeHub } from "./fakeHub";
 import { frameSprite } from "./frames";
@@ -36,6 +36,8 @@ export function handlers(db: MockDb) {
   const DAMAGED = "6f1d2c3a-1b2c-4d5e-8f90-0a1b2c3d4e52";
   // «Не сохраняется»: the folder is out of reach for the first save; the retry 30 s later lands
   let saveFailures = db.scenario === "save-fails" ? 1 : 0;
+  // The account behind a link in progress: «Отмена» gives it back, as the server does
+  let accountBefore = db.account;
 
   return [
     // ---------------------------------------------------------------- Приложение
@@ -191,13 +193,17 @@ export function handlers(db: MockDb) {
     // --------------------------------------------------------- Telegram-аккаунт
     route("get", "/api/v1/account", () => ({ status: 200, body: db.account })),
     route("post", "/api/v1/account/link", () => {
-      db.account = {
+      if (offline) return problem("network_unavailable");
+      if (db.account.state !== "pending") accountBefore = db.account;
+      const pending: AccountLink = {
         state: "pending",
-        deepLink: `https://t.me/${app.botUsername}?start=demo`,
+        deepLink: `https://t.me/${app.botUsername}?start=demo${Date.now()}`,
         expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
       };
-      // The bot gets «Start» a few seconds later.
+      db.account = pending;
+      // The bot gets «Start» a few seconds later, unless the wait was cancelled or started again.
       setTimeout(() => {
+        if (db.account !== pending) return;
         db.account = { state: "linked", user: { id: 100200300, firstName: "Дима" } };
         fakeHub.emit("accountChanged", db.account);
       }, 4000);
@@ -207,7 +213,7 @@ export function handlers(db: MockDb) {
       offline ? problem("network_unavailable") : { status: 200, body: db.account },
     ),
     route("delete", "/api/v1/account/link", () => {
-      db.account = { state: "unlinked" };
+      db.account = db.account.state === "pending" ? accountBefore : { state: "unlinked" };
       fakeHub.emit("accountChanged", db.account);
       return { status: 200, body: db.account };
     }),
