@@ -106,4 +106,6 @@ internal sealed class RecordingPublisher : IEventPublisher
     public Task ProjectChangedAsync(ProjectListItem project, CancellationToken cancellationToken) => Task.CompletedTask;
 
     public Task ProjectRemovedAsync(Guid id, CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task PackChangedAsync(StickerSnap.Core.Packs.Pack pack, CancellationToken cancellationToken) => Task.CompletedTask;
 }
