@@ -8,7 +8,8 @@ name: Pipeline
 # come first and the slow ones (e2e, real FFmpeg) only after them, so a slow or flaky e2e never
 # holds up the fast loop (the test pyramid). "Pipeline passed" is the one required check of main.
 #
-# The installers are not built here: that is the manual workflow "Build app" (build-app.yml).
+# The installers are not built here: that is the manual workflow "Build app" (build-app.yml), which
+# takes the production SPA of the run that passed on the commit (spa-dist) instead of building it again.
 # Shared setup steps live in .github/actions.
 on:
   push:
