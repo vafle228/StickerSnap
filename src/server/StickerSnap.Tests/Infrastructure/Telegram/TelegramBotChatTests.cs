@@ -55,6 +55,16 @@ public sealed class TelegramBotChatTests : IDisposable
     }
 
     [Fact]
+    public async Task Checks_the_chat_without_writing_in_it()
+    {
+        _api.Answer("sendChatAction", """{"ok":true,"result":true}""");
+
+        await Chat.CheckChatAsync(42, Cancel);
+
+        _api.Single("sendChatAction").Body.Should().Be("{\"chat_id\":42,\"action\":\"choose_sticker\"}");
+    }
+
+    [Fact]
     public async Task Says_the_user_has_blocked_the_bot()
     {
         _api.Refuse("sendMessage", 403, "Forbidden: bot was blocked by the user");
