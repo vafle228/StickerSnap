@@ -8,11 +8,10 @@ namespace StickerSnap.Core.Render;
 /// <summary>
 /// Turns a segment of a scene into the sticker it makes (<see cref="StickerSpec"/>): the frames
 /// from In to Out less the excluded ones, cut so the loop plays within Telegram's 3 s after the
-/// speed and the ping-pong; the crop, or the whole picture for a stretch; the preset's side on the
+/// speed and the ping-pong, or within the 10 s of a long sticker (R19); the crop, or the whole picture for a stretch; the preset's side on the
 /// longer side and even sides; the rate the frames come at. The spec is the best the sticker can
 /// be: the fit ladder takes it from there, and the media engine renders it.
-/// Several segments and the emoji preset (R17, R18) are only other inputs. A long sticker (R19)
-/// is cut at 3 s too, until it gets limits of its own.
+/// Several segments and the emoji preset (R17, R18) are only other inputs.
 /// </summary>
 public static class SceneCompiler
 {
@@ -98,11 +97,12 @@ public static class SceneCompiler
 
         // The source frames that fill the most forward frames the limit allows, rounded up: the
         // last one may run a little past the limit, and the file is cut at it
-        var most = PlayLength.MaxForwardFrames(limits.MaxDurationSec, fps, pingPong);
+        var maxSec = limits.MaxPlaySec(segment.LongSticker);
+        var most = PlayLength.MaxForwardFrames(maxSec, fps, pingPong);
         var needed = (int)Math.Ceiling(most * segment.Speed * rate / fps - 1e-9);
         frames = frames.Take(Math.Max(1, needed));
 
-        return new StickerClip(frames, segment.Speed, pingPong, frames.Count / rate / segment.Speed, limits.MaxDurationSec);
+        return new StickerClip(frames, segment.Speed, pingPong, frames.Count / rate / segment.Speed, maxSec);
     }
 
     /// <summary>A crop the validator found in whole pixels.</summary>
