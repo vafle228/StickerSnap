@@ -25,6 +25,7 @@ public static class ErrorStatus
         ErrorCode.AccountNotLinked => StatusCodes.Status409Conflict,
         ErrorCode.BotBlocked => StatusCodes.Status403Forbidden,
         ErrorCode.NetworkUnavailable => StatusCodes.Status503ServiceUnavailable,
+        ErrorCode.BotUnavailable => StatusCodes.Status503ServiceUnavailable,
         ErrorCode.PackNameInvalid => StatusCodes.Status422UnprocessableEntity,
         ErrorCode.PackNameTaken => StatusCodes.Status409Conflict,
         ErrorCode.PackFull => StatusCodes.Status409Conflict,

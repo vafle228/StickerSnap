@@ -32,9 +32,9 @@ internal sealed partial class BotToken(IOptions<BotOptions> options, IOptions<Da
     /// Looked up on first use and again while it is missing, so a token put in place later is
     /// picked up without a restart.
     /// </summary>
-    /// <exception cref="AppException">telegram_error when no token is configured</exception>
+    /// <exception cref="AppException">bot_unavailable when no token is configured</exception>
     public string Value => _value ??= Read() ?? throw new AppException(
-        ErrorCode.TelegramError,
+        ErrorCode.BotUnavailable,
         $"The bot token is not configured: set StickerSnap:BotToken or put {FileName} into the data directory")
     {
         Log = $"The bot token is not configured: no botToken in {FileName} of the data directory",

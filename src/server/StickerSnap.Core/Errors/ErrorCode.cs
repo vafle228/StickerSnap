@@ -25,6 +25,7 @@ public enum ErrorCode
     AccountNotLinked,
     BotBlocked,
     NetworkUnavailable,
+    BotUnavailable,
     PackNameInvalid,
     PackNameTaken,
     PackFull,
