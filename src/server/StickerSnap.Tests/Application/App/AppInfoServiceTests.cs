@@ -35,8 +35,8 @@ public sealed class AppInfoServiceTests
     {
         var limits = TelegramLimits.Current;
 
-        limits.Sticker.Should().Be(new PresetLimits(MaxBytes: 262_144, Side: 512, MaxDurationSec: 3, MaxFps: 30));
-        limits.Emoji.Should().Be(new PresetLimits(MaxBytes: 262_144, Side: 100, MaxDurationSec: 3, MaxFps: 30));
+        limits.Sticker.Should().Be(new PresetLimits(MaxBytes: 262_144, Side: 512, MaxDurationSec: 3, LongMaxDurationSec: 10, MaxFps: 30));
+        limits.Emoji.Should().Be(new PresetLimits(MaxBytes: 262_144, Side: 100, MaxDurationSec: 3, LongMaxDurationSec: 10, MaxFps: 30));
         (limits.RegularPackCapacity, limits.EmojiPackCapacity).Should().Be((120, 200));
     }
 }

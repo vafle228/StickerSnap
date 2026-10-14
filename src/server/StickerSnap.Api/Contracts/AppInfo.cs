@@ -31,10 +31,11 @@ public sealed record FfmpegInfo(MediaEngineStatus Status, string? Version);
 
 public sealed record TelegramLimits(PresetLimits Sticker, PresetLimits Emoji, PackCapacity PackCapacity);
 
-public sealed record PresetLimits(int MaxBytes, int Side, double MaxDurationSec, int MaxFps)
+/// <param name="LongMaxDurationSec">How long a long sticker (R19) may play</param>
+public sealed record PresetLimits(int MaxBytes, int Side, double MaxDurationSec, double LongMaxDurationSec, int MaxFps)
 {
     public static PresetLimits From(Core.Telegram.PresetLimits limits) =>
-        new(limits.MaxBytes, limits.Side, limits.MaxDurationSec, limits.MaxFps);
+        new(limits.MaxBytes, limits.Side, limits.MaxDurationSec, limits.LongMaxDurationSec, limits.MaxFps);
 }
 
 /// <summary>Named after the sticker types: `regular` and `custom_emoji`.</summary>

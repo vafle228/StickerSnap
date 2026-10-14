@@ -35,8 +35,8 @@ public sealed class AppEndpointTests
             ["botUsername"] = "StickerSnapAppBot",
             ["limits"] = new JsonObject
             {
-                ["sticker"] = new JsonObject { ["maxBytes"] = 262144, ["side"] = 512, ["maxDurationSec"] = 3, ["maxFps"] = 30 },
-                ["emoji"] = new JsonObject { ["maxBytes"] = 262144, ["side"] = 100, ["maxDurationSec"] = 3, ["maxFps"] = 30 },
+                ["sticker"] = new JsonObject { ["maxBytes"] = 262144, ["side"] = 512, ["maxDurationSec"] = 3, ["longMaxDurationSec"] = 10, ["maxFps"] = 30 },
+                ["emoji"] = new JsonObject { ["maxBytes"] = 262144, ["side"] = 100, ["maxDurationSec"] = 3, ["longMaxDurationSec"] = 10, ["maxFps"] = 30 },
                 ["packCapacity"] = new JsonObject { ["regular"] = 120, ["custom_emoji"] = 200 },
             },
         }.ToJsonString());
