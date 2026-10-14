@@ -19,7 +19,7 @@ public sealed class ProjectRenderServiceTests
 
     public ProjectRenderServiceTests()
     {
-        _service = new ProjectRenderService(_projects, new SegmentRenderService(new StickerFitService(_renderer), _renderer, Substitute.For<IMediaProbe>()));
+        _service = new ProjectRenderService(_projects, new SegmentRenderService(new StickerFitService(_renderer), _renderer, Substitute.For<IMediaProbe>(), Substitute.For<IStickerHeader>()));
         _renderer.DraftAsync(Arg.Any<StickerProbe>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call => new DraftSticker(call.Arg<string>(), 120_000, 100_000));
     }

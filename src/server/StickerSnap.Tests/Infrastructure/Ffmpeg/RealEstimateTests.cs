@@ -5,6 +5,7 @@ using StickerSnap.Core.Media;
 using StickerSnap.Core.Projects;
 using StickerSnap.Core.Render;
 using StickerSnap.Infrastructure.Ffmpeg;
+using StickerSnap.Infrastructure.Webm;
 using StickerSnap.Tests.TestData;
 
 namespace StickerSnap.Tests.Infrastructure.Ffmpeg;
@@ -60,7 +61,7 @@ public sealed class RealEstimateTests(RealFfmpeg ffmpeg) : IClassFixture<RealFfm
         var segment = project.Scene.Segments[0];
         var renderer = new FfmpegStickerRenderer(ffmpeg.Ffmpeg);
         using var service = new EstimateService(_projects, renderer);
-        var engine = new SegmentRenderService(new StickerFitService(renderer), renderer, ffmpeg.Probe);
+        var engine = new SegmentRenderService(new StickerFitService(renderer), renderer, ffmpeg.Probe, new WebmStickerHeader());
 
         var estimate = await service.EstimateAsync(project.Id, segment, Cancel);
         var export = await engine.RenderAsync(

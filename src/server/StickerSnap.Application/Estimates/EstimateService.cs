@@ -24,8 +24,6 @@ public sealed class EstimateService(IProjectService projects, IStickerRenderer r
     /// <summary>Drafts of one suggested edit before it is given up: each about a fifth of a second.</summary>
     internal const int MeasuresPerSuggestion = 3;
 
-    private static readonly LadderProfile Profile = LadderProfile.Sticker;
-
     private readonly EstimateCache _cache = new(Kept);
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -59,7 +57,8 @@ public sealed class EstimateService(IProjectService projects, IStickerRenderer r
     {
         var limits = SceneCompiler.LimitsOf(segment.Preset);
         var spec = SceneCompiler.Compile(segment, source.Media, limits);
-        var rungs = FitLadder.Rungs(spec, Profile);
+        var profile = LadderProfile.For(spec, limits);
+        var rungs = FitLadder.Rungs(spec, profile);
         var allowance = SizeForecast.Allowance(limits, segment.AutoFit);
 
         var first = spec.At(rungs[0]);
@@ -83,7 +82,7 @@ public sealed class EstimateService(IProjectService projects, IStickerRenderer r
             fits,
             new StickerOutput(first.Width, first.Height, first.Fps, first.DurationSec),
             likely,
-            fits ? [] : await SuggestAsync(segment, source, limits, bytes, allowance, cancellationToken));
+            fits ? [] : await SuggestAsync(segment, source, limits, profile, bytes, allowance, cancellationToken));
     }
 
     /// <summary>
@@ -97,19 +96,20 @@ public sealed class EstimateService(IProjectService projects, IStickerRenderer r
         Segment segment,
         ProjectSource source,
         PresetLimits limits,
+        LadderProfile profile,
         long bytes,
         long allowance,
         CancellationToken cancellationToken)
     {
         List<SizeSuggestion> settled = [];
-        foreach (var first in SizeForecast.Suggestions(segment, source.Media, limits, Profile, bytes, allowance))
+        foreach (var first in SizeForecast.Suggestions(segment, source.Media, limits, profile, bytes, allowance))
         {
             SizeSuggestion? suggestion = first;
             for (var measures = 0; suggestion is not null && measures < MeasuresPerSuggestion; measures++)
             {
                 var edited = suggestion.ApplyTo(segment);
                 var spec = SceneCompiler.Compile(edited, source.Media, limits);
-                var weight = await MeasureAsync(source, spec, FitLadder.Rungs(spec, Profile)[0], cancellationToken);
+                var weight = await MeasureAsync(source, spec, FitLadder.Rungs(spec, profile)[0], cancellationToken);
                 if (weight <= allowance)
                 {
                     settled.Add(suggestion);
@@ -117,7 +117,7 @@ public sealed class EstimateService(IProjectService projects, IStickerRenderer r
                 }
 
                 var kind = suggestion.GetType();
-                suggestion = SizeForecast.Suggestions(edited, source.Media, limits, Profile, weight, allowance)
+                suggestion = SizeForecast.Suggestions(edited, source.Media, limits, profile, weight, allowance)
                     .FirstOrDefault(next => next.GetType() == kind);
             }
         }

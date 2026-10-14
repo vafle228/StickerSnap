@@ -33,7 +33,7 @@ public sealed class RenderPlanService(IProjectStore projects, IStickerRenderer r
             }
 
             var limits = SceneCompiler.LimitsOf(segment.Preset);
-            spec = spec.At(FitLadder.Rungs(spec, LadderProfile.Sticker)[0]);
+            spec = spec.At(FitLadder.Rungs(spec, LadderProfile.For(spec, limits))[0]);
             var rate = new RateControl.TwoPass(TargetBitrate.BitsPerSecond(limits.MaxBytes, spec.DurationSec, spec.KeepAlpha));
             var output = Path.Combine(
                 Path.GetDirectoryName(Path.GetFullPath(projectPath))!, $"{Path.GetFileNameWithoutExtension(projectPath)}.{segment.Id}.webm");

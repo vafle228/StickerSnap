@@ -3,6 +3,7 @@ using StickerSnap.Core.Errors;
 using StickerSnap.Core.Media;
 using StickerSnap.Core.Projects;
 using StickerSnap.Core.Render;
+using StickerSnap.Core.Telegram;
 using StickerSnap.Core.Validation;
 
 namespace StickerSnap.Application.Render;
@@ -13,9 +14,12 @@ namespace StickerSnap.Application.Render;
 /// and renders in two passes, then the file is read back and checked against Telegram's rules; a
 /// draft (the exact preview) takes the same step from quick one-pass drafts and is not checked,
 /// since only the final file is sent. A segment with fitting switched off (R7) is rendered once at
-/// the first step, as it is, over the limit or not.
+/// the first step, as it is, over the limit or not. A long sticker (R19) that plays longer than
+/// Telegram's limit climbs a ladder of its own and declares <see cref="LongSticker.DeclaredSec"/>
+/// in its header, so the check calls it experimental.
 /// </summary>
-public sealed class SegmentRenderService(IStickerFitService fitter, IStickerRenderer renderer, IMediaProbe probe) : ISegmentRenderService
+public sealed class SegmentRenderService(IStickerFitService fitter, IStickerRenderer renderer, IMediaProbe probe, IStickerHeader header)
+    : ISegmentRenderService
 {
     /// <summary>The share of a final render's progress the check takes.</summary>
     internal const double ValidateShare = 0.05;
@@ -27,7 +31,7 @@ public sealed class SegmentRenderService(IStickerFitService fitter, IStickerRend
             ?? throw new AppException(ErrorCode.BadRequest, $"The scene has no segment {request.SegmentId}");
         var spec = SceneCompiler.Compile(request.Scene, segment.Id, request.Source);
         var limits = SceneCompiler.LimitsOf(segment.Preset);
-        var fit = new StickerFit(request.SourcePath, request.Source, spec, limits, LadderProfile.Sticker, request.OutputPath);
+        var fit = new StickerFit(request.SourcePath, request.Source, spec, limits, LadderProfile.For(spec, limits), request.OutputPath);
 
         var whole = ProgressPart.Whole(progress is null ? null : new RisingProgress(progress));
         whole.Report(0, RenderStage.Probe, null);
@@ -36,6 +40,11 @@ public sealed class SegmentRenderService(IStickerFitService fitter, IStickerRend
         var sticker = segment.AutoFit
             ? await FitAsync(fit, request.Quality, rendering, cancellationToken)
             : await AsIsAsync(fit, request.Quality, rendering, cancellationToken);
+
+        // The draft too: the preview is the file the export will make, down to its header
+        var made = spec.At(sticker.Rung);
+        if (LongSticker.DeclaredFor(made.DurationSec, limits) is { } declared)
+            await header.DeclareDurationAsync(sticker.Path, declared, cancellationToken);
 
         StickerValidation? validation = null;
         if (final)
@@ -46,7 +55,6 @@ public sealed class SegmentRenderService(IStickerFitService fitter, IStickerRend
             whole.Report(1, RenderStage.Validate, null);
         }
 
-        var made = spec.At(sticker.Rung);
         return new RenderedSegment(
             segment.Id,
             request.Quality,

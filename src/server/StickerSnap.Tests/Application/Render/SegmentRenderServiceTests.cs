@@ -24,6 +24,7 @@ public sealed class SegmentRenderServiceTests
 
     private readonly IStickerRenderer _renderer = Substitute.For<IStickerRenderer>();
     private readonly IMediaProbe _probe = Substitute.For<IMediaProbe>();
+    private readonly IStickerHeader _header = Substitute.For<IStickerHeader>();
     private readonly List<StickerRender> _renders = [];
     private readonly List<StickerProbe> _drafts = [];
     private readonly SegmentRenderService _service;
@@ -31,7 +32,13 @@ public sealed class SegmentRenderServiceTests
 
     public SegmentRenderServiceTests()
     {
-        _service = new SegmentRenderService(new StickerFitService(_renderer), _renderer, _probe);
+        _service = new SegmentRenderService(new StickerFitService(_renderer), _renderer, _probe, _header);
+        _header.DeclareDurationAsync(Output, Arg.Any<double>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                _written = _written with { DeclaredDurationSec = call.Arg<double>() };
+                return Task.CompletedTask;
+            });
         Estimates(200_000);
         Renders(240_000);
         Drafts(200_000);
@@ -257,6 +264,60 @@ public sealed class SegmentRenderServiceTests
         await render.Should().ThrowAsync<OperationCanceledException>();
         await _probe.DidNotReceive().ProbeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         progress.Reports.Should().NotContain(r => r.Stage == RenderStage.Validate);
+    }
+
+    [Fact]
+    public async Task Renders_a_long_sticker_past_3_seconds_declares_2_9_in_its_header_and_calls_it_experimental()
+    {
+        var sticker = await _service.RenderAsync(Request(Segment with { OutFrame = 149, LongSticker = true }), progress: null, Cancel);
+
+        _renders.Should().ContainSingle().Which.Spec.PlayedFrames.Should().Be(150);
+        sticker.Output.Should().Be(new StickerOutput(512, 512, 30, 5));
+        await _header.Received(1).DeclareDurationAsync(Output, 2.9, Arg.Any<CancellationToken>());
+        sticker.Validation!.Verdict.Should().Be(ValidationVerdict.Experimental);
+        sticker.Validation.Checks.Single(check => check.Rule == ValidationRule.Duration).Status.Should().Be(CheckStatus.Warn);
+    }
+
+    [Fact]
+    public async Task Steps_a_long_sticker_down_to_15_fps_before_it_gives_up_quality()
+    {
+        Estimates(400_000, 400_000, 400_000, 240_000);
+
+        var sticker = await _service.RenderAsync(Request(Segment with { OutFrame = 149, LongSticker = true }), progress: null, Cancel);
+
+        sticker.Ladder.Select(step => (step.Rung.Fps, step.Rung.Crf)).Should().Equal((30, 40), (24, 40), (20, 40), (15, 40));
+        sticker.Concessions.Should().Equal(new Concession.Fps(30, 15));
+        sticker.Output.DurationSec.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task Leaves_the_header_of_a_long_sticker_that_plays_within_3_seconds_alone()
+    {
+        Estimates(400_000, 400_000, 400_000, 240_000);
+
+        var sticker = await _service.RenderAsync(Request(Segment with { LongSticker = true }), progress: null, Cancel);
+
+        sticker.Ladder.Select(step => (step.Rung.Fps, step.Rung.Crf)).Should().Equal((30, 40), (24, 40), (20, 40), (20, 46));
+        await _header.DidNotReceive().DeclareDurationAsync(Arg.Any<string>(), Arg.Any<double>(), Arg.Any<CancellationToken>());
+        sticker.Validation!.Verdict.Should().Be(ValidationVerdict.Pass);
+    }
+
+    [Fact]
+    public async Task Previews_a_long_sticker_with_the_header_the_export_will_have()
+    {
+        var preview = await _service.RenderAsync(Request(Segment with { OutFrame = 149, LongSticker = true }, RenderEffort.Draft), progress: null, Cancel);
+
+        preview.Output.DurationSec.Should().Be(5);
+        await _header.Received(1).DeclareDurationAsync(Output, 2.9, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Cuts_a_segment_at_3_seconds_when_it_is_no_long_sticker()
+    {
+        var sticker = await _service.RenderAsync(Request(Segment with { OutFrame = 149 }), progress: null, Cancel);
+
+        sticker.Output.DurationSec.Should().Be(3);
+        await _header.DidNotReceive().DeclareDurationAsync(Arg.Any<string>(), Arg.Any<double>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
