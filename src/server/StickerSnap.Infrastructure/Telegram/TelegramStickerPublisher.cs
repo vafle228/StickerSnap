@@ -91,13 +91,14 @@ internal sealed class TelegramStickerPublisher(BotApiClient api) : IStickerPubli
     public Task DeleteStickerAsync(string stickerId, CancellationToken cancellationToken) =>
         api.CallAsync<bool>("deleteStickerFromSet", new { Sticker = stickerId }, cancellationToken);
 
-    public async Task DownloadAsync(string stickerId, Stream destination, CancellationToken cancellationToken)
+    public async Task DownloadAsync(string stickerId, string path, CancellationToken cancellationToken)
     {
         var file = await api.CallAsync<BotFile>("getFile", new { FileId = stickerId }, cancellationToken);
-        if (file.FilePath is not { Length: > 0 } path)
+        if (file.FilePath is not { Length: > 0 } filePath)
             throw new AppException(ErrorCode.TelegramError, $"getFile gave no path for {stickerId}") { Log = "getFile gave no file_path" };
 
-        await api.DownloadAsync(path, destination, cancellationToken);
+        await using var destination = File.Create(path);
+        await api.DownloadAsync(filePath, destination, cancellationToken);
     }
 
     private static MultipartFormDataContent StickerForm(long ownerId, string pack, NewSticker sticker)
