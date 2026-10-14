@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using StickerSnap.Application.Account;
 using StickerSnap.Application.App;
 using StickerSnap.Application.Estimates;
 using StickerSnap.Application.Exports;
@@ -22,6 +23,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services) => services
         .AddSingleton<IAppInfoService, AppInfoService>()
         .AddSingleton<ISettingsService, SettingsService>()
+        .AddSingleton<IAccountService, AccountService>()
         .AddSingleton<IProjectService, ProjectService>()
         .AddSingleton<IProjectMediaService, ProjectMediaService>()
         .AddSingleton<IEstimateService, EstimateService>()

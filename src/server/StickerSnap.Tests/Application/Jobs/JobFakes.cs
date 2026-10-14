@@ -85,6 +85,8 @@ internal sealed class RecordingPublisher : IEventPublisher
 
     public Task<Job> UntilAsync(string id, JobState state) => UntilAsync(job => job.Id == id && job.State == state);
 
+    public Task AccountChangedAsync(StickerSnap.Core.Account.AccountLink link, CancellationToken cancellationToken) => Task.CompletedTask;
+
     public Task JobUpdatedAsync(Job job, CancellationToken cancellationToken)
     {
         lock (_gate)
