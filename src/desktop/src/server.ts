@@ -9,6 +9,8 @@ export interface ServerCommand {
   command: string;
   args: string[];
   cwd: string;
+  /** What the server is told besides the shell's own variables */
+  env?: Record<string, string>;
 }
 
 export interface Layout {
@@ -27,21 +29,32 @@ export interface Layout {
 export const runtimeId = (platform: NodeJS.Platform, arch: string) =>
   `${platform === "win32" ? "win" : platform}-${arch}`;
 
-/** The installed app runs its published server from resources/server. From the repository it
- *  takes the one `npm run server` published into server-dist, or builds and runs the source. */
+/** The installed app runs its published server from resources/server, with FFmpeg next to it.
+ *  From the repository it takes the one `npm run server` published into server-dist, or builds
+ *  and runs the source, and points it at the FFmpeg `npm run fetch:ffmpeg` put in tools/ffmpeg. */
 export function serverCommand(layout: Layout): ServerCommand {
-  const exe = layout.platform === "win32" ? "StickerSnap.Api.exe" : "StickerSnap.Api";
-  const dir = layout.packaged
-    ? join(layout.resourcesPath, "server")
-    : join(layout.appPath, "server-dist", runtimeId(layout.platform, layout.arch));
-  if (layout.packaged || layout.exists(join(dir, exe))) {
+  const windows = layout.platform === "win32";
+  const exe = windows ? "StickerSnap.Api.exe" : "StickerSnap.Api";
+  const rid = runtimeId(layout.platform, layout.arch);
+  if (layout.packaged) {
+    const dir = join(layout.resourcesPath, "server");
     return { command: join(dir, exe), args: [], cwd: dir };
+  }
+
+  const ffmpeg = join(layout.appPath, "..", "..", "tools", "ffmpeg", rid);
+  const env = layout.exists(join(ffmpeg, windows ? "ffmpeg.exe" : "ffmpeg"))
+    ? { env: { StickerSnap__FfmpegDir: ffmpeg } }
+    : {};
+  const dir = join(layout.appPath, "server-dist", rid);
+  if (layout.exists(join(dir, exe))) {
+    return { command: join(dir, exe), args: [], cwd: dir, ...env };
   }
   const project = join(layout.appPath, "..", "server", "StickerSnap.Api");
   return {
     command: "dotnet",
     args: ["run", "--project", project, "--no-launch-profile"],
     cwd: project,
+    ...env,
   };
 }
 
@@ -111,6 +124,7 @@ export async function startServer(
     cwd: cmd.cwd,
     env: {
       ...process.env,
+      ...cmd.env,
       ASPNETCORE_URLS: baseUrl,
       StickerSnap__Token: options.token,
       StickerSnap__Mode: "desktop",

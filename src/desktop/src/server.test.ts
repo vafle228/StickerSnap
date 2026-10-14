@@ -63,6 +63,19 @@ describe("where the server comes from", () => {
       cwd: project,
     });
   });
+
+  it("points the server run from the repository at the FFmpeg in tools/ffmpeg", () => {
+    const dir = join("/repo/src/desktop", "server-dist", "linux-x64");
+    const ffmpeg = join("/repo", "tools", "ffmpeg", "linux-x64");
+    const there = [join(dir, "StickerSnap.Api"), join(ffmpeg, "ffmpeg")];
+    const cmd = serverCommand(layout({ exists: (p) => there.includes(p) }));
+    expect(cmd.env).toEqual({ StickerSnap__FfmpegDir: ffmpeg });
+  });
+
+  it("leaves the installed app to find the FFmpeg next to its server", () => {
+    const cmd = serverCommand(layout({ packaged: true, exists: () => true }));
+    expect(cmd.env).toBeUndefined();
+  });
 });
 
 describe("the port", () => {
