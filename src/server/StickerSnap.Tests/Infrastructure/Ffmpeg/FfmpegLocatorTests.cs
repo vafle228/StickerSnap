@@ -69,6 +69,31 @@ public sealed class FfmpegLocatorTests : IDisposable
     }
 
     [Fact]
+    public async Task Does_not_let_an_old_ffmpeg_hide_a_usable_one_further_on()
+    {
+        // An old FFmpeg on PATH ahead of the pinned one, as on a machine with one installed long ago
+        var old = Ffmpeg("old", "7.1");
+        var usable = Ffmpeg("usable", "9.0.2");
+
+        var lookup = await Locator(null).SearchAsync([old, usable], Cancel);
+
+        lookup.Status.Should().Be(MediaEngineStatus.Ok);
+        lookup.Directory.Should().Be(usable);
+    }
+
+    [Fact]
+    public async Task Tells_of_the_first_old_ffmpeg_when_none_is_usable()
+    {
+        var first = Ffmpeg("first", "7.1");
+        Ffmpeg("second", "8.0");
+
+        var lookup = await Locator(null).SearchAsync([_root.CreateSubdirectory("empty").FullName, first, Path.Combine(_root.FullName, "second")], Cancel);
+
+        lookup.Status.Should().Be(MediaEngineStatus.TooOld);
+        lookup.Directory.Should().Be(first);
+    }
+
+    [Fact]
     public async Task Is_missing_when_the_configured_file_does_not_answer_as_ffmpeg()
     {
         var lookup = await Locator(Ffmpeg("broken", version: null)).FindAsync(Cancel);
@@ -87,6 +112,20 @@ public sealed class FfmpegLocatorTests : IDisposable
         await locator.FindAsync(Cancel);
 
         await _reader.Received(1).ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Looks_again_while_ffmpeg_is_too_old()
+    {
+        var directory = Ffmpeg("updated-later", "7.1");
+        var locator = Locator(directory);
+
+        var before = await locator.FindAsync(Cancel);
+        _reader.ReadAsync(Path.Combine(directory, Executable), Arg.Any<CancellationToken>()).Returns("ffmpeg version 9.0.2 Copyright\n");
+        var after = await locator.FindAsync(Cancel);
+
+        before.Status.Should().Be(MediaEngineStatus.TooOld);
+        after.Status.Should().Be(MediaEngineStatus.Ok);
     }
 
     [Fact]

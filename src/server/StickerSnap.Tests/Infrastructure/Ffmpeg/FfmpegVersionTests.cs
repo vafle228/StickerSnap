@@ -27,6 +27,38 @@ public sealed class FfmpegVersionTests
         version.Should().Be(new FfmpegVersion("N-121234-g5f8a1c2b3d-20260930", null));
     }
 
+    [Fact]
+    public void Reads_the_libavcodec_the_build_carries()
+    {
+        // The pinned build's output, cut down to the lines that matter
+        var version = FfmpegVersion.Parse("""
+            ffmpeg version n9.0.2-17-g2a571b6068-20260930 Copyright (c) 2000-2026 the FFmpeg developers
+            built with gcc 16.2.0 (crosstool-NG 1.29.0.7_b1a94f6)
+            configuration: --enable-libvpx --enable-libwebp
+            libavutil      61.  1.102 / 61.  1.102
+            libavcodec     63.  1.102 / 63.  1.102
+            libavformat    63.  1.102 / 63.  1.102
+            """);
+
+        version.Should().Be(new FfmpegVersion("9.0.2-17-g2a571b6068-20260930", 9, 63));
+    }
+
+    [Fact]
+    public void Does_not_take_a_build_from_master_of_2013_for_a_new_one()
+    {
+        // The ffmpeg.exe a Python package put on PATH: the cause of B20's "FFmpeg is installed, the app does not work"
+        var version = FfmpegVersion.Parse("""
+            ffmpeg version N-55702-g920046a
+            built on Aug 21 2013 18:10:00 with gcc 4.7.3 (GCC)
+            configuration: --enable-gpl --enable-libvpx
+            libavutil      52. 42.100 / 52. 42.100
+            libavcodec     55. 29.100 / 55. 29.100
+            """);
+
+        version.Should().Be(new FfmpegVersion("N-55702-g920046a", null, 55));
+        version!.IsSupported.Should().BeFalse();
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("ffprobe version 9.0 Copyright (c) 2007-2026 the FFmpeg developers")]
@@ -37,13 +69,16 @@ public sealed class FfmpegVersionTests
     }
 
     [Theory]
-    [InlineData(9, true)]
-    [InlineData(10, true)]
-    [InlineData(null, true)]
-    [InlineData(8, false)]
-    [InlineData(7, false)]
-    public void Supports_9_0_and_newer_and_builds_from_master(int? major, bool supported)
+    [InlineData(9, null, true)]
+    [InlineData(10, null, true)]
+    [InlineData(8, null, false)]
+    [InlineData(7, 63, false)]
+    [InlineData(null, 63, true)]
+    [InlineData(null, 64, true)]
+    [InlineData(null, 62, false)]
+    [InlineData(null, null, false)]
+    public void Supports_9_0_and_newer_and_builds_from_master_with_its_libavcodec(int? major, int? libavcodec, bool supported)
     {
-        new FfmpegVersion("any", major).IsSupported.Should().Be(supported);
+        new FfmpegVersion("any", major, libavcodec).IsSupported.Should().Be(supported);
     }
 }
