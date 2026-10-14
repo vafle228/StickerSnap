@@ -160,11 +160,11 @@ public sealed class TelegramStickerPublisherTests : IDisposable
     public async Task Downloads_a_sticker_from_where_get_file_points()
     {
         _api.Answer("file", "webm bytes");
-        using var destination = new MemoryStream();
+        var destination = Path.Combine(_files.FullName, "downloaded.webm");
 
         await Publisher.DownloadAsync("CAACAgIAAxkBAAIBc2", destination, Cancel);
 
-        System.Text.Encoding.UTF8.GetString(destination.ToArray()).Should().Be("webm bytes");
+        (await File.ReadAllTextAsync(destination, Cancel)).Should().Be("webm bytes");
         _api.Single("file").Address.AbsolutePath.Should().Be($"/file/bot{BotApiStub.Token}/stickers/file_7.webm");
     }
 

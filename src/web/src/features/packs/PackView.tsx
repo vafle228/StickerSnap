@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Badge,
   Banner,
@@ -18,8 +18,9 @@ import { t } from "../../shared/strings/ru";
 import { selectOnceLoaded } from "../projects/actions";
 import { when } from "../projects/format";
 import { usePackActions } from "./actions";
-import { isFull, packBadge, placeholder, shortLink } from "./format";
+import { isFull, packBadge, shortLink } from "./format";
 import styles from "./PacksScreen.module.css";
+import { StickerMedia } from "./StickerMedia";
 import { usePacksUi } from "./store";
 
 type Action = "open" | "reveal" | "replace" | "remove";
@@ -38,6 +39,11 @@ export function PackView({ summary }: { summary: PackSummary }) {
     selectOnceLoaded(projectId, segmentId);
   };
   const [menu, setMenu] = useState<{ id: string; anchor: HTMLElement } | null>(null);
+
+  // Opening a pack checks it with Telegram: stickers deleted through @Stickers drop out
+  useEffect(() => {
+    void actions.sync(summary.name, { quiet: true });
+  }, [actions, summary.name]);
 
   const gone = summary.status === "missing";
   const full = isFull(summary);
@@ -179,7 +185,6 @@ interface StickerCellProps {
 /** One sticker: its art on the checker, its emoji, and where it came from. A click on it opens
  *  that project in the editor; one without a project only has its «⋯». */
 function StickerCell({ sticker, index, menuOpen, onMenu, onOpenProject }: StickerCellProps) {
-  const art = placeholder(index);
   const origin = sticker.origin;
   const project = origin?.projectStatus === "ok" ? origin : undefined;
   const emoji = sticker.emoji.join(" ");
@@ -187,10 +192,11 @@ function StickerCell({ sticker, index, menuOpen, onMenu, onOpenProject }: Sticke
   const body = (
     <>
       <span className={styles.stickerArt}>
-        <span
-          className={styles.stickerShape}
-          style={{ background: art.tint, borderRadius: art.radius }}
-          aria-hidden
+        <StickerMedia
+          src={sticker.mediaUrl}
+          index={index}
+          playing
+          shapeClassName={styles.stickerShape}
         />
       </span>
       <span className={styles.stickerEmoji} aria-label={t("packs.emoji", { emoji })}>

@@ -1,6 +1,7 @@
 using StickerSnap.Application.Projects;
 using StickerSnap.Core.Account;
 using StickerSnap.Core.Jobs;
+using StickerSnap.Core.Packs;
 using StickerSnap.Core.Settings;
 
 namespace StickerSnap.Application.Events;
@@ -26,4 +27,7 @@ public interface IEventPublisher
 
     /// <summary>accountChanged: a link given out, Start pressed, a code expired, «Отмена», «Отвязать», a check that changed the state.</summary>
     Task AccountChangedAsync(AccountLink link, CancellationToken cancellationToken);
+
+    /// <summary>packChanged: a check with Telegram, «Добавить по ссылке», a deleted sticker, and later a sent one.</summary>
+    Task PackChangedAsync(Pack pack, CancellationToken cancellationToken);
 }

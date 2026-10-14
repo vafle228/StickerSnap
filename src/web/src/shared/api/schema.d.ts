@@ -530,7 +530,10 @@ export interface paths {
         put?: never;
         /**
          * «Добавить по ссылке»
-         * @description Артборды 7, 12. Этап 1c. Принимает только наши паки, чужой — 422 `not_our_pack`.
+         * @description Артборды 7, 12. Этап 1c. Принимает только наши паки, чужой — 422 `not_our_pack`, без запроса
+         *     в Telegram. Понимает https://t.me/addstickers/<name>, то же без https:// или на telegram.me,
+         *     tg://addstickers?set=<name> и имя само по себе; ссылка без имени — 400 `bad_request` с
+         *     `fields.link: ["no_pack"]`.
          */
         post: operations["importPack"];
         delete?: never;
@@ -627,7 +630,8 @@ export interface paths {
         post?: never;
         /**
          * Удалить стикер из пака в Telegram
-         * @description Артборд 7-7. Этап 1c. Подтверждение на клиенте.
+         * @description Артборд 7-7. Этап 1c. Подтверждение на клиенте. Стикер, которого в Telegram уже нет, — тоже 204;
+         *     пропавший из Telegram пак — 404 `pack_not_found`, в списке он становится `missing`.
          */
         delete: operations["deletePackSticker"];
         options?: never;
@@ -649,7 +653,8 @@ export interface paths {
         };
         /**
          * Файл стикера для плитки
-         * @description Артборд 7. Этап 1c. Сервер кеширует его из Telegram.
+         * @description Артборд 7. Этап 1c. Сервер скачивает его через бота один раз и держит на диске: токен в SPA
+         *     не уходит, открытый раньше стикер показывается без сети.
          */
         get: operations["getPackStickerMedia"];
         put?: never;
@@ -1071,6 +1076,7 @@ export interface components {
             count: number;
             /** @description 120 или 200 */
             limit: number;
+            /** @description Файл первого стикера, то же, что его mediaUrl (G5); у пустого пака нет */
             coverUrl?: string;
             status: components["schemas"]["PresenceStatus"];
             /**

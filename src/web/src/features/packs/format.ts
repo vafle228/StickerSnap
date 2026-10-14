@@ -45,7 +45,7 @@ const TINTS = ["lilac", "peach", "sky", "pink"] as const;
 const SHAPES = ["999px", "20px", "999px", "16px", "20px"] as const;
 
 /** Placeholder art of a sticker with no file to show: a tinted shape that differs from its
- *  neighbours, as the artboard draws them. Real files come from Telegram in stage 1c. */
+ *  neighbours, as the artboard draws them. */
 export function placeholder(index: number): { tint: string; radius: string } {
   return {
     tint: `var(--tint-${TINTS[index % TINTS.length]})`,

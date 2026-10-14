@@ -53,7 +53,7 @@ public sealed class BotTokenLoggingTests : IDisposable
     public async Task Writes_no_token_into_the_log_of_a_call_that_succeeds()
     {
         await _services.GetRequiredService<IBotChat>().GetBotAsync(Cancel);
-        await _services.GetRequiredService<IStickerPublisher>().DownloadAsync("CAACAgIAAxkBAAIBc2", Stream.Null, Cancel);
+        await _services.GetRequiredService<IStickerPublisher>().DownloadAsync("CAACAgIAAxkBAAIBc2", Path.Combine(_data.FullName, "sticker.webm"), Cancel);
 
         _api.Requests.Should().HaveCount(3);
         _logs.Messages.Should().NotContain(message => message.Contains(BotApiStub.Token));

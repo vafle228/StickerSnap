@@ -12,6 +12,7 @@ using StickerSnap.Application.Sources;
 using StickerSnap.Infrastructure.Account;
 using StickerSnap.Infrastructure.Ffmpeg;
 using StickerSnap.Infrastructure.Files;
+using StickerSnap.Infrastructure.Packs;
 using StickerSnap.Infrastructure.Projects;
 using StickerSnap.Infrastructure.Settings;
 using StickerSnap.Infrastructure.Sources;
@@ -34,6 +35,7 @@ public static class DependencyInjection
         services.AddSingleton<IFolderAccess, FolderAccess>();
         services.AddSingleton<ISettingsRepository, JsonSettingsRepository>();
         services.AddSingleton<IAccountRepository, JsonAccountRepository>();
+        services.AddSingleton<IPackRepository, JsonPackRepository>();
         services.AddSingleton<IProjectStore, ProjectFileStore>();
         services.AddSingleton<IProjectRegistry, JsonProjectRegistry>();
         services.AddSingleton<ISourcePresence, SourcePresence>();
