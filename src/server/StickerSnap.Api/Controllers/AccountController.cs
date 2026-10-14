@@ -23,7 +23,7 @@ public sealed class AccountController : ControllerBase
     [ProducesResponseType(typeof(AccountLink), StatusCodes.Status200OK)]
     [ProducesDefaultResponseType(typeof(ProblemDetails))]
     public async Task<IActionResult> Get(CancellationToken cancellationToken) =>
-        Ok(AccountLink.From(await _service.GetAsync(cancellationToken)));
+        Link(await _service.GetAsync(cancellationToken));
 
     /// <summary>A one-time code in a link to the bot; Start pressed comes as accountChanged.</summary>
     [HttpPost("link", Name = "startAccountLink")]
@@ -31,19 +31,23 @@ public sealed class AccountController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
     [ProducesDefaultResponseType(typeof(ProblemDetails))]
     public async Task<IActionResult> StartLink(CancellationToken cancellationToken) =>
-        Ok(AccountLink.From(await _service.StartLinkAsync(cancellationToken)));
+        Link(await _service.StartLinkAsync(cancellationToken));
 
     /// <summary>«Отмена» while waiting for Start, otherwise «Отвязать».</summary>
     [HttpDelete("link", Name = "deleteAccountLink")]
     [ProducesResponseType(typeof(AccountLink), StatusCodes.Status200OK)]
     [ProducesDefaultResponseType(typeof(ProblemDetails))]
     public async Task<IActionResult> DeleteLink(CancellationToken cancellationToken) =>
-        Ok(AccountLink.From(await _service.CancelOrUnlinkAsync(cancellationToken)));
+        Link(await _service.CancelOrUnlinkAsync(cancellationToken));
 
     /// <summary>«Проверить связь»: whether the bot can still act for the user.</summary>
     [HttpPost("check", Name = "checkAccount")]
     [ProducesResponseType(typeof(AccountLink), StatusCodes.Status200OK)]
     [ProducesDefaultResponseType(typeof(ProblemDetails))]
     public async Task<IActionResult> Check(CancellationToken cancellationToken) =>
-        Ok(AccountLink.From(await _service.CheckAsync(cancellationToken)));
+        Link(await _service.CheckAsync(cancellationToken));
+
+    /// <summary>Written as the base type, so the body carries its `state`.</summary>
+    private static OkObjectResult Link(Core.Account.AccountLink link) =>
+        new(AccountLink.From(link)) { DeclaredType = typeof(AccountLink) };
 }

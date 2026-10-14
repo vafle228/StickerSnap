@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
 using StickerSnap.Api.Contracts;
 using StickerSnap.Application.App;
 using StickerSnap.Application.Events;
@@ -12,7 +14,11 @@ namespace StickerSnap.Api.Events;
 /// Sends the events to every client of <see cref="EventsHub"/> under the contract's names, with
 /// the contract's payloads. A failed send is logged and dropped: the SPA rereads after a reconnect.
 /// </summary>
-public sealed class HubEventPublisher(IHubContext<EventsHub> hub, IHostInfo host, ILogger<HubEventPublisher> logger) : IEventPublisher
+public sealed class HubEventPublisher(
+    IHubContext<EventsHub> hub,
+    IHostInfo host,
+    IOptions<JsonHubProtocolOptions> json,
+    ILogger<HubEventPublisher> logger) : IEventPublisher
 {
     public Task SettingsChangedAsync(UserSettings settings, CancellationToken cancellationToken) =>
         SendAsync("settingsChanged", Settings.From(settings), cancellationToken);
@@ -27,7 +33,11 @@ public sealed class HubEventPublisher(IHubContext<EventsHub> hub, IHostInfo host
         SendAsync("jobUpdated", Job.From(job, host.Mode), cancellationToken);
 
     public Task AccountChangedAsync(Core.Account.AccountLink link, CancellationToken cancellationToken) =>
-        SendAsync("accountChanged", AccountLink.From(link), cancellationToken);
+        // As the base type, so the payload carries its `state`: the hub writes an object as its own type
+        SendAsync(
+            "accountChanged",
+            JsonSerializer.SerializeToElement(AccountLink.From(link), json.Value.PayloadSerializerOptions),
+            cancellationToken);
 
     private async Task SendAsync(string name, object payload, CancellationToken cancellationToken)
     {
