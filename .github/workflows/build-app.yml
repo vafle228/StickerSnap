@@ -11,8 +11,22 @@ name: Build app
 # that is another build than Pipeline's portable `dotnet build`, so there is nothing to take over.
 # The pinned FFmpeg goes in next to the server (tools/fetch-ffmpeg.mjs, checked by SHA-256).
 # Shared setup steps live in .github/actions.
+#
+# "Publish release" (main only) also publishes a GitHub Release with the installers, so anyone can
+# download them from the Releases page: it tags the commit v<version>, where the version is the one
+# typed in, or the latest release with its patch number raised (the desktop package.json version
+# while there is none). A tag v* pushed by hand publishes its release the same way.
 on:
   workflow_dispatch:
+    inputs:
+      release:
+        description: Publish a GitHub Release with the installers (main only)
+        type: boolean
+        default: false
+      version:
+        description: "Release version, like 1.2.0 (empty: the latest release with the patch raised)"
+        type: string
+        default: ""
   push:
     tags: ["v*"]
 
@@ -29,6 +43,54 @@ env:
   DOTNET_NOLOGO: true
 
 jobs:
+  # The version the installers carry and, for a release, its tag; a release fails here, before
+  # anything is built, when it is not on main or its tag is taken
+  version:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pick.outputs.version }}
+      release: ${{ steps.pick.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          RELEASE: ${{ github.ref_type == 'tag' || inputs.release }}
+          TYPED: ${{ inputs.version }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="${GITHUB_REF_NAME#v}"
+          elif [ -n "$TYPED" ]; then
+            version="${TYPED#v}"
+          else
+            latest=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
+            if [ -n "$latest" ]; then
+              IFS=. read -r major minor patch <<<"${latest#v}"
+              version="$major.$minor.$((patch + 1))"
+            else
+              version=$(jq -r .version src/desktop/package.json)
+            fi
+          fi
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::\"$version\" is not a version like 1.2.0"
+            exit 1
+          fi
+          if [ "$RELEASE" = true ] && [ "$GITHUB_REF_TYPE" != tag ]; then
+            if [ "$GITHUB_REF" != refs/heads/main ]; then
+              echo "::error::A release is published only from main: run Build app on main"
+              exit 1
+            fi
+            if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+              echo "::error::v$version is already released: type a newer version"
+              exit 1
+            fi
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
+          echo "Version $version, release: $RELEASE" >> "$GITHUB_STEP_SUMMARY"
+
   # The Pipeline run that passed on this commit and still has its production SPA (7 days)
   pipeline:
     name: Pipeline of the commit
@@ -66,7 +128,7 @@ jobs:
   package:
     # Static name: GitHub appends the matrix values itself, "Installer (Windows, ...)"
     name: Installer
-    needs: pipeline
+    needs: [version, pipeline]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -107,6 +169,8 @@ jobs:
         with:
           rid: ${{ matrix.rid }}
 
+      # The version goes into the installers' names and the app's metadata
+      - run: npm pkg set version=${{ needs.version.outputs.version }} -w src/desktop
       - run: npm run dist -w src/desktop
 
       # Ubuntu 24.04 forbids the user namespaces Chromium's sandbox needs on CI runners
@@ -142,3 +206,26 @@ jobs:
             src/desktop/playwright-report
             src/desktop/test-results
           retention-days: 7
+
+  # Tags the commit and publishes the release with both systems' installers
+  release:
+    name: Release
+    needs: [version, package]
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: StickerSnap-*
+          path: installers
+          merge-multiple: true
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: v${{ needs.version.outputs.version }}
+        run: |
+          gh release create "$TAG" installers/* -R "$REPO" --target "$GITHUB_SHA" \
+            --title "StickerSnap ${TAG#v}" --generate-notes
+          echo "✅ Released: https://github.com/$REPO/releases/tag/$TAG" >> "$GITHUB_STEP_SUMMARY"
