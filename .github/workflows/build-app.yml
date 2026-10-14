@@ -52,7 +52,7 @@ jobs:
       version: ${{ steps.pick.outputs.version }}
       release: ${{ steps.pick.outputs.release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - id: pick
@@ -149,7 +149,7 @@ jobs:
               src/desktop/release/*.AppImage
               src/desktop/release/*.deb
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/node
       - uses: ./.github/actions/dotnet
