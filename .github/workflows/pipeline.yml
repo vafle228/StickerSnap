@@ -91,7 +91,7 @@ jobs:
       - run: npm run build
       # the production build carries no demo data, dev bar or showcase
       - run: npm run check:prod-build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: spa-dist
           path: src/server/StickerSnap.Api/wwwroot
@@ -109,7 +109,7 @@ jobs:
         working-directory: src/server
       # bin and obj in one tarball, so the test jobs get the same layout back (actions/server-build)
       - run: find src/server -type d \( -name bin -o -name obj \) -prune -print0 | tar --null -czf server-build.tgz -T -
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: server-build
           path: server-build.tgz
@@ -186,7 +186,7 @@ jobs:
       - uses: ./.github/actions/playwright
       - run: npm run e2e
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: |
@@ -207,7 +207,7 @@ jobs:
       - uses: ./.github/actions/node
       - uses: ./.github/actions/dotnet
       - uses: ./.github/actions/server-build
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: spa-dist
           path: src/server/StickerSnap.Api/wwwroot
@@ -216,7 +216,7 @@ jobs:
       # CI is set, so the server runs from the build stage's output (dotnet run --no-build)
       - run: npm run e2e:server
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report-server
           path: |

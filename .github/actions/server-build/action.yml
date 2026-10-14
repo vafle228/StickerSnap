@@ -3,7 +3,7 @@ description: Unpacks the server-build artifact (bin and obj) back into src/serve
 runs:
   using: composite
   steps:
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       with:
         name: server-build
     - run: tar -xzf server-build.tgz

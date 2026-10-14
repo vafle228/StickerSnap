@@ -155,7 +155,7 @@ jobs:
       - uses: ./.github/actions/dotnet
 
       # The production SPA Pipeline built, checked and tested (never the dev build with the demo data)
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: spa-dist
           path: src/server/StickerSnap.Api/wwwroot
@@ -185,7 +185,7 @@ jobs:
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a npx playwright test; else npx playwright test; fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: StickerSnap-${{ matrix.rid }}
           path: ${{ matrix.installers }}
@@ -199,7 +199,7 @@ jobs:
         run: echo "$LINE" >> "$GITHUB_STEP_SUMMARY"
 
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-report-${{ matrix.rid }}
           path: |
@@ -216,7 +216,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: StickerSnap-*
           path: installers
