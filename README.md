@@ -136,7 +136,11 @@ data or the dev bar: `npm run check:prod-build` checks `src/server/StickerSnap.A
 every build. CI packages only production: the installers for both systems come from the manual
 workflow «Build app» (GitHub → Actions → Build app → Run workflow → pick a branch → Run, or a tag
 `v*`); they are attached to the run under Artifacts. It builds only a commit Pipeline passed, and
-takes the production SPA from that Pipeline run. Each installer carries the pinned FFmpeg next to the
+takes the production SPA from that Pipeline run. To give the app to other people, run it on main with
+«Publish release» ticked: it tags the commit `v<version>` and publishes a GitHub Release with both
+installers on the repository's Releases page. The version is the one typed in, or the latest
+release with its patch number raised; the build fails before packaging when that version is
+already released. Each installer carries the pinned FFmpeg next to the
 server (`npm run fetch:ffmpeg`, which `npm run package` runs too); the smoke test checks the app
 renders with it and not with an FFmpeg on PATH.
 
