@@ -43,7 +43,7 @@ public sealed class JsonAccountRepositoryTests : IDisposable
         await Repository().SaveAsync(new AccountRecord(new LinkedUser(42, "Дима", "dima"), false, 815000002), Cancel);
 
         var json = await File.ReadAllTextAsync(FilePath, Cancel);
-        json.Should().Contain("\"id\": 42").And.Contain("\"username\": \"dima\"").And.Contain("\"lastUpdate\": 815000002");
+        json.Should().Contain("\"id\": 42").And.Contain("\"firstName\": \"Дима\"").And.Contain("\"username\": \"dima\"").And.Contain("\"lastUpdate\": 815000002");
     }
 
     [Theory]
