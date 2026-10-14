@@ -147,7 +147,7 @@
     10px;
 }
 
-.packCover img {
+.packCover video {
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -344,6 +344,12 @@ button.stickerOpen:focus-visible {
   border-radius: 12px;
   background: repeating-conic-gradient(var(--checker-b) 0% 25%, var(--checker-a) 0% 50%) 0 0 / 16px
     16px;
+}
+
+.stickerArt video {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
 }
 
 .stickerShape {

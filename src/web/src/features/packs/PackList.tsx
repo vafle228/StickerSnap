@@ -1,9 +1,9 @@
 import { Badge } from "../../ds";
-import { mediaSrc } from "../../shared/api/client";
 import type { PackSummary } from "../../shared/api/types";
 import { t } from "../../shared/strings/ru";
-import { packMeta, placeholder } from "./format";
+import { packMeta } from "./format";
 import styles from "./PacksScreen.module.css";
+import { StickerMedia } from "./StickerMedia";
 
 interface PackListProps {
   packs: PackSummary[];
@@ -19,7 +19,6 @@ export function PackList({ packs, current, onOpen }: PackListProps) {
       <ul className={styles.listItems}>
         {packs.map((p, i) => {
           const meta = packMeta(p);
-          const art = placeholder(i);
           return (
             <li key={p.name}>
               <button
@@ -29,14 +28,7 @@ export function PackList({ packs, current, onOpen }: PackListProps) {
                 onClick={() => onOpen(p.name)}
               >
                 <span className={styles.packCover} data-gone={p.status === "missing"} aria-hidden>
-                  {p.coverUrl ? (
-                    <img src={mediaSrc(p.coverUrl)} alt="" />
-                  ) : (
-                    <span
-                      className={styles.shape}
-                      style={{ background: art.tint, borderRadius: art.radius }}
-                    />
-                  )}
+                  <StickerMedia src={p.coverUrl} index={i} shapeClassName={styles.shape} />
                 </span>
                 <span className={styles.packText}>
                   <span className={styles.packTitle}>{p.title}</span>

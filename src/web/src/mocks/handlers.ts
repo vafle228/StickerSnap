@@ -245,7 +245,8 @@ export function handlers(db: MockDb) {
       const problems: PackNameCheck["problems"] = [];
       if (!name) problems.push("empty");
       if (name.length > 64 - BOT_TAIL.length) problems.push("too_long");
-      if (/[^a-z0-9_]/i.test(name)) problems.push("bad_chars");
+      // Two underscores in a row, also with the tail's, as the server refuses them
+      if (/[^a-z0-9_]|__|_$/i.test(name)) problems.push("bad_chars");
       if (name && !/^[a-z]/i.test(name)) problems.push("bad_start");
       const taken = problems.length === 0 && Boolean(findPack(`${name}${BOT_TAIL}`));
       if (taken) problems.push("taken");
@@ -266,6 +267,10 @@ export function handlers(db: MockDb) {
       fakeHub.emit("packChanged", packSummary(pack));
       return noContent();
     }),
+    // Demo stickers have no files: the tile draws its placeholder instead
+    route("get", "/api/v1/packs/{pack}/stickers/{stickerId}/media", () =>
+      problem("file_not_found"),
+    ),
     route("delete", "/api/v1/packs/{pack}", ({ params }) => {
       db.packs = db.packs.filter((p) => p.name !== params.pack);
       return noContent();
