@@ -1,5 +1,7 @@
+using StickerSnap.Core.Projects;
 using StickerSnap.Core.Render;
 using StickerSnap.Core.Telegram;
+using StickerSnap.Tests.Core.Projects;
 
 namespace StickerSnap.Tests.Core.Render;
 
@@ -56,6 +58,33 @@ public sealed class FitLadderTests
 
         rungs.Should().AllSatisfy(r => r.Fps.Should().Be(10));
         rungs.SelectMany(r => r.Concessions).Should().NotContain(c => c is Concession.Fps);
+    }
+
+    [Fact]
+    public void Takes_a_long_sticker_down_to_12_fps_before_it_raises_the_crf()
+    {
+        var rungs = FitLadder.Rungs(Spec, LadderProfile.Long);
+
+        rungs.Select(r => (r.Fps, r.Crf)).Should().StartWith([(30, 40), (24, 40), (20, 40), (15, 40), (12, 40), (12, 46)]);
+    }
+
+    [Theory]
+    [InlineData(89, false, false)]
+    [InlineData(149, false, false)]
+    [InlineData(89, true, false)]
+    [InlineData(149, true, true)]
+    public void Gives_the_long_ladder_only_to_a_sticker_that_plays_past_3_seconds(int outFrame, bool longSticker, bool climbsLong)
+    {
+        var segment = Scenes.Segment with
+        {
+            InFrame = 0,
+            OutFrame = outFrame,
+            LongSticker = longSticker,
+            Frame = new SegmentFrame.Crop(CropPreset.Square, new FrameRect(420, 0, 1080, 1080)),
+        };
+        var spec = SceneCompiler.Compile(segment, Media.Landscape, Sticker);
+
+        LadderProfile.For(spec, Sticker).Should().BeSameAs(climbsLong ? LadderProfile.Long : LadderProfile.Sticker);
     }
 
     [Fact]
