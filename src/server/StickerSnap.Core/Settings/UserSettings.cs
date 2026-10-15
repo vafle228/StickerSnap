@@ -9,6 +9,18 @@ public sealed record UserSettings(Theme Theme, Accent Accent, Folders Folders, I
     /// <summary>A first launch: the system's theme, indigo, no emoji yet.</summary>
     public static UserSettings Default(Folders folders) => new(Theme.System, Accent.Indigo, folders, []);
 
+    /// <summary>How many emoji «Недавние» of the emoji picker keeps.</summary>
+    public const int MaxRecentEmoji = 24;
+
+    /// <summary>
+    /// After a publication: <paramref name="used"/> first, in its order, then the emoji
+    /// known before, each once, at most <see cref="MaxRecentEmoji"/>.
+    /// </summary>
+    public UserSettings WithRecentEmoji(IEnumerable<string> used) => this with
+    {
+        RecentEmoji = [.. used.Concat(RecentEmoji).Distinct(StringComparer.Ordinal).Take(MaxRecentEmoji)],
+    };
+
     /// <summary>These settings with the fields <paramref name="change"/> names replaced.</summary>
     public UserSettings With(SettingsChange change) => this with
     {

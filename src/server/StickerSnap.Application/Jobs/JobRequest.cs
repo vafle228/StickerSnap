@@ -42,9 +42,6 @@ public abstract record JobRequest(Guid ProjectId)
 /// <param name="Replace">The sticker it takes the place of, keeping its position</param>
 public sealed record PublishItem(string SegmentId, IReadOnlyList<string> Emoji, StickerRef? Replace);
 
-/// <summary>A sticker in a pack (contract, StickerRef).</summary>
-public sealed record StickerRef(string Pack, string StickerId);
-
 /// <summary>Where a publication goes: a pack of the user's or a new one.</summary>
 public abstract record PublishTarget
 {
