@@ -49,8 +49,17 @@ public abstract record PublishTarget
     {
     }
 
-    public sealed record Existing(string Pack) : PublishTarget;
+    /// <summary>The whole name of the pack the stickers go to.</summary>
+    public abstract string PackName { get; }
+
+    public sealed record Existing(string Pack) : PublishTarget
+    {
+        public override string PackName => Pack;
+    }
 
     /// <param name="Name">The link, without _by_ and the bot's name</param>
-    public sealed record New(string Title, string Name, PackKind Type) : PublishTarget;
+    public sealed record New(string Title, string Name, PackKind Type) : PublishTarget
+    {
+        public override string PackName => PackNames.Full(Name);
+    }
 }

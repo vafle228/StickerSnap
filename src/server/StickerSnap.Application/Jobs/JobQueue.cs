@@ -43,7 +43,7 @@ public sealed class JobQueue : IJobQueue, IAsyncDisposable
     /// <inheritdoc/>
     public Job Enqueue(JobRequest request)
     {
-        var pack = request is JobRequest.Publish { Target: PublishTarget.Existing existing } ? existing.Pack : null;
+        var pack = request is JobRequest.Publish publish ? publish.Target.PackName : null;
         var stopped = new List<Run>();
         Job job;
         lock (_gate)
@@ -107,7 +107,12 @@ public sealed class JobQueue : IJobQueue, IAsyncDisposable
         lock (_gate)
         {
             var entry = Find(id);
-            if (!entry.Job.IsOver) return entry.Job;
+            if (!entry.Job.IsOver)
+            {
+                // «Повторить сейчас» while Telegram asked to wait: the run goes on at once
+                entry.Run?.Handle?.WakeUp();
+                return entry.Job;
+            }
             if (!entry.Job.CanRetry)
                 throw new AppException(ErrorCode.BadRequest, $"Job {id} succeeded: there is nothing to retry");
 
@@ -141,6 +146,8 @@ public sealed class JobQueue : IJobQueue, IAsyncDisposable
         }
         _stopping.Dispose();
     }
+
+    internal TimeProvider Clock => _clock;
 
     internal Job SnapshotOf(JobRun run)
     {
