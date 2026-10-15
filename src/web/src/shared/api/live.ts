@@ -58,7 +58,14 @@ export function connectLive(client: QueryClient, hub: EventHub): () => void {
 
   const off = [
     hub.onState(onState),
-    hub.on("jobUpdated", (job) => applyJob(client, job)),
+    hub.on("jobUpdated", (job) => {
+      applyJob(client, job);
+      // A publication that ended changed packs and the window's draft: «Отправляем…» is over
+      if (job.kind === "publish" && !isRunning(job)) {
+        void client.invalidateQueries({ queryKey: keys.packs });
+        void client.invalidateQueries({ queryKey: ["publish-draft", job.projectId] });
+      }
+    }),
     hub.on("projectChanged", (project) => {
       // A save moves the project to the top of «Недавние».
       client.setQueryData<ProjectSummary[]>(

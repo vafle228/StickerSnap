@@ -3,11 +3,16 @@ import { useMemo } from "react";
 import { api, call } from "../../shared/api/client";
 import { applyJob } from "../../shared/api/live";
 import { keys } from "../../shared/api/queries";
-import type { Pack, PackSticker, PackSummary, Project } from "../../shared/api/types";
+import type { JobRequest, Pack, PackSticker, PackSummary, Project } from "../../shared/api/types";
 import { confirm, notify, notifyProblem } from "../../shared/notify";
 import { platform } from "../../shared/platform";
 import { t } from "../../shared/strings/ru";
+import { flushSave } from "../editor/model/autosave";
+import { useEditor } from "../editor/model/store";
 import { usePacksUi } from "./store";
+
+/** What the window sends; the revision is added at the moment of sending. */
+export type PublishRequest = Omit<Extract<JobRequest, { kind: "publish" }>, "kind" | "revision">;
 
 /** What «Мои паки» does with packs and their stickers (artboard 7). Every action reports its
  *  own failure as the popup of artboard 8; none throws. */
@@ -131,6 +136,25 @@ export function usePackActions() {
       }
     };
 
-    return { sync, importPack, forget, removeSticker, revealWebm, retry };
+    /** «Опубликовать N стикеров» (artboard 7): a job by the saved revision, as an export goes.
+     *  The project open in the editor is saved first; another one is read for its revision.
+     *  Throws, so the window stays open with what was picked. */
+    const publish = async (request: PublishRequest) => {
+      const revision =
+        useEditor.getState().projectId === request.projectId
+          ? await flushSave()
+          : (
+              await call(
+                api.GET("/api/v1/projects/{id}", { params: { path: { id: request.projectId } } }),
+              )
+            ).revision;
+      const job = await call(
+        api.POST("/api/v1/jobs", { body: { ...request, kind: "publish", revision } }),
+      );
+      applyJob(client, job);
+      return job;
+    };
+
+    return { sync, importPack, forget, removeSticker, revealWebm, retry, publish };
   }, [client]);
 }

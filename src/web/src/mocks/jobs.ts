@@ -1,5 +1,5 @@
 import type { ExportResult, Job, JobItem, JobRequest, Project, Segment } from "../shared/api/types";
-import { app, type MockDb } from "./data";
+import { app, packSummary, type MockDb } from "./data";
 import {
   bytesPerFrame,
   climb,
@@ -301,17 +301,61 @@ function publishStage(fraction: number): Job["progress"]["stage"] {
   return fraction < 0.6 ? "pass2" : "send";
 }
 
-function published(job: Job): Job {
+type PublishRequest = Extract<JobRequest, { kind: "publish" }>;
+
+/** The publication done: its stickers in the pack (a new one is made), «Недавние» updated, as the
+ *  server does it (packChanged after the stickers, settingsChanged at the end). */
+function published(db: MockDb, job: Job, request: PublishRequest): Job {
+  const name = job.pack ?? "";
+  const project = db.projects.find((p) => p.id === request.projectId);
   const items = job.items.map((item, i): JobItem => ({
     ...item,
     state: "done",
     fraction: 1,
-    sticker: { pack: job.pack ?? "", stickerId: `sticker-${job.id}-${i}` },
+    sticker: { pack: name, stickerId: `sticker-${job.id}-${i}` },
   }));
+  let pack = db.packs.find((p) => p.name === name);
+  if (!pack && request.target.kind === "new") {
+    pack = {
+      name,
+      title: request.target.title,
+      type: request.target.type,
+      count: 0,
+      limit: request.target.type === "custom_emoji" ? 200 : 120,
+      status: "ok",
+      checkedAt: new Date().toISOString(),
+      link: `https://t.me/addstickers/${name}`,
+      stickers: [],
+    };
+    db.packs.push(pack);
+  }
+  if (pack) {
+    for (const [i, item] of request.items.entries()) {
+      pack.stickers.push({
+        id: `sticker-${job.id}-${i}`,
+        emoji: item.emoji,
+        mediaUrl: `/api/v1/packs/${name}/stickers/sticker-${job.id}-${i}/media`,
+        origin: project && {
+          projectId: project.id,
+          projectName: project.name,
+          segmentId: item.segmentId,
+          projectStatus: "ok",
+        },
+      });
+    }
+    pack.count = pack.stickers.length;
+    fakeHub.emit("packChanged", packSummary(pack));
+  }
+  const sent = request.items.flatMap((item) => item.emoji);
+  db.settings = {
+    ...db.settings,
+    recentEmoji: [...new Set([...sent, ...db.settings.recentEmoji])].slice(0, 24),
+  };
+  fakeHub.emit("settingsChanged", db.settings);
   return { ...job, state: "succeeded", progress: { ...job.progress, fraction: 1 }, items };
 }
 
-function startPublish(db: MockDb, job: Job) {
+function startPublish(db: MockDb, job: Job, request: PublishRequest) {
   let step = 0;
   timers.set(
     job.id,
@@ -326,7 +370,7 @@ function startPublish(db: MockDb, job: Job) {
       step += 1;
       if (step >= STEPS) {
         stop(job.id);
-        put(db, published(current));
+        put(db, published(db, current, request));
         return;
       }
       const fraction = step / STEPS;
@@ -364,12 +408,14 @@ export function startJob(db: MockDb, request: JobRequest): Job {
     progress: { fraction: 0, stage: "probe" },
     items: itemsOf(request),
     pack:
-      request.kind === "publish" && request.target.kind === "existing"
-        ? request.target.pack
-        : undefined,
+      request.kind !== "publish"
+        ? undefined
+        : request.target.kind === "existing"
+          ? request.target.pack
+          : `${request.target.name}_by_${app.botUsername}`,
   };
   put(db, job);
-  if (request.kind === "publish") startPublish(db, job);
+  if (request.kind === "publish") startPublish(db, job, request);
   else startRender(db, job, request);
   return job;
 }
