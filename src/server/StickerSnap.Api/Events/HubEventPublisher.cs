@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using StickerSnap.Api.Contracts;
 using StickerSnap.Application.App;
 using StickerSnap.Application.Events;
+using StickerSnap.Application.Jobs;
 using StickerSnap.Application.Projects;
 using StickerSnap.Core.Settings;
 using Settings = StickerSnap.Api.Contracts.Settings;
@@ -14,10 +15,15 @@ namespace StickerSnap.Api.Events;
 /// Sends the events to every client of <see cref="EventsHub"/> under the contract's names, with
 /// the contract's payloads. A failed send is logged and dropped: the SPA rereads after a reconnect.
 /// </summary>
+/// <param name="services">
+/// Where packChanged finds the jobs for «Отправляем…»: the queue sends its events through this
+/// class, so it is asked for when an event goes, not taken in the constructor
+/// </param>
 public sealed class HubEventPublisher(
     IHubContext<EventsHub> hub,
     IHostInfo host,
     IOptions<JsonHubProtocolOptions> json,
+    IServiceProvider services,
     ILogger<HubEventPublisher> logger) : IEventPublisher
 {
     public Task SettingsChangedAsync(UserSettings settings, CancellationToken cancellationToken) =>
@@ -40,7 +46,7 @@ public sealed class HubEventPublisher(
             cancellationToken);
 
     public Task PackChangedAsync(Core.Packs.Pack pack, CancellationToken cancellationToken) =>
-        SendAsync("packChanged", PackSummary.From(pack), cancellationToken);
+        SendAsync("packChanged", PackSummary.From(pack, services.GetRequiredService<IJobService>().List()), cancellationToken);
 
     private async Task SendAsync(string name, object payload, CancellationToken cancellationToken)
     {

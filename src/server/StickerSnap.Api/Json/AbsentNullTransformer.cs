@@ -14,7 +14,11 @@ public sealed class AbsentNullTransformer : IOpenApiDocumentTransformer
 {
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
-        foreach (var schema in document.Components?.Schemas?.Values ?? []) Visit(schema);
+        foreach (var schema in document.Components?.Schemas?.Values ?? [])
+        {
+            DropNullValue(schema);
+            Visit(schema);
+        }
         return Task.CompletedTask;
     }
 
@@ -42,8 +46,10 @@ public sealed class AbsentNullTransformer : IOpenApiDocumentTransformer
         if (property is OpenApiSchema { Type: { } type } own && type.HasFlag(JsonSchemaType.Null))
         {
             own.Type = type & ~JsonSchemaType.Null;
+            own.Enum = own.Enum?.Where(value => !IsNullValue(value)).ToList();
             return own;
         }
+
 
         // A nullable reference to another schema: "oneOf": [{ "type": "null" }, { "$ref": … }]
         if (property.OneOf is { Count: 2 } branches && branches.Any(IsNull))
@@ -51,6 +57,22 @@ public sealed class AbsentNullTransformer : IOpenApiDocumentTransformer
 
         return null;
     }
+
+    /// <summary>
+    /// An enum used only as a nullable field (PackRefusal?) comes out with null among its values;
+    /// the field is left out instead, so the enum never holds null.
+    /// </summary>
+    private static void DropNullValue(IOpenApiSchema schema)
+    {
+        if (schema is OpenApiSchema { Enum: { } values } own && values.Any(IsNullValue))
+        {
+            own.Enum = [.. values.Where(value => !IsNullValue(value))];
+            if (own.Type is { } type) own.Type = type & ~JsonSchemaType.Null;
+        }
+    }
+
+    private static bool IsNullValue(System.Text.Json.Nodes.JsonNode? value) =>
+        value is null || value.GetValueKind() == System.Text.Json.JsonValueKind.Null;
 
     private static bool IsNull(IOpenApiSchema schema) => schema.Type == JsonSchemaType.Null;
 }
