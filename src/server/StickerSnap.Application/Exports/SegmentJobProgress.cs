@@ -8,12 +8,13 @@ namespace StickerSnap.Application.Exports;
 /// A render's progress as its job shows it: the stage and the step of the ladder for the job, the
 /// share for the segment, which is checked once the file is written.
 /// </summary>
-internal sealed class SegmentJobProgress(JobRun run, string segmentId) : IProgress<RenderProgress>
+/// <param name="share">The part of the segment's share the render takes: a publication leaves the rest to the send</param>
+internal sealed class SegmentJobProgress(JobRun run, string segmentId, double share = 1) : IProgress<RenderProgress>
 {
     public void Report(RenderProgress value)
     {
         run.Stage(StageOf(value.Stage), value.Attempt is { } attempt ? new JobAttempt(attempt.N, attempt.Concessions) : null);
-        run.Item(segmentId, value.Stage == RenderStage.Validate ? JobItemState.Validating : JobItemState.Exporting, value.Fraction);
+        run.Item(segmentId, value.Stage == RenderStage.Validate ? JobItemState.Validating : JobItemState.Exporting, value.Fraction * share);
     }
 
     private static JobStage StageOf(RenderStage stage) => stage switch

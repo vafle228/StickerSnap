@@ -1,12 +1,9 @@
-using StickerSnap.Application.Files;
 using StickerSnap.Application.Jobs;
 using StickerSnap.Application.Projects;
-using StickerSnap.Application.Render;
 using StickerSnap.Application.Settings;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Jobs;
 using StickerSnap.Core.Projects;
-using StickerSnap.Core.Render;
 
 namespace StickerSnap.Application.Exports;
 
@@ -19,9 +16,7 @@ namespace StickerSnap.Application.Exports;
 public sealed class ExportExecutor(
     IProjectService projects,
     ISettingsService settings,
-    ISegmentRenderService engine,
-    IStickerFolder folder,
-    IRenderedFiles files) : IJobExecutor
+    ISegmentExporter exporter) : IJobExecutor
 {
     public JobKind Kind => JobKind.Export;
 
@@ -47,56 +42,15 @@ public sealed class ExportExecutor(
             {
                 var segment = project.Scene.Segments.FirstOrDefault(segment => segment.Id == segmentId)
                     ?? throw new AppException(ErrorCode.BadRequest, $"Project {project.Id} has no segment {segmentId}");
-                run.Done(segmentId, export: await ExportAsync(run, project, segment, stickers, cancellationToken));
+                run.Item(segment.Id, JobItemState.Exporting, 0);
+                var export = await exporter.ExportAsync(
+                    project, segment, stickers, new SegmentJobProgress(run, segment.Id), cancellationToken);
+                run.Done(segmentId, export: export);
             }
             catch (AppException exception)
             {
                 run.ItemFailed(segmentId, exception);
             }
         }
-    }
-
-    private async Task<SegmentExport> ExportAsync(
-        JobRun run, Project project, Segment segment, string stickers, CancellationToken cancellationToken)
-    {
-        run.Item(segment.Id, JobItemState.Exporting, 0);
-        var last = project.Exports.GetValueOrDefault(segment.Id);
-        var slot = await folder.ReserveAsync(stickers, cancellationToken);
-        string path;
-        RenderedSegment rendered;
-        try
-        {
-            rendered = await engine.RenderAsync(
-                new SegmentRender(
-                    project.Source.Path, project.Source.Media, project.Scene, segment.Id, RenderEffort.Final, slot.TemporaryPath),
-                new SegmentJobProgress(run, segment.Id),
-                cancellationToken);
-            path = await folder.KeepAsync(
-                slot, StickerFileNames.Candidates(project.Name, segment.Name), last?.Path, cancellationToken);
-        }
-        catch
-        {
-            folder.Discard(slot);
-            throw;
-        }
-
-        // The file has its name: from here on its record follows it, whatever happens to the job
-        var fileId = await files.AddAsync(path, CancellationToken.None);
-        if (last is not null) await files.RemoveAsync(last.FileId, CancellationToken.None);
-
-        var export = new SegmentExport(
-            segment.Id,
-            project.Revision,
-            SegmentSignature.Of(segment, project.Source),
-            fileId,
-            path,
-            rendered.Bytes,
-            rendered.Output,
-            rendered.Crf,
-            rendered.Concessions,
-            rendered.Ladder,
-            rendered.Validation ?? throw new InvalidOperationException("A final render comes checked"));
-        await projects.RecordExportAsync(project.Id, export, CancellationToken.None);
-        return export;
     }
 }
