@@ -48,4 +48,18 @@ public sealed class UserSettingsTests
         new SettingsChange().IsEmpty.Should().BeTrue();
         new SettingsChange(ProjectsFolder: "/p").IsEmpty.Should().BeFalse();
     }
+
+    [Fact]
+    public void Puts_the_emoji_just_sent_first_each_once()
+    {
+        Current.WithRecentEmoji(["🐱", "🔥", "🐱"]).RecentEmoji.Should().Equal("🐱", "🔥", "😂");
+    }
+
+    [Fact]
+    public void Keeps_at_most_two_dozen_recent_emoji()
+    {
+        var many = Enumerable.Range(0, 30).Select(i => char.ConvertFromUtf32(0x1F600 + i)).ToList();
+
+        Current.WithRecentEmoji(many).RecentEmoji.Should().Equal(many.Take(UserSettings.MaxRecentEmoji));
+    }
 }
