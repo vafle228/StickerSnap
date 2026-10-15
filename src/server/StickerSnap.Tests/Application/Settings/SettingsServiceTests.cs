@@ -120,4 +120,24 @@ public sealed class SettingsServiceTests
         await _repository.DidNotReceiveWithAnyArgs().SaveAsync(default!, Cancel);
         await _events.DidNotReceiveWithAnyArgs().SettingsChangedAsync(default!, Cancel);
     }
+
+    [Fact]
+    public async Task Remembers_the_emoji_of_a_publication_and_announces_them()
+    {
+        var updated = await _service.RememberEmojiAsync(["🐱", "😂"], Cancel);
+
+        updated.RecentEmoji.Should().Equal("🐱", "😂");
+        await _repository.Received(1).SaveAsync(updated, Arg.Any<CancellationToken>());
+        await _events.Received(1).SettingsChangedAsync(updated, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Saves_nothing_when_the_recent_emoji_stay_as_they_were()
+    {
+        _repository.GetAsync(Arg.Any<CancellationToken>()).Returns(Saved with { RecentEmoji = ["🐱", "😂"] });
+
+        await _service.RememberEmojiAsync(["🐱"], Cancel);
+
+        await _repository.DidNotReceiveWithAnyArgs().SaveAsync(default!, Cancel);
+    }
 }

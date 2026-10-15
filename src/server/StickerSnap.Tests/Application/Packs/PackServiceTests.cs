@@ -331,4 +331,28 @@ public sealed class PackServiceTests : IDisposable
         check.Suggestion.Should().BeNull();
         await _telegram.Received(PackService.MaxVariant).GetPackAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Records_a_sent_sticker_with_its_project_and_announces_the_pack()
+    {
+        await WithKnownAsync();
+        var after = InTelegram(new("F1", "U1", "😂"), new("F2", "U2", "😴"), new("F3", "U3", "👍"), new("F4", "U4", "🔥"));
+        var origin = new StickerOrigin(CatProject, "Кот", "s4");
+
+        var pack = await Service.RecordSentAsync(after, "U4", ["🔥", "🐱"], origin, Cancel);
+
+        pack.Stickers[3].Should().BeEquivalentTo(new PackSticker("U4", "F4", ["🔥", "🐱"], origin));
+        (await _packs.FindAsync(Cats, Cancel)).Should().BeEquivalentTo(pack);
+        PackEvents.Sent(_events).Should().ContainSingle().Which.Should().BeEquivalentTo(pack);
+    }
+
+    [Fact]
+    public async Task Adds_a_pack_a_publication_made_to_the_registry()
+    {
+        var made = InTelegram(new PublishedSticker("F1", "U1", "🐱"));
+
+        await Service.RecordSentAsync(made, "U1", ["🐱"], new StickerOrigin(CatProject, "Кот", "s1"), Cancel);
+
+        _packs.Packs.Should().ContainSingle().Which.Name.Should().Be(Cats);
+    }
 }
