@@ -63,7 +63,7 @@ public sealed class ExportExecutorTests : IAsyncDisposable
             .Returns(call => Path.Combine(call.Arg<StickerSlot>().Folder, call.Arg<IEnumerable<string>>().First()));
         _files.AddAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ => $"file-{Interlocked.Increment(ref _fileIds)}");
 
-        var executor = new ExportExecutor(_projects, _settings, _engine, _folder, _files);
+        var executor = new ExportExecutor(_projects, _settings, new SegmentExporter(_projects, _engine, _folder, _files));
         _queue = new JobQueue([executor], _events, new FakeTimeProvider(), NullLogger<JobQueue>.Instance);
     }
 

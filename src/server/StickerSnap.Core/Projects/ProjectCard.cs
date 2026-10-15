@@ -29,7 +29,7 @@ public sealed record ProjectCard(
         project.SavedAt,
         project.Scene.Segments.Count,
         PresetOf(project.Scene.Segments),
-        project.Scene.Segments.Select(segment => PlaySeconds(segment, project.Source)).DefaultIfEmpty(0).Max());
+        project.Scene.Segments.Select(segment => segment.PlaySeconds(project.Source)).DefaultIfEmpty(0).Max());
 
     /// <summary>«3 стикера», «5 эмодзи», or a mix of both; a project without segments counts as stickers.</summary>
     private static CardPreset PresetOf(IReadOnlyList<Segment> segments) =>
@@ -39,18 +39,6 @@ public sealed record ProjectCard(
             [_, _, ..] => CardPreset.Mixed,
             _ => CardPreset.Sticker,
         };
-
-    /// <summary>
-    /// The frames the segment plays, ping-pong included (<see cref="PlayLength"/>), at the source's
-    /// rate and the segment's speed. A segment the scene's rules would refuse counts as nothing.
-    /// </summary>
-    private static double PlaySeconds(Segment segment, ProjectSource source)
-    {
-        var forward = segment.OutFrame - segment.InFrame + 1 - segment.ExcludedFrames.Distinct().Count();
-        var fps = source.Media.Fps;
-        if (forward <= 0 || !fps.IsValid || !(segment.Speed > 0)) return 0;
-        return PlayLength.Frames(forward, segment.Loop == LoopMode.Pingpong) / fps.ToDouble() / segment.Speed;
-    }
 }
 
 /// <summary>What a card says the project makes (contract, ProjectSummary.preset).</summary>

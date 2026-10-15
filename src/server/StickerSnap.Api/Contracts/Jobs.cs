@@ -48,7 +48,9 @@ public sealed record PublishItem(string SegmentId, IReadOnlyList<string> Emoji, 
 /// <summary>A sticker in a pack (schema StickerRef).</summary>
 public sealed record StickerRef(string Pack, string StickerId)
 {
-    public Requests.StickerRef ToRef() => new(Pack, StickerId);
+    public Core.Packs.StickerRef ToRef() => new(Pack, StickerId);
+
+    public static StickerRef From(Core.Packs.StickerRef sticker) => new(sticker.Pack, sticker.StickerId);
 }
 
 /// <summary>Where a publication goes, told apart by `kind`.</summary>
@@ -110,7 +112,7 @@ public sealed record JobProgress(double Fraction, JobStage Stage, JobAttempt? At
 
 public sealed record JobAttempt(int N, IReadOnlyList<Concession> Concessions);
 
-/// <summary>One segment of a job (schema JobItem); a publication's sticker arrives with B24.</summary>
+/// <summary>One segment of a job (schema JobItem).</summary>
 /// <param name="Preview">preview: «Точное · 186 КБ»</param>
 public sealed record JobItem(
     string SegmentId,
@@ -128,7 +130,7 @@ public sealed record JobItem(
         item.Fraction,
         item.Preview is { } preview ? new JobItemPreview(FileUrls.Of(preview.FileId), preview.Bytes) : null,
         item.Export is { } export ? ExportResult.From(export, stale: false, mode) : null,
-        null,
+        item.Sticker is { } sticker ? StickerRef.From(sticker) : null,
         ProblemBody.From(item.Error, jobId));
 }
 

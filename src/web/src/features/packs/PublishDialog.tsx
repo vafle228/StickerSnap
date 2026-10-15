@@ -15,13 +15,16 @@ import { useApp } from "../../app/store";
 import { api, call } from "../../shared/api/client";
 import { useAccount, useAppInfo, useProjects, usePublishDraft } from "../../shared/api/queries";
 import type { AccountLink, PublishDraft } from "../../shared/api/types";
+import { notifyProblem } from "../../shared/notify";
 import { Popover } from "../../shared/overlays";
 import { t } from "../../shared/strings/ru";
 import { kilobytes, num } from "../editor/format";
 import { useDebounced } from "../editor/useDebounced";
+import { usePackActions } from "./actions";
 import { EmojiPicker, MAX_EMOJI } from "./EmojiPicker";
-import { packMeta, placeholder, sendLabel } from "./format";
+import { packMeta, sendLabel } from "./format";
 import styles from "./PublishDialog.module.css";
+import { StickerMedia } from "./StickerMedia";
 import { usePacksUi, type PublishStart } from "./store";
 
 type Segment = PublishDraft["segments"][number];
@@ -33,7 +36,7 @@ const LINK_MAX = 43;
 
 /** The publish window (artboard 7, «одно окно, три вопроса»): which stickers, with which emoji,
  *  into which pack. Every way in opens this one window with different things already picked.
- *  Sending itself is stage 1c: the rainbow button waits, disabled. */
+ *  The rainbow button starts the publish job and closes the window: the send popup follows it. */
 export function PublishDialog() {
   const start = usePacksUi((s) => s.publish);
   const close = usePacksUi((s) => s.closePublish);
@@ -84,9 +87,11 @@ export function PublishDialog() {
                 onChange={setChosen}
               />
             }
+            projectId={projectId}
             projectLocked={shown.start.projectId !== undefined}
             projectName={projects.find((p) => p.id === projectId)?.name}
             onCancel={done}
+            onSent={done}
           />
         ) : (
           <div className={styles.loading} aria-busy />
@@ -137,19 +142,25 @@ interface PublishFormProps {
   start: PublishStart;
   draft: PublishDraft;
   project: ReactNode;
+  projectId: string | undefined;
   projectLocked: boolean;
   projectName?: string;
   onCancel: () => void;
+  onSent: () => void;
 }
 
 function PublishForm({
   start,
   draft,
   project,
+  projectId,
   projectLocked,
   projectName,
   onCancel,
+  onSent,
 }: PublishFormProps) {
+  const { publish } = usePackActions();
+  const [sending, setSending] = useState(false);
   const replace = start.replace;
   const shown = replace
     ? draft.segments.filter((s) => s.segmentId === replace.segmentId)
@@ -205,8 +216,46 @@ function PublishForm({
     if (selected.length === 0) return { text: t("publish.needSticker"), warn: true };
     if (needEmoji) return { text: t("publish.needEmoji", { name: needEmoji.name }), warn: true };
     if (where === "existing" && !target) return { text: t("publish.needPack"), warn: true };
+    if (where === "new" && !title.trim()) return { text: t("publish.needTitle"), warn: true };
+    // The link goes as the server checked it: not while a new one is still on its way
+    const checking = link !== undefined && name?.name !== link.trim();
+    if (where === "new" && (!name || checking || name.problems.length > 0)) {
+      return { text: t("publish.needLink"), warn: true };
+    }
     return { text: t("publish.ready"), warn: false };
   })();
+
+  const send = async () => {
+    if (!projectId || status?.warn !== false || sending) return;
+    setSending(true);
+    try {
+      await publish({
+        projectId,
+        items: selected.map((s) => {
+          // A segment already in the target pack takes its old sticker's place (7-4)
+          const old =
+            replace?.segmentId === s.segmentId && targetName
+              ? { pack: targetName, stickerId: replace.stickerId }
+              : s.publishedIn.find((r) => r.pack === targetName);
+          return { segmentId: s.segmentId, emoji: emoji[s.segmentId] ?? [], replace: old };
+        }),
+        target:
+          where === "existing"
+            ? { kind: "existing", pack: targetName ?? "" }
+            : {
+                kind: "new",
+                title: title.trim(),
+                name: name?.name ?? "",
+                type: emojiPreset ? "custom_emoji" : "regular",
+              },
+      });
+      onSent();
+    } catch (error) {
+      notifyProblem(error, { key: "publish" });
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className={styles.body}>
@@ -308,8 +357,12 @@ function PublishForm({
         <Button variant="ghost" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
-        {/* Sending to Telegram is stage 1c: the window is all there, the send waits */}
-        <Button variant="prism" icon="send" disabled>
+        <Button
+          variant="prism"
+          icon="send"
+          disabled={status?.warn !== false || sending}
+          onClick={() => void send()}
+        >
           {sendLabel(selected.length)}
         </Button>
       </div>
@@ -367,7 +420,6 @@ function SegmentRow({
   const limit = s.preset === "emoji" ? limits?.emoji.maxBytes : limits?.sticker.maxBytes;
   const failed = s.export?.verdict === "fail";
   const needs = checked && emoji.length === 0;
-  const art = placeholder(index + 1);
 
   const note = (() => {
     if (failed && s.export) {
@@ -397,8 +449,14 @@ function SegmentRow({
         onChange={onCheck}
         label={<span className={styles.srOnly}>{t("publish.row", { name: s.name })}</span>}
       />
+      {/* The exported .webm plays as Telegram will show it; never exported, the tinted shape */}
       <span className={styles.rowArt} aria-hidden>
-        <span style={{ background: art.tint, borderRadius: art.radius }} />
+        <StickerMedia
+          src={s.export?.fileUrl}
+          index={index + 1}
+          playing
+          shapeClassName={styles.rowShape}
+        />
       </span>
       <span className={styles.rowText}>
         <span className={styles.rowName}>

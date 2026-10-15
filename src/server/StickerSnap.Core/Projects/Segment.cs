@@ -24,6 +24,18 @@ public sealed record Segment(
 {
     public const double MinSpeed = 0.25;
     public const double MaxSpeed = 4;
+
+    /// <summary>
+    /// How long the sticker plays: the frames it plays, ping-pong included (<see cref="Render.PlayLength"/>),
+    /// at the source's rate and the segment's speed. A segment the scene's rules would refuse counts as nothing.
+    /// </summary>
+    public double PlaySeconds(ProjectSource source)
+    {
+        var forward = OutFrame - InFrame + 1 - ExcludedFrames.Distinct().Count();
+        var fps = source.Media.Fps;
+        if (forward <= 0 || !fps.IsValid || !(Speed > 0)) return 0;
+        return Render.PlayLength.Frames(forward, Loop == LoopMode.Pingpong) / fps.ToDouble() / Speed;
+    }
 }
 
 /// <summary>R5: how the sticker loops.</summary>

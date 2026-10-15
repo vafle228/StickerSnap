@@ -8,6 +8,7 @@ using StickerSnap.Application.Jobs;
 using StickerSnap.Application.Packs;
 using StickerSnap.Application.ProjectMedia;
 using StickerSnap.Application.Projects;
+using StickerSnap.Application.Publish;
 using StickerSnap.Application.Render;
 using StickerSnap.Application.Settings;
 using StickerSnap.Application.Sources;
@@ -33,6 +34,9 @@ public static class DependencyInjection
         .AddSingleton<IJobService, JobService>()
         .AddSingleton<IJobExecutor, PreviewExecutor>()
         .AddSingleton<IJobExecutor, ExportExecutor>()
+        .AddSingleton<IJobExecutor, PublishExecutor>()
+        .AddSingleton<ISegmentExporter, SegmentExporter>()
+        .AddSingleton<IPublishDraftService, PublishDraftService>()
         .AddSingleton<IFileService, FileService>()
         .AddSingleton<IStickerFitService, StickerFitService>()
         .AddSingleton<ISegmentRenderService, SegmentRenderService>()

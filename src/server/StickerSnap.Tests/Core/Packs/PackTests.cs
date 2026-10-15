@@ -89,4 +89,43 @@ public sealed class PackTests
         Known.Find("U2").Should().Be(Known.Stickers[1]);
         Known.Find("U9").Should().BeNull();
     }
+
+    [Fact]
+    public void Keeps_a_sent_sticker_with_its_project_and_every_emoji_it_was_sent_with()
+    {
+        var after = Published("Кот и диван", new("F1", "U1", "😂"), new("F2", "U2", "😴"), new("F3", "U3", "🔥"));
+
+        var sent = Pack.Sent(Known, after, "U3", ["🔥", "😂"], FromCat with { SegmentId = "s3" }, Now);
+
+        sent.Stickers.Should().HaveCount(3);
+        sent.Stickers[2].Should().BeEquivalentTo(new PackSticker("U3", "F3", ["🔥", "😂"], FromCat with { SegmentId = "s3" }));
+        sent.Stickers[0].Emoji.Should().Equal("😂", "🐱");
+        sent.CheckedAt.Should().Be(Now);
+    }
+
+    [Fact]
+    public void Adds_a_pack_a_publication_made()
+    {
+        var made = Published("Новый", new PublishedSticker("F9", "U9", "🐱"));
+
+        var sent = Pack.Sent(null, made, "U9", ["🐱"], FromCat, Now);
+
+        sent.Should().BeEquivalentTo(new Pack(Name, "Новый", PackKind.Regular, PresenceStatus.Ok, Now,
+            [new PackSticker("U9", "F9", ["🐱"], FromCat)]));
+    }
+
+    [Fact]
+    public void Finds_the_sticker_a_send_put_into_the_pack()
+    {
+        var before = Published("Кот", new("F1", "U1", "😂"), new("F2", "U2", "😴"));
+        var replaced = Published("Кот", new("F1", "U1", "😂"), new("F5", "U5", "🔥"));
+        var added = Published("Кот", new("F1", "U1", "😂"), new("F2", "U2", "😴"), new("F6", "U6", "🔥"));
+        var same = Published("Кот", new("F1", "U1", "😂"), new("F2b", "U2", "😴"));
+
+        replaced.SentSince(before, position: 1)!.UniqueId.Should().Be("U5");
+        added.SentSince(before)!.UniqueId.Should().Be("U6");
+        added.SentSince(null)!.UniqueId.Should().Be("U6");
+        same.SentSince(before, position: 0)!.UniqueId.Should().Be("U1");
+        same.SentSince(before)!.UniqueId.Should().Be("U2");
+    }
 }

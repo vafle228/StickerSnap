@@ -49,6 +49,27 @@ public sealed record Pack(
         return new Pack(published.Name, published.Title, published.Kind, PresenceStatus.Ok, now, [.. stickers]);
     }
 
+    /// <summary>
+    /// The pack after the app sent <paramref name="stickerId"/> into it: as Telegram has it at
+    /// <paramref name="now"/>, with the new sticker's project and every emoji it was sent with.
+    /// A pack the registry did not have is added.
+    /// </summary>
+    public static Pack Sent(
+        Pack? known,
+        PublishedPack published,
+        string stickerId,
+        IReadOnlyList<string> emoji,
+        StickerOrigin origin,
+        DateTimeOffset now)
+    {
+        var pack = known?.Reconciled(published, now) ?? Of(published, now);
+        return pack with
+        {
+            Stickers = [.. pack.Stickers.Select(sticker =>
+                sticker.Id == stickerId ? sticker with { Emoji = emoji, Origin = origin } : sticker)],
+        };
+    }
+
     /// <summary>The pack without one of its stickers, once Telegram deleted it.</summary>
     public Pack Without(string stickerId) => this with { Stickers = [.. Stickers.Where(sticker => sticker.Id != stickerId)] };
 

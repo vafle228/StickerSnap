@@ -14,4 +14,11 @@ public interface ISettingsService
     /// </summary>
     /// <exception cref="AppException">bad_request for a wrong field, save_failed or disk_full</exception>
     Task<UserSettings> UpdateAsync(SettingsChange change, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// After a publication: the emoji it sent go first in «Недавние» of the emoji picker
+    /// (<see cref="UserSettings.WithRecentEmoji"/>); every window hears it by settingsChanged.
+    /// </summary>
+    /// <exception cref="AppException">save_failed or disk_full</exception>
+    Task<UserSettings> RememberEmojiAsync(IReadOnlyList<string> used, CancellationToken cancellationToken);
 }

@@ -28,7 +28,8 @@ public interface IJobQueue
 
     /// <summary>
     /// «Повторить»: a partial, failed or canceled job waits in its lane again for the segments it
-    /// left undone; a job queued or running is answered as it is.
+    /// left undone; a job queued or running is answered as it is, and one waiting for Telegram
+    /// (stage wait) goes on at once («Повторить сейчас»).
     /// </summary>
     /// <exception cref="Core.Errors.AppException">job_not_found; bad_request for a job that succeeded</exception>
     Job Retry(string id);

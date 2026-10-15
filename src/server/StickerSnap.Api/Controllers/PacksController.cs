@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
 using StickerSnap.Api.Contracts;
+using StickerSnap.Application.Jobs;
 using StickerSnap.Application.Packs;
 using PackNameCheck = StickerSnap.Api.Contracts.PackNameCheck;
 
@@ -18,10 +19,12 @@ public sealed class PacksController : ControllerBase
     private const string Webm = "video/webm";
 
     private readonly IPackService _service;
+    private readonly IJobService _jobs;
 
-    public PacksController(IPackService service)
+    public PacksController(IPackService service, IJobService jobs)
     {
         _service = service;
+        _jobs = jobs;
     }
 
     /// <summary>The packs the app knows, without asking Telegram.</summary>
@@ -32,7 +35,7 @@ public sealed class PacksController : ControllerBase
     public async Task<IActionResult> List(CancellationToken cancellationToken)
     {
         var packs = await _service.ListAsync(cancellationToken);
-        return Ok(packs.Select(PackSummary.From).ToList());
+        return Ok(packs.Select(pack => PackSummary.From(pack, _jobs.List())).ToList());
     }
 
     /// <summary>«Добавить по ссылке»: a pack of @StickerSnapAppBot onto the list; another bot's is 422 not_our_pack.</summary>
@@ -49,7 +52,7 @@ public sealed class PacksController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
     [ProducesDefaultResponseType(typeof(ProblemDetails))]
     public async Task<IActionResult> Import([FromBody] ImportPackRequest request, CancellationToken cancellationToken) =>
-        Ok(Pack.From(await _service.ImportAsync(request.Link, cancellationToken)));
+        Ok(Pack.From(await _service.ImportAsync(request.Link, cancellationToken), _jobs.List()));
 
     /// <summary>The link of a new pack from its title, what Telegram would refuse, and «Взять kot_divan_2».</summary>
     [HttpPost("name-check", Name = "checkPackName")]
@@ -72,7 +75,7 @@ public sealed class PacksController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesDefaultResponseType(typeof(ProblemDetails))]
     public async Task<IActionResult> Get(string pack, CancellationToken cancellationToken) =>
-        Ok(Pack.From(await _service.GetAsync(pack, cancellationToken)));
+        Ok(Pack.From(await _service.GetAsync(pack, cancellationToken), _jobs.List()));
 
     /// <summary>«Убрать из списка»: nothing is deleted in Telegram.</summary>
     /// <param name="pack">The whole name, with _by_StickerSnapAppBot</param>
@@ -98,7 +101,7 @@ public sealed class PacksController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
     [ProducesDefaultResponseType(typeof(ProblemDetails))]
     public async Task<IActionResult> Sync(string pack, CancellationToken cancellationToken) =>
-        Ok(Pack.From(await _service.SyncAsync(pack, cancellationToken)));
+        Ok(Pack.From(await _service.SyncAsync(pack, cancellationToken), _jobs.List()));
 
     /// <summary>The sticker out of the pack in Telegram, for everyone who added it; sends packChanged.</summary>
     /// <param name="pack">The whole name, with _by_StickerSnapAppBot</param>

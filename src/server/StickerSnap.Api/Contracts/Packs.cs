@@ -23,7 +23,8 @@ public sealed record PackSummary(
     DateTimeOffset? CheckedAt,
     PackSending? Sending)
 {
-    public static PackSummary From(Domain.Pack pack) => new(
+    /// <param name="jobs">The jobs of the queue: a publication into the pack that has not ended is its «Отправляем…»</param>
+    public static PackSummary From(Domain.Pack pack, IEnumerable<Core.Jobs.Job> jobs) => new(
         pack.Name,
         pack.Title,
         pack.Kind,
@@ -32,10 +33,19 @@ public sealed record PackSummary(
         pack.Stickers.Count > 0 ? PackUrls.Media(pack.Name, pack.Stickers[0].Id) : null,
         pack.Status,
         pack.CheckedAt,
-        null);
+        PackSending.Of(pack.Name, jobs));
 }
 
-public sealed record PackSending(string JobId, int Done, int Total);
+/// <summary>«Отправляем… 2 из 4»: the publication into a pack that is queued or running.</summary>
+public sealed record PackSending(string JobId, int Done, int Total)
+{
+    public static PackSending? Of(string pack, IEnumerable<Core.Jobs.Job> jobs) =>
+        jobs.FirstOrDefault(job => job.Kind == Core.Jobs.JobKind.Publish && !job.IsOver &&
+                                   string.Equals(job.Pack, pack, StringComparison.OrdinalIgnoreCase)) is { } sending
+            ? new PackSending(
+                sending.Id, sending.Items.Count(item => item.State == Core.Jobs.JobItemState.Done), sending.Items.Count)
+            : null;
+}
 
 /// <summary>A pack with its stickers: GET /api/v1/packs/{pack}, sync, import (schema Pack, PackSummary with these).</summary>
 /// <param name="Link">https://t.me/addstickers/&lt;name&gt;</param>
@@ -52,9 +62,9 @@ public sealed record Pack(
     string Link,
     IReadOnlyList<PackSticker> Stickers)
 {
-    public static Pack From(PackView view)
+    public static Pack From(PackView view, IEnumerable<Core.Jobs.Job> jobs)
     {
-        var summary = PackSummary.From(view.Pack);
+        var summary = PackSummary.From(view.Pack, jobs);
         return new Pack(
             summary.Name,
             summary.Title,

@@ -1,4 +1,5 @@
 using StickerSnap.Core.Errors;
+using StickerSnap.Core.Packs;
 using StickerSnap.Core.Projects;
 
 namespace StickerSnap.Core.Jobs;
@@ -58,10 +59,13 @@ public sealed record Job(
     public Job WithItem(string segmentId, JobItemState state, double fraction, JobError? error = null) =>
         Put(new JobItem(segmentId, state, state == JobItemState.Done ? 1 : Math.Clamp(fraction, 0, 1), error));
 
-    /// <summary>A segment of a running job is done, with what it made: a preview's draft or an export's sticker.</summary>
+    /// <summary>
+    /// A segment of a running job is done, with what it made: a preview's draft, an export's file,
+    /// a publication's sticker in its pack.
+    /// </summary>
     /// <exception cref="ArgumentException">The job has no such segment</exception>
-    public Job WithDone(string segmentId, PreviewFile? preview = null, SegmentExport? export = null) =>
-        Put(new JobItem(segmentId, JobItemState.Done, 1, Preview: preview, Export: export));
+    public Job WithDone(string segmentId, PreviewFile? preview = null, SegmentExport? export = null, StickerRef? sticker = null) =>
+        Put(new JobItem(segmentId, JobItemState.Done, 1, Preview: preview, Export: export, Sticker: sticker));
 
     /// <summary>What a running job is busy with now; its share stays the segments'.</summary>
     public Job WithStage(JobStage stage, JobAttempt? attempt = null, DateTimeOffset? retryAt = null)

@@ -1,4 +1,8 @@
+using StickerSnap.Application.Account;
+using StickerSnap.Application.Packs;
 using StickerSnap.Application.Projects;
+using StickerSnap.Application.Publish;
+using StickerSnap.Core.Account;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Jobs;
 using StickerSnap.Core.Projects;
@@ -8,14 +12,16 @@ namespace StickerSnap.Application.Jobs;
 /// <summary>
 /// /api/v1/jobs (contract, group jobs): checks a request against its project before the job is
 /// queued, and again before «Повторить». An export and a publication go by the revision saved
-/// last, so a stale one is revision_conflict; a preview's segment must keep the scene's rules.
+/// last, so a stale one is revision_conflict; a preview's segment must keep the scene's rules; a
+/// publication needs a linked account and a plan Telegram would accept (<see cref="PublishPlans"/>).
 /// </summary>
-public sealed class JobService(IJobQueue queue, IProjectService projects) : IJobService
+public sealed class JobService(IJobQueue queue, IProjectService projects, IPackService packs, IAccountService account)
+    : IJobService
 {
     /// <inheritdoc/>
     public async Task<Job> CreateAsync(JobRequest request, CancellationToken cancellationToken)
     {
-        await CheckAsync(request, cancellationToken);
+        await CheckAsync(request, request.SegmentIds, cancellationToken);
         return queue.Enqueue(request);
     }
 
@@ -31,11 +37,18 @@ public sealed class JobService(IJobQueue queue, IProjectService projects) : IJob
     /// <inheritdoc/>
     public async Task<Job> RetryAsync(string id, CancellationToken cancellationToken)
     {
-        if (queue.Get(id).CanRetry) await CheckAsync(queue.RequestOf(id), cancellationToken);
+        var job = queue.Get(id);
+        if (job.CanRetry)
+        {
+            // What was sent stays sent: only the rest counts against the pack's room
+            var undone = job.Items.Where(item => item.State != JobItemState.Done).Select(item => item.SegmentId).ToList();
+            await CheckAsync(queue.RequestOf(id), undone, cancellationToken);
+        }
         return queue.Retry(id);
     }
 
-    private async Task CheckAsync(JobRequest request, CancellationToken cancellationToken)
+    /// <param name="segmentIds">The segments the job will do: all of them, or those a retry does again</param>
+    private async Task CheckAsync(JobRequest request, IReadOnlyList<string> segmentIds, CancellationToken cancellationToken)
     {
         var project = (await projects.GetAsync(request.ProjectId, cancellationToken)).Project;
         switch (request)
@@ -50,8 +63,20 @@ public sealed class JobService(IJobQueue queue, IProjectService projects) : IJob
             case JobRequest.Publish publish:
                 CheckRevision(publish.Revision, project);
                 CheckSegmentIds(publish.SegmentIds, "items", project);
+                await CheckPublishAsync(publish, segmentIds, project, cancellationToken);
                 break;
         }
+    }
+
+    private async Task CheckPublishAsync(
+        JobRequest.Publish publish, IReadOnlyList<string> segmentIds, Project project, CancellationToken cancellationToken)
+    {
+        if (await account.GetAsync(cancellationToken) is not (AccountLink.Linked or AccountLink.Failed))
+            throw new AppException(ErrorCode.AccountNotLinked, "No Telegram account is linked: packs are made on its behalf");
+
+        var known = (await packs.ListAsync(cancellationToken))
+            .FirstOrDefault(pack => string.Equals(pack.Name, publish.Target.PackName, StringComparison.OrdinalIgnoreCase));
+        PublishPlans.For(publish, [.. segmentIds], project, known);
     }
 
     private static void CheckRevision(int revision, Project project)

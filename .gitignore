@@ -53,6 +53,8 @@ blob-report/
 project.lock.json
 artifacts/
 publish/
+# The publish feature's own folders, which a case-blind file system takes for publish/ above
+!src/server/**/Publish/
 PublishProfiles/
 *.nupkg
 *.snupkg

@@ -1,3 +1,4 @@
+using StickerSnap.Core.Packs;
 using StickerSnap.Core.Projects;
 
 namespace StickerSnap.Core.Jobs;
@@ -5,14 +6,16 @@ namespace StickerSnap.Core.Jobs;
 /// <summary>One segment of a job (contract, JobItem): «Экспорт 2 из 3».</summary>
 /// <param name="Fraction">0..1 of this segment</param>
 /// <param name="Preview">A preview's draft, once it is done</param>
-/// <param name="Export">An export's sticker, once it is done</param>
+/// <param name="Export">An export's sticker, once it is done; a publication's too when it exported the segment</param>
+/// <param name="Sticker">A publication's sticker in its pack, once it was sent</param>
 public sealed record JobItem(
     string SegmentId,
     JobItemState State,
     double Fraction,
     JobError? Error = null,
     PreviewFile? Preview = null,
-    SegmentExport? Export = null)
+    SegmentExport? Export = null,
+    StickerRef? Sticker = null)
 {
     /// <summary>Done, failed or skipped: the segment will not move again in this run.</summary>
     public bool IsOver => State is JobItemState.Done or JobItemState.Failed or JobItemState.Skipped;

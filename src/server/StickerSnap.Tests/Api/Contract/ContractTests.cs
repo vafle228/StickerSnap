@@ -20,10 +20,7 @@ public sealed partial class ContractTests
     /// The contract's operations the server does not serve yet. The list only shrinks: the PR
     /// that brings an operation strikes it from here, or this test fails.
     /// </summary>
-    public static readonly IReadOnlySet<string> NotYetOnServer = new HashSet<string>
-    {
-        "getPublishDraft",
-    };
+    public static readonly IReadOnlySet<string> NotYetOnServer = new HashSet<string>();
 
     /// <summary>The events of x-events the hub does not send yet. The list only shrinks, as above.</summary>
     private static readonly IReadOnlySet<string> EventsNotYetSent = new HashSet<string>();

@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 /* «Мои паки» and publishing (R13–R15, artboard 7): a pack's stickers lead back to their
    projects, a sticker leaves the pack only after the confirmation, the publish window takes
-   emoji per segment and a pack (the send itself comes in stage 1c), and the pack states say what to do. */
+   emoji per segment and a pack and sends them, and the pack states say what to do. */
 
 async function openPacks(page: Page, scenario: string) {
   await page.goto(`/?mock=${scenario}`);
@@ -51,7 +51,7 @@ test("closes the publish window by its cross and by «Отмена»", async ({ 
   await expect(publish).toHaveCount(0);
 });
 
-test("fills the publish window: emoji per segment and a pack; sending waits for stage 1c", async ({
+test("fills the publish window, sends, and ends with the pack to open in Telegram", async ({
   page,
 }) => {
   await openPacks(page, "ok");
@@ -83,9 +83,13 @@ test("fills the publish window: emoji per segment and a pack; sending waits for 
   await expect(where.getByRole("radio", { name: /^Кот и диван/ })).toBeChecked();
   await expect(publish).toContainText("Заменит старую версию в «Кот и диван», место сохранится");
 
-  // The window is drawn in full; the send itself is a later stage, so its button stays off
-  await expect(publish).toContainText("Отправка в Telegram появится на этапе 1c");
-  await expect(publish.getByRole("button", { name: "Опубликовать 2 стикера" })).toBeDisabled();
+  await expect(publish).toContainText("Всё готово к отправке");
+  await publish.getByRole("button", { name: "Опубликовать 2 стикера" }).click();
+
+  // The window closes, the send popup follows the job to its end
+  await expect(publish).toHaveCount(0);
+  await expect(page.getByText("Готово: стикеры в «Кот и диван»")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("button", { name: "Открыть в Telegram" }).first()).toBeVisible();
 });
 
 test("offers no full pack in the publish window", async ({ page }) => {

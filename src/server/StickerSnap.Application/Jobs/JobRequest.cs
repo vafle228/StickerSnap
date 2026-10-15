@@ -42,9 +42,6 @@ public abstract record JobRequest(Guid ProjectId)
 /// <param name="Replace">The sticker it takes the place of, keeping its position</param>
 public sealed record PublishItem(string SegmentId, IReadOnlyList<string> Emoji, StickerRef? Replace);
 
-/// <summary>A sticker in a pack (contract, StickerRef).</summary>
-public sealed record StickerRef(string Pack, string StickerId);
-
 /// <summary>Where a publication goes: a pack of the user's or a new one.</summary>
 public abstract record PublishTarget
 {
@@ -52,8 +49,17 @@ public abstract record PublishTarget
     {
     }
 
-    public sealed record Existing(string Pack) : PublishTarget;
+    /// <summary>The whole name of the pack the stickers go to.</summary>
+    public abstract string PackName { get; }
+
+    public sealed record Existing(string Pack) : PublishTarget
+    {
+        public override string PackName => Pack;
+    }
 
     /// <param name="Name">The link, without _by_ and the bot's name</param>
-    public sealed record New(string Title, string Name, PackKind Type) : PublishTarget;
+    public sealed record New(string Title, string Name, PackKind Type) : PublishTarget
+    {
+        public override string PackName => PackNames.Full(Name);
+    }
 }
