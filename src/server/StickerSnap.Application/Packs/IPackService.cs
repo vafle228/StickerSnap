@@ -52,6 +52,19 @@ public interface IPackService
     Task<MediaFile> StickerMediaAsync(string name, string stickerId, CancellationToken cancellationToken);
 
     /// <summary>
+    /// A publication sent <paramref name="stickerId"/> into the pack, which Telegram now has as
+    /// <paramref name="published"/>: the registry keeps it with its project and every emoji it was
+    /// sent with, adding a pack the publication made. Sends packChanged.
+    /// </summary>
+    /// <exception cref="Core.Errors.AppException">save_failed or disk_full</exception>
+    Task<Pack> RecordSentAsync(
+        PublishedPack published,
+        string stickerId,
+        IReadOnlyList<string> emoji,
+        StickerOrigin origin,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// POST /packs/name-check: the link of a new pack from its title, or <paramref name="name"/> as
     /// the user typed it, with what Telegram would refuse and a free variant when it is taken.
     /// </summary>

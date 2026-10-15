@@ -1,11 +1,15 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
+using StickerSnap.Application.Account;
 using StickerSnap.Application.Jobs;
+using StickerSnap.Application.Packs;
 using StickerSnap.Application.Projects;
 using StickerSnap.Application.Settings;
+using StickerSnap.Core.Account;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Jobs;
 using StickerSnap.Core.Media;
+using StickerSnap.Core.Packs;
 using StickerSnap.Core.Projects;
 using StickerSnap.Tests.Application.Projects;
 using StickerSnap.Tests.Core.Projects;
@@ -22,10 +26,13 @@ public sealed class JobServiceTests : IAsyncDisposable
     private readonly FakeTimeProvider _clock = new(new DateTimeOffset(2026, 10, 12, 12, 0, 0, TimeSpan.Zero));
     private readonly RecordingPublisher _events = new();
     private readonly ControlledExecutor _exports = new(JobKind.Export);
+    private readonly ControlledExecutor _publishes = new(JobKind.Publish);
     private readonly InMemoryProjectRegistry _registry = new();
     private readonly IProjectStore _store = Substitute.For<IProjectStore>();
     private readonly JobQueue _queue;
     private readonly JobService _service;
+    private readonly IPackService _packs = Substitute.For<IPackService>();
+    private readonly IAccountService _account = Substitute.For<IAccountService>();
     private Project _onDisk = Cat;
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
@@ -38,11 +45,27 @@ public sealed class JobServiceTests : IAsyncDisposable
         var projects = new ProjectService(
             _registry, _store, Substitute.For<ITrash>(), sources, _events, Imports.Unused(), Substitute.For<ISettingsService>(),
             Substitute.For<ISourceWatch>(), _clock);
-        _queue = new JobQueue([_exports], _events, _clock, NullLogger<JobQueue>.Instance);
-        _service = new JobService(_queue, projects);
+        _queue = new JobQueue([_exports, _publishes], _events, _clock, NullLogger<JobQueue>.Instance);
+        _service = new JobService(_queue, projects, _packs, _account);
+        _account.GetAsync(Arg.Any<CancellationToken>()).Returns(new AccountLink.Linked(new LinkedUser(42, "Дима", "dima")));
+        HasPacks(Cats(count: 3));
     }
 
     public ValueTask DisposeAsync() => _queue.DisposeAsync();
+
+    private const string CatsName = "cats_by_StickerSnapAppBot";
+
+    private static Pack Cats(int count, PackKind kind = PackKind.Regular, PresenceStatus status = PresenceStatus.Ok) =>
+        new(CatsName, "Коты", kind, status, null,
+            [.. Enumerable.Range(0, count).Select(i => new PackSticker($"U{i}", $"F{i}", ["🐱"], null))]);
+
+    private void HasPacks(params Pack[] packs) =>
+        _packs.ListAsync(Arg.Any<CancellationToken>()).Returns(packs);
+
+    private static JobRequest.Publish Publish(PublishTarget target, params PublishItem[] items) =>
+        new(Cat.Id, 12, items.Length > 0 ? items : [new PublishItem("seg-1", ["🐱"], null)], target);
+
+    private static readonly PublishTarget IntoCats = new PublishTarget.Existing(CatsName);
 
     private async Task ListedAsync() => await _registry.SaveAsync(ProjectCard.Of(Cat, CatPath), Cancel);
 
@@ -173,5 +196,104 @@ public sealed class JobServiceTests : IAsyncDisposable
 
         retried.State.Should().Be(JobState.Running);
         (await _exports.NextAsync()).Run.Job.Id.Should().Be(job.Id);
+    }
+
+    [Fact]
+    public async Task Queues_a_publication_into_a_pack_of_the_registry_naming_the_pack()
+    {
+        await ListedAsync();
+
+        var job = await _service.CreateAsync(Publish(IntoCats), Cancel);
+
+        job.Kind.Should().Be(JobKind.Publish);
+        job.Pack.Should().Be(CatsName);
+    }
+
+    [Fact]
+    public async Task Names_a_new_pack_with_the_bots_tail()
+    {
+        await ListedAsync();
+
+        var job = await _service.CreateAsync(Publish(new PublishTarget.New("Кот", "kot_divan", PackKind.Regular)), Cancel);
+
+        job.Pack.Should().Be("kot_divan_by_StickerSnapAppBot");
+    }
+
+    [Fact]
+    public async Task Refuses_a_publication_without_a_linked_account()
+    {
+        await ListedAsync();
+        _account.GetAsync(Arg.Any<CancellationToken>()).Returns(new AccountLink.Unlinked());
+
+        (await RefusedAsync(Publish(IntoCats))).Code.Should().Be(ErrorCode.AccountNotLinked);
+    }
+
+    [Fact]
+    public async Task Refuses_a_pack_that_is_full_unknown_or_gone_from_telegram()
+    {
+        await ListedAsync();
+
+        HasPacks(Cats(count: 120));
+        var full = await RefusedAsync(Publish(IntoCats));
+        HasPacks(Cats(count: 3, status: PresenceStatus.Missing));
+        var gone = await RefusedAsync(Publish(IntoCats));
+        HasPacks();
+        var unknown = await RefusedAsync(Publish(IntoCats));
+
+        full.Code.Should().Be(ErrorCode.PackFull);
+        gone.Code.Should().Be(ErrorCode.PackNotFound);
+        unknown.Code.Should().Be(ErrorCode.PackNotFound);
+    }
+
+    [Fact]
+    public async Task Names_the_items_telegram_would_refuse()
+    {
+        await ListedAsync();
+
+        var refusal = await RefusedAsync(Publish(
+            IntoCats,
+            new PublishItem("seg-1", [], new StickerRef(CatsName, "U9")),
+            new PublishItem("seg-2", ["🐱"], null)));
+
+        refusal.Code.Should().Be(ErrorCode.BadRequest);
+        refusal.Fields.Should().BeEquivalentTo(new Dictionary<string, string[]>
+        {
+            ["items[0].emoji"] = ["count"],
+            ["items[0].replace"] = ["not_in_pack"],
+            ["items[1]"] = ["wrong_type"],
+        });
+    }
+
+    [Fact]
+    public async Task Refuses_a_new_pack_name_telegram_would_refuse()
+    {
+        await ListedAsync();
+
+        var refusal = await RefusedAsync(Publish(new PublishTarget.New("Кот", "1kot", PackKind.Regular)));
+
+        refusal.Code.Should().Be(ErrorCode.PackNameInvalid);
+        refusal.Fields.Should().ContainKey("target.name").WhoseValue.Should().Equal("bad_start");
+    }
+
+    [Fact]
+    public async Task Counts_only_the_stickers_not_sent_yet_against_the_room_of_a_retry()
+    {
+        await ListedAsync();
+        _onDisk = Cat with
+        {
+            Scene = Cat.Scene with { Segments = [Cat.Scene.Segments[0], Cat.Scene.Segments[1] with { Preset = SegmentPreset.Sticker }] },
+        };
+        HasPacks(Cats(count: 118));
+        var job = await _service.CreateAsync(
+            Publish(IntoCats, new PublishItem("seg-1", ["🐱"], null), new PublishItem("seg-2", ["😺"], null)), Cancel);
+        var call = await _publishes.NextAsync();
+        call.Run.Done("seg-1");
+        call.Throw(new AppException(ErrorCode.NetworkUnavailable, "offline"));
+        await _events.UntilAsync(job.Id, JobState.Partial);
+        HasPacks(Cats(count: 119));
+
+        var retried = await _service.RetryAsync(job.Id, Cancel);
+
+        retried.State.Should().Be(JobState.Running);
     }
 }

@@ -43,6 +43,27 @@ public sealed class SettingsService(ISettingsRepository repository, IFolderAcces
         return updated;
     }
 
+    /// <inheritdoc />
+    public async Task<UserSettings> RememberEmojiAsync(IReadOnlyList<string> used, CancellationToken cancellationToken)
+    {
+        UserSettings updated;
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var current = await repository.GetAsync(cancellationToken);
+            updated = current.WithRecentEmoji(used);
+            if (updated.RecentEmoji.SequenceEqual(current.RecentEmoji)) return current;
+            await repository.SaveAsync(updated, cancellationToken);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        await events.SettingsChangedAsync(updated, cancellationToken);
+        return updated;
+    }
+
     /// <summary>A folder is a whole absolute path: a relative one would land wherever the server was started.</summary>
     private static void Check(SettingsChange change)
     {

@@ -129,6 +129,31 @@ public sealed class PackService(
     }
 
     /// <inheritdoc />
+    public async Task<Pack> RecordSentAsync(
+        PublishedPack published,
+        string stickerId,
+        IReadOnlyList<string> emoji,
+        StickerOrigin origin,
+        CancellationToken cancellationToken)
+    {
+        Pack sent;
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var known = await packs.FindAsync(published.Name, cancellationToken);
+            sent = Pack.Sent(known, published, stickerId, emoji, origin, clock.GetUtcNow());
+            await packs.SaveAsync(sent, cancellationToken);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        await events.PackChangedAsync(sent, cancellationToken);
+        return sent;
+    }
+
+    /// <inheritdoc />
     public async Task<PackNameCheck> CheckNameAsync(string title, string? name, CancellationToken cancellationToken)
     {
         var own = name ?? PackNames.FromTitle(title);

@@ -8,7 +8,9 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using StickerSnap.Application.Account;
 using StickerSnap.Application.Jobs;
+using StickerSnap.Core.Account;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Jobs;
 using StickerSnap.Tests.Application.Jobs;
@@ -29,6 +31,7 @@ public sealed class JobsEndpointTests : IAsyncLifetime
     private readonly ControlledExecutor _exports = new(JobKind.Export);
     private readonly ControlledExecutor _previews = new(JobKind.Preview);
     private readonly ControlledExecutor _publications = new(JobKind.Publish);
+    private readonly IAccountService _account = Substitute.For<IAccountService>();
     private WebApplicationFactory<StickerSnap.Api.Program> _server = null!;
     private HttpClient _client = null!;
 
@@ -37,7 +40,10 @@ public sealed class JobsEndpointTests : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         // The real executors render with FFmpeg: these stand in for them
+        _account.GetAsync(Arg.Any<CancellationToken>()).Returns(new AccountLink.Linked(new LinkedUser(42, "Дима", "dima")));
         _server = _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services
+            .RemoveAll<IAccountService>()
+            .AddSingleton(_account)
             .RemoveAll<IJobExecutor>()
             .AddSingleton<IJobExecutor>(_exports)
             .AddSingleton<IJobExecutor>(_previews)
