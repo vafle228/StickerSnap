@@ -66,3 +66,16 @@ test("shows the save folder and «Открыть файл…» only in the deskt
     "Сохраняются сами в C:/Users/demo/StickerSnap",
   );
 });
+
+test("«Назад» in the editor closes the project and returns to «Проекты»", async ({ page }) => {
+  await page.getByRole("button", { name: "Открыть проект «Кот и клавиатура»" }).click();
+  await expect(page.getByRole("heading", { name: "Кот и клавиатура" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Назад: Проекты" }).click();
+
+  await expect(
+    page.getByRole("button", { name: "Открыть проект «Кот и клавиатура»" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Редактор", exact: true }).click();
+  await expect(page.getByText("Перетащите видео или GIF сюда")).toBeVisible();
+});
