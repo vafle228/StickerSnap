@@ -38,11 +38,14 @@ public sealed record PublishDraftSegment(
         segment.Name,
         segment.DurationSec,
         segment.Preset,
-        segment.Export is { } export ? new PublishDraftExport(export.Bytes, export.Verdict, export.Stale) : null,
+        segment.Export is { } export
+            ? new PublishDraftExport(export.Bytes, export.Verdict, export.Stale, FileUrls.Of(export.FileId))
+            : null,
         [.. segment.PublishedIn.Select(StickerRef.From)]);
 }
 
-public sealed record PublishDraftExport(long Bytes, ValidationVerdict Verdict, bool Stale);
+/// <param name="FileUrl">GET /api/v1/files/{fileId}: the .webm itself, the row's preview</param>
+public sealed record PublishDraftExport(long Bytes, ValidationVerdict Verdict, bool Stale, string FileUrl);
 
 /// <summary>A pack of the registry (PackSummary) and whether the window can pick it.</summary>
 public sealed record PublishDraftPack(

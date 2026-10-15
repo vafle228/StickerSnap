@@ -1993,7 +1993,7 @@ components:
                 $ref: '#/components/schemas/SegmentPreset'
               export:
                 type: object
-                required: [bytes, verdict, stale]
+                required: [bytes, verdict, stale, fileUrl]
                 properties:
                   bytes:
                     type: integer
@@ -2001,6 +2001,9 @@ components:
                     $ref: '#/components/schemas/ValidationVerdict'
                   stale:
                     type: boolean
+                  fileUrl:
+                    type: string
+                    description: 'GET /api/v1/files/{fileId}: сам .webm, превью строки окна'
               publishedIn:
                 type: array
                 description: Для «Заменит старую версию»

@@ -296,6 +296,8 @@ export function handlers(db: MockDb) {
                 bytes: fails ? 277_504 : 151_552 + (i % 3) * 32_768,
                 verdict: fails ? ("fail" as const) : ("pass" as const),
                 stale: false,
+                // The editor's export when the demo made one; otherwise a file the mock lacks
+                fileUrl: project.exports[s.id]?.fileUrl ?? `/api/v1/files/demo-${s.id}`,
               },
               publishedIn: db.packs.flatMap((p) =>
                 p.stickers

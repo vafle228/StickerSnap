@@ -1142,6 +1142,8 @@ export interface components {
                     bytes: number;
                     verdict: components["schemas"]["ValidationVerdict"];
                     stale: boolean;
+                    /** @description GET /api/v1/files/{fileId}: сам .webm, превью строки окна */
+                    fileUrl: string;
                 };
                 /** @description Для «Заменит старую версию» */
                 publishedIn: components["schemas"]["StickerRef"][];

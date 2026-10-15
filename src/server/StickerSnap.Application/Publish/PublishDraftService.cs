@@ -31,7 +31,7 @@ public sealed class PublishDraftService(
             segment.PlaySeconds(project.Source),
             segment.Preset,
             project.Exports.GetValueOrDefault(segment.Id) is { } export
-                ? new DraftExport(export.Bytes, export.Validation.Verdict, export.IsStaleIn(project))
+                ? new DraftExport(export.Bytes, export.Validation.Verdict, export.IsStaleIn(project), export.FileId)
                 : null,
             [.. known.SelectMany(pack => pack.Stickers
                 .Where(sticker => sticker.Origin?.ProjectId == project.Id && sticker.Origin.SegmentId == segment.Id)

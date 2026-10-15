@@ -22,8 +22,9 @@ import { kilobytes, num } from "../editor/format";
 import { useDebounced } from "../editor/useDebounced";
 import { usePackActions } from "./actions";
 import { EmojiPicker, MAX_EMOJI } from "./EmojiPicker";
-import { packMeta, placeholder, sendLabel } from "./format";
+import { packMeta, sendLabel } from "./format";
 import styles from "./PublishDialog.module.css";
+import { StickerMedia } from "./StickerMedia";
 import { usePacksUi, type PublishStart } from "./store";
 
 type Segment = PublishDraft["segments"][number];
@@ -419,7 +420,6 @@ function SegmentRow({
   const limit = s.preset === "emoji" ? limits?.emoji.maxBytes : limits?.sticker.maxBytes;
   const failed = s.export?.verdict === "fail";
   const needs = checked && emoji.length === 0;
-  const art = placeholder(index + 1);
 
   const note = (() => {
     if (failed && s.export) {
@@ -449,8 +449,14 @@ function SegmentRow({
         onChange={onCheck}
         label={<span className={styles.srOnly}>{t("publish.row", { name: s.name })}</span>}
       />
+      {/* The exported .webm plays as Telegram will show it; never exported, the tinted shape */}
       <span className={styles.rowArt} aria-hidden>
-        <span style={{ background: art.tint, borderRadius: art.radius }} />
+        <StickerMedia
+          src={s.export?.fileUrl}
+          index={index + 1}
+          playing
+          shapeClassName={styles.rowShape}
+        />
       </span>
       <span className={styles.rowText}>
         <span className={styles.rowName}>

@@ -66,11 +66,11 @@ public sealed class PublishDraftServiceTests
 
         draft.Segments.Select(segment => segment.SegmentId).Should().Equal("seg-1", "seg-2");
         var first = draft.Segments[0];
-        first.Export.Should().Be(new DraftExport(190_464, ValidationVerdict.Pass, Stale: false));
+        first.Export.Should().Be(new DraftExport(190_464, ValidationVerdict.Pass, Stale: false, "0f8e1d2c3b4a59687766554433221100"));
         first.DurationSec.Should().Be(Cat.Scene.Segments[0].PlaySeconds(Cat.Source));
         first.PublishedIn.Should().Equal(
             new StickerRef("first_by_StickerSnapAppBot", "fi0"), new StickerRef("last_by_StickerSnapAppBot", "la0"));
-        draft.Segments[1].Export.Should().Be(new DraftExport(190_464, ValidationVerdict.Fail, Stale: true));
+        draft.Segments[1].Export.Should().Be(new DraftExport(190_464, ValidationVerdict.Fail, Stale: true, "0f8e1d2c3b4a59687766554433221100"));
         draft.Segments[1].PublishedIn.Should().BeEmpty();
     }
 

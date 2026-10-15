@@ -37,7 +37,8 @@ public sealed record DraftSegment(
     IReadOnlyList<StickerRef> PublishedIn);
 
 /// <param name="Stale">The segment was edited after it: the publication exports it again</param>
-public sealed record DraftExport(long Bytes, ValidationVerdict Verdict, bool Stale);
+/// <param name="FileId">The .webm, which the window plays as the row's preview</param>
+public sealed record DraftExport(long Bytes, ValidationVerdict Verdict, bool Stale, string FileId);
 
 /// <param name="Refusal">Null when the window can pick it</param>
 public sealed record DraftPack(Pack Pack, PackRefusal? Refusal)
