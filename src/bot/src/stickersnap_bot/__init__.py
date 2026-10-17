@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from stickersnap-bot!")
+"""StickerSnap bot service: the Telegram bot and its HTTP API."""
