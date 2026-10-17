@@ -98,3 +98,14 @@ server-dist/
 *.msi
 *.blockmap
 latest*.yml
+
+# ---- Python (bot service, src/bot) ----
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.import_linter_cache/
+*.sqlite3
+*.db

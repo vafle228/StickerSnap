@@ -1,0 +1,13 @@
+name: uv + uv sync
+description: uv with its cache and the Python of src/bot/.python-version, then uv sync --locked
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v7
+      with:
+        version: "0.11.7"
+        enable-cache: true
+        cache-dependency-glob: src/bot/uv.lock
+    - run: uv sync --locked
+      working-directory: src/bot
+      shell: bash
