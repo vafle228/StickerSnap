@@ -1,0 +1,260 @@
+/* The pack screen and the sticker sheet (artboard 13, sections 3–4). */
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 4px 4px 0;
+}
+
+.headText {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.h2 {
+  margin: 0;
+  font: 700 22px/28px var(--font-sans);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* The pack's link: a tap copies it, and the chip says «Скопировано» for 2 s (state 10) */
+.link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-inset);
+  color: var(--ink-muted);
+  font: 500 13px/18px var(--font-mono);
+  cursor: copy;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.link > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.link > svg {
+  flex: none;
+}
+
+.copied {
+  background: var(--success-soft);
+  box-shadow: none;
+  color: var(--success);
+  font: 600 14px/20px var(--font-sans);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+}
+
+.gridHead {
+  padding: 4px 4px 0;
+  font: 600 13px/18px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.box {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+  overflow: hidden;
+  background-color: var(--checker-a);
+  background-image: conic-gradient(
+    var(--checker-b) 25%,
+    transparent 0 50%,
+    var(--checker-b) 0 75%,
+    transparent 0
+  );
+  background-size: 12px 12px;
+}
+
+.box > img {
+  width: 84%;
+  height: 84%;
+  object-fit: contain;
+}
+
+.busy {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--surface-raised) 60%, transparent);
+  color: var(--ink-muted);
+}
+
+.emoji {
+  max-width: 100%;
+  font-size: 15px;
+  line-height: 20px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The sheet */
+.sheetBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sheetHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-right: -8px;
+}
+
+.sheetTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font: 600 17px/24px var(--font-sans);
+}
+
+.preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  height: 248px;
+  border-radius: 20px;
+  overflow: hidden;
+  background-color: var(--checker-a);
+  background-image: conic-gradient(
+    var(--checker-b) 25%,
+    transparent 0 50%,
+    var(--checker-b) 0 75%,
+    transparent 0
+  );
+  background-size: 16px 16px;
+  touch-action: pan-y;
+}
+
+.short {
+  height: 196px;
+}
+
+.media {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+}
+
+.short .media {
+  width: 160px;
+  height: 160px;
+}
+
+.nav {
+  position: absolute;
+  border-radius: var(--radius-pill);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.prev {
+  left: 6px;
+}
+
+.next {
+  right: 6px;
+}
+
+.stickerEmoji {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.stickerEmoji > span {
+  font-size: 28px;
+  line-height: 36px;
+  letter-spacing: 4px;
+}
+
+.stickerEmoji > small {
+  font: 500 12px/16px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.stillNote {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font: 500 13px/18px var(--font-sans);
+}
+
+.stillNote > svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.danger {
+  width: 100%;
+  color: var(--danger);
+}
