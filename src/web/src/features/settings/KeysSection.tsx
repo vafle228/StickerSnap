@@ -1,4 +1,4 @@
-import { Kbd } from "../../ds";
+import { Kbd } from "@stickersnap/ds";
 import { t } from "../../shared/strings/ru";
 import { hotkeysByScope } from "./model";
 import { SettingsSection } from "./Section";

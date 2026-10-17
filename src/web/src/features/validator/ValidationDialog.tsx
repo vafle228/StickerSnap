@@ -1,4 +1,4 @@
-import { Badge, Button, Dialog, Icon, type Tone } from "../../ds";
+import { Badge, Button, Dialog, Icon, type Tone } from "@stickersnap/ds";
 import type { ValidationReport } from "../../shared/api/types";
 import { plural, t } from "../../shared/strings/ru";
 import { kilobytes } from "../editor/format";

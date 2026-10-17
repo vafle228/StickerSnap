@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { AccentName } from "../../ds/accents";
-import { freezeMotion } from "../../ds/hooks";
+import type { AccentName } from "@stickersnap/ds/accents";
+import { freezeMotion } from "@stickersnap/ds/hooks";
 import { useSettings, useUpdateSettings } from "../api/queries";
 import { platform } from "../platform";
 import type { Accent, Theme } from "../api/types";

@@ -1,4 +1,4 @@
-import { Menu, type MenuItem } from "../../ds";
+import { Menu, type MenuItem } from "@stickersnap/ds";
 import { Popover, type PopoverProps } from "./Popover";
 
 export interface MenuPopoverProps<V extends string> extends Omit<PopoverProps, "children"> {

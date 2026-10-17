@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { Button, Icon, usePresence } from "../../../ds";
-import { cx } from "../../../ds/cx";
+import { Button, Icon, usePresence } from "@stickersnap/ds";
+import { cx } from "@stickersnap/ds/cx";
 import type { Segment } from "../../../shared/api/types";
 import { t } from "../../../shared/strings/ru";
 import { glideNext } from "../glide";

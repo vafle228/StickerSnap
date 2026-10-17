@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { hasModalLayer } from "../../ds";
-import { useLatest } from "../../ds/hooks";
+import { hasModalLayer } from "@stickersnap/ds";
+import { useLatest } from "@stickersnap/ds/hooks";
 import { HOTKEYS, matches, type Hotkey, type HotkeyId } from "./registry";
 
 type Handler = (e: KeyboardEvent) => void;

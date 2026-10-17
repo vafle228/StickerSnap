@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { TextField } from "../../ds";
+import { TextField } from "@stickersnap/ds";
 import { t } from "../../shared/strings/ru";
 import { EMOJI_GROUPS, searchEmoji } from "./emoji";
 import styles from "./PublishDialog.module.css";

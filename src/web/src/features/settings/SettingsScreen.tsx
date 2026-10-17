@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import { Card, Icon, SectionNav, type IconName } from "../../ds";
+import { Card, Icon, SectionNav, type IconName } from "@stickersnap/ds";
 import { useAccount, useAppInfo } from "../../shared/api/queries";
 import { t, type StringKey } from "../../shared/strings/ru";
 import { AboutSection } from "./AboutSection";

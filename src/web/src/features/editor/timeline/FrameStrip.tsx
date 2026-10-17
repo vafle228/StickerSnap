@@ -8,7 +8,7 @@ import {
   type PointerEvent,
   type RefObject,
 } from "react";
-import { cx } from "../../../ds/cx";
+import { cx } from "@stickersnap/ds/cx";
 import { mediaSrc } from "../../../shared/api/client";
 import { t } from "../../../shared/strings/ru";
 import { seconds, timecode } from "../format";

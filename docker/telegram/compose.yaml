@@ -1,4 +1,4 @@
-# The bot service. Locally: `docker compose -f docker/bot/compose.yaml up --build`.
+# The bot service. Locally: `docker compose -f docker/telegram/compose.yaml up --build`.
 # The token and the other settings come from .env (the repository root by default, beside
 # compose.yaml on the VPS with BOT_ENV_FILE=./.env); it is never in git or in the image.
 name: stickersnap-bot
@@ -6,8 +6,8 @@ name: stickersnap-bot
 services:
   bot:
     build:
-      context: ../../src/bot
-      dockerfile: ../../docker/bot/Dockerfile
+      context: ../../src/telegram/bot
+      dockerfile: ../../../docker/telegram/Dockerfile
     env_file: ${BOT_ENV_FILE:-../../.env}
     # Only the TLS proxy on the same host talks to the service (O1)
     ports:

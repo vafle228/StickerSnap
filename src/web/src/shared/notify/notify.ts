@@ -1,7 +1,7 @@
 import { createElement } from "react";
-import { EXIT_FALLBACK_MS } from "../../ds/hooks";
+import { EXIT_FALLBACK_MS } from "@stickersnap/ds/hooks";
 import { create } from "zustand";
-import { ConfirmDialog, type IconName, type Tone } from "../../ds";
+import { ConfirmDialog, type IconName, type Tone } from "@stickersnap/ds";
 import { overlays } from "../overlays/overlays";
 import { t } from "../strings/ru";
 import { DetailsDialog, type ToastDetails } from "./DetailsDialog";

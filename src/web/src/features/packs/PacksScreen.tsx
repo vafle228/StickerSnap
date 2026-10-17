@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Banner, Button, Card, Collapse, Icon } from "../../ds";
+import { Banner, Button, Card, Collapse, Icon } from "@stickersnap/ds";
 import { useApp } from "../../app/store";
 import { useAccount, useAppInfo, usePacks } from "../../shared/api/queries";
 import { notifyProblem } from "../../shared/notify";

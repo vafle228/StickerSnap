@@ -1,5 +1,5 @@
 import { useLayoutEffect } from "react";
-import { Badge, Segmented } from "../ds";
+import { Badge, Segmented } from "@stickersnap/ds";
 import { SCENARIOS, type Scenario } from "../mocks/scenarios";
 import styles from "./DevBar.module.css";
 

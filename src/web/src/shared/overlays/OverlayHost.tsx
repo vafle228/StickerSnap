@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DialogPresence } from "../../ds/layers";
+import { DialogPresence } from "@stickersnap/ds/layers";
 import { closeSlot, useOverlays, type Slot } from "./overlays";
 
 type SlotName = "window" | "confirm";

@@ -8,8 +8,8 @@ import {
 } from "@floating-ui/react-dom";
 import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { useLayer, usePresence } from "../../ds";
-import { useLatest } from "../../ds/hooks";
+import { useLayer, usePresence } from "@stickersnap/ds";
+import { useLatest } from "@stickersnap/ds/hooks";
 import { originOf } from "./origin";
 import styles from "./Popover.module.css";
 

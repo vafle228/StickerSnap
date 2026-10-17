@@ -1,18 +1,23 @@
-// The production build (npm run build → src/server/StickerSnap.Api/wwwroot) carries no dev tools:
-// no MSW and its service worker, no demo scenarios, no dev bar. CI runs this after the build, so the demo
-// data never reaches an installer or the Docker image.
-// Usage: node tools/check-prod-build.mjs
+// A production build carries no dev tools: no MSW and its service worker, no demo scenarios, no dev
+// bar. CI runs this after each build, so the demo data never reaches an installer, the Docker image or
+// the Mini App in Telegram.
+// Usage: node tools/check-prod-build.mjs [dir]
+//   dir: the build to check, src/server/StickerSnap.Api/wwwroot (the SPA) by default;
+//        src/telegram/miniapp/dist for the Mini App (npm run build:miniapp)
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = fileURLToPath(new URL("../src/server/StickerSnap.Api/wwwroot/", import.meta.url));
+const repo = fileURLToPath(new URL("../", import.meta.url));
+const dir = process.argv[2] ?? "src/server/StickerSnap.Api/wwwroot";
+const root = resolve(repo, dir) + sep;
 
-// Words only the dev tools have: MSW's logs, the dev bar's label and link (src/web/src/dev).
+// Words only the dev tools have: MSW's logs, the dev bars' label and the showcase link
+// (src/web/src/dev, src/telegram/miniapp/src/dev).
 const MARKERS = ["mockServiceWorker", "[MSW]", "Режим разработки", "Витрина ДС"];
 
 if (!existsSync(join(root, "index.html"))) {
-  console.error("No build in src/server/StickerSnap.Api/wwwroot: run `npm run build` first.");
+  console.error(`No build in ${dir}: build it first.`);
   process.exit(1);
 }
 

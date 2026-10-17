@@ -1,6 +1,6 @@
 import { StrictMode, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import "./ds/index.css";
+import "@stickersnap/ds/index.css";
 import "./app/global.css";
 import { App } from "./app/App";
 import { Providers } from "./app/Providers";

@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { Button, Card, Collapse, Icon, Segmented, Switch } from "../../../ds";
+import { Button, Card, Collapse, Icon, Segmented, Switch } from "@stickersnap/ds";
 import { useAppInfo, useEstimate, useJob } from "../../../shared/api/queries";
 import type { Estimate, Job, Segment, SegmentPreset } from "../../../shared/api/types";
 import { notifyProblem } from "../../../shared/notify";

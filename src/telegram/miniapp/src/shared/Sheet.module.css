@@ -1,0 +1,56 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--scrim);
+  animation: fade var(--duration-base) var(--ease-soft);
+}
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: calc(100vh - var(--space-6));
+  padding: var(--space-2) 20px calc(28px + var(--safe-bottom));
+  border-radius: 28px 28px 0 0;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-float);
+  box-sizing: border-box;
+  overflow-y: auto;
+  outline: none;
+  animation: rise var(--duration-slow) var(--ease-soft);
+}
+
+.grab {
+  align-self: center;
+  width: 36px;
+  height: 4px;
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--border-strong) 55%, transparent);
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrim,
+  .sheet {
+    animation: none;
+  }
+}

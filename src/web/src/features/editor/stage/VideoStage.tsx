@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { cx } from "../../../ds/cx";
-import { EXIT_FALLBACK_MS, prefersReducedMotion } from "../../../ds/hooks";
+import { cx } from "@stickersnap/ds/cx";
+import { EXIT_FALLBACK_MS, prefersReducedMotion } from "@stickersnap/ds/hooks";
 import { mediaSrc } from "../../../shared/api/client";
 import { useAppInfo } from "../../../shared/api/queries";
 import { t } from "../../../shared/strings/ru";

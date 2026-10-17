@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Card } from "../../ds";
+import { Card } from "@stickersnap/ds";
 import styles from "./SettingsScreen.module.css";
 
 export type SectionId = "bot" | "look" | "folders" | "keys" | "about";

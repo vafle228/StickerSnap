@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { ACCENTS, Segmented, SwatchPicker } from "../../ds";
+import { ACCENTS, Segmented, SwatchPicker } from "@stickersnap/ds";
 import { t, type StringKey } from "../../shared/strings/ru";
 import {
   THEME_MODES,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Dialog } from "../../ds";
+import { Button, Dialog } from "@stickersnap/ds";
 import { t } from "../strings/ru";
 import styles from "./notify.module.css";
 

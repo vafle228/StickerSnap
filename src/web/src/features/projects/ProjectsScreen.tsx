@@ -1,5 +1,5 @@
 import { useEffect, useState, type KeyboardEvent } from "react";
-import { Button, Card, DropZone, Icon, ProjectCard, type MenuItem } from "../../ds";
+import { Button, Card, DropZone, Icon, ProjectCard, type MenuItem } from "@stickersnap/ds";
 import { useApp } from "../../app/store";
 import { mediaSrc } from "../../shared/api/client";
 import { useAppInfo, useProjects, useSettings, useUpdateSettings } from "../../shared/api/queries";

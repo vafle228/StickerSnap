@@ -4,7 +4,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-const dsDir = fileURLToPath(new URL("../src/web/src/ds/", import.meta.url));
+const dsDir = fileURLToPath(new URL("../src/ds/src/", import.meta.url));
 const source = `${dsDir}tokens.json`;
 const target = `${dsDir}tokens.css`;
 const tokens = JSON.parse(readFileSync(source, "utf8"));

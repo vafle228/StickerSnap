@@ -1,5 +1,5 @@
 import { useRef, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
-import { cx } from "../../../ds/cx";
+import { cx } from "@stickersnap/ds/cx";
 import type { PresetLimits, Segment } from "../../../shared/api/types";
 import { t } from "../../../shared/strings/ru";
 import {

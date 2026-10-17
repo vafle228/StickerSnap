@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EXIT_FALLBACK_MS } from "../../ds/hooks";
+import { EXIT_FALLBACK_MS } from "@stickersnap/ds/hooks";
 import { ApiError } from "../api/client";
 import { notify, useToasts } from "./notify";
 import { notifyProblem, problemText, toProblem } from "./problems";

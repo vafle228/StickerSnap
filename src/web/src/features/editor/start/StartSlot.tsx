@@ -1,4 +1,4 @@
-import { DropZone } from "../../../ds";
+import { DropZone } from "@stickersnap/ds";
 import { useApp } from "../../../app/store";
 import { mediaSrc } from "../../../shared/api/client";
 import { useProjects } from "../../../shared/api/queries";

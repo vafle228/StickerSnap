@@ -9,7 +9,7 @@ import {
   IconButton,
   LinkChip,
   type MenuItem,
-} from "../../ds";
+} from "@stickersnap/ds";
 import { useApp } from "../../app/store";
 import { useAppInfo, usePack } from "../../shared/api/queries";
 import type { PackSticker, PackSummary } from "../../shared/api/types";

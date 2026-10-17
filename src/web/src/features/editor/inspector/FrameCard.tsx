@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent, type KeyboardEvent } from "react";
-import { Button, Card, Segmented, TextField } from "../../../ds";
+import { Button, Card, Segmented, TextField } from "@stickersnap/ds";
 import { useAppInfo } from "../../../shared/api/queries";
 import type { Segment } from "../../../shared/api/types";
 import { t } from "../../../shared/strings/ru";

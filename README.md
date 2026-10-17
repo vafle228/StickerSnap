@@ -87,9 +87,10 @@ npm run dev                                       # SPA with HMR on http://127.0
 
 `npm run build` puts the SPA into `src/server/StickerSnap.Api/wwwroot`, and the server then serves
 it on its own port.
-Design tokens come from `src/web/src/ds/tokens.json`; after changing it run `npm run gen:tokens`.
-The design system components live in `src/web/src/ds` (import them from `src/ds`); the dev server shows
-all of them in both themes and five accents at http://127.0.0.1:5173/?showcase.
+The design system is the workspace package `src/ds` (`@stickersnap/ds`), shared by the SPA and the
+Telegram Mini App: tokens, fonts, global CSS and components, imported from `@stickersnap/ds`.
+Design tokens come from `src/ds/src/tokens.json`; after changing it run `npm run gen:tokens`.
+The dev server shows all the components in both themes and five accents at http://127.0.0.1:5173/?showcase.
 Without the server, http://127.0.0.1:5173/?mock runs the SPA on demo data (MSW and a fake SignalR hub,
 typed by the API contract). In dev builds a bar on top of the window switches between the real
 server and the demo scenarios such as `?mock=offline`; production builds have neither.
@@ -150,29 +151,49 @@ server in `server-dist` (`npm run server -w src/desktop`), or over `dotnet run` 
 
 ### Bot service
 
-The Telegram bot and its HTTP API for the desktop app and the Mini App live in `src/bot`: Python 3.13
+The Telegram bot and its HTTP API for the desktop app and the Mini App live in `src/telegram/bot`: Python 3.13
 with uv, aiogram 3 and FastAPI in one process, in the same layers as the server
 (`stickersnap_bot.domain`, `application`, `infrastructure`, `api`; `main.py` is the only composition
 root). import-linter checks that dependencies point inwards (`[tool.importlinter]` in
-`src/bot/pyproject.toml`).
+`src/telegram/bot/pyproject.toml`).
 
 The bot token and the other settings come from environment variables. Copy `.env.example` in the
 repository root to `.env` and put the dev bot's token in it; `.env` is in `.gitignore`, so the token
 never reaches git or the image.
 
 ```sh
-cd src/bot
-uv sync                                   # Python and the locked dependencies into src/bot/.venv
-uv run --env-file ../../.env stickersnap-bot   # polling, /health on http://127.0.0.1:8080
+cd src/telegram/bot
+uv sync                                   # Python and the locked dependencies into src/telegram/bot/.venv
+uv run --env-file ../../../.env stickersnap-bot   # polling, /health on http://127.0.0.1:8080
 uv run pytest                             # tests, as CI
 uv run ruff check . && uv run mypy && uv run lint-imports
 ```
 
-`docker/bot` holds the image and its compose file: `docker compose -f docker/bot/compose.yaml up --build`
+`docker/telegram` holds the image and its compose file: `docker compose -f docker/telegram/compose.yaml up --build`
 runs the service with `.env` from the repository root and keeps SQLite in a volume. On the VPS the
 `.env` with the production token lies beside `compose.yaml` and is passed with `BOT_ENV_FILE=./.env`;
 it is created there by hand or by the deploy workflow from a GitHub secret, never committed.
 In production `BOT_MODE=webhook` with `WEBHOOK_BASE_URL` and `WEBHOOK_SECRET`.
+
+### Telegram Mini App
+
+`src/telegram/miniapp` is the Mini App of @StickerSnapAppBot: the packs the bot made for a Telegram
+user, a sticker up close with «Удалить из пака», «Поделиться» and the linked computers. Same stack as
+the SPA (Vite, React, strict TypeScript, Zustand, TanStack Query, CSS Modules, no router) and the same
+design system, `@stickersnap/ds`, in Telegram's light or dark theme with our colours. It talks to the
+bot service by `src/contract/bot-service.yaml` (after changing it run `npm run gen:api`) and signs each
+request with Telegram's `initData` (`Authorization: tma …`).
+
+```sh
+npm run dev:miniapp      # http://127.0.0.1:5174, proxies /v1 to the bot service on :8080
+npm run build:miniapp    # production build into src/telegram/miniapp/dist
+npm test -w src/telegram/miniapp && npm run e2e -w src/telegram/miniapp
+```
+
+Outside Telegram, http://127.0.0.1:5174/?mock runs it on demo data (MSW by the contract) with a dev
+bar that switches the scenario (`?mock=offline`, `?mock=no-packs`…) and Telegram's theme
+(`&theme=dark`) and plays Telegram's header: «Закрыть» / «Назад» and «⋯ → Настройки».
+`&startapp=pack-<name>` opens a pack the way a bot link does. Production builds have none of it.
 
 ## Roadmap
 

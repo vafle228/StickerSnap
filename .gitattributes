@@ -1,8 +1,11 @@
 # Generated from src/contract/openapi.yaml; npm run check:api compares it byte for byte
 src/web/src/shared/api/schema.d.ts text eol=lf
 
-# Generated from src/web/src/ds/tokens.json; npm run check:tokens compares it byte for byte
-src/web/src/ds/tokens.css text eol=lf
+# Generated from src/ds/src/tokens.json; npm run check:tokens compares it byte for byte
+src/ds/src/tokens.css text eol=lf
 
 # Generated from the x-events of src/contract/openapi.yaml; npm run check:api compares it byte for byte
 src/web/src/shared/api/events.ts text eol=lf
+
+# Generated from src/contract/bot-service.yaml; npm run check:api compares it byte for byte
+src/telegram/miniapp/src/api/schema.d.ts text eol=lf

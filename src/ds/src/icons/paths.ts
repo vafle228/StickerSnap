@@ -74,6 +74,10 @@ export const ICON_PATHS = {
     "M21 13v1a4 4 0 0 1-4 4H3",
   ],
   clock: ["M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z", "M12 7v5l3 2"],
+  // Telegram Mini App additions (artboards 13–14)
+  share: ["M12 15V3", "M8 7l4-4l4 4", "M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"],
+  download: ["M12 4v11", "M7 10l5 5l5-5", "M5 20h14"],
+  computer: ["M6 5h12a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z", "M2 19h20"],
 } satisfies Record<string, string[]>;
 export type IconName = keyof typeof ICON_PATHS;
 

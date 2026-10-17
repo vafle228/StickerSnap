@@ -1,4 +1,4 @@
-import { Button, IconButton } from "../../../ds";
+import { Button, IconButton } from "@stickersnap/ds";
 import { t } from "../../../shared/strings/ru";
 import { num } from "../format";
 import { useEditor, useSegment } from "../model/store";

@@ -1,5 +1,5 @@
 name: uv + uv sync
-description: uv with its cache and the Python of src/bot/.python-version, then uv sync --locked
+description: uv with its cache and the Python of src/telegram/bot/.python-version, then uv sync --locked
 runs:
   using: composite
   steps:
@@ -7,7 +7,7 @@ runs:
       with:
         version: "0.11.7"
         enable-cache: true
-        cache-dependency-glob: src/bot/uv.lock
+        cache-dependency-glob: src/telegram/bot/uv.lock
     - run: uv sync --locked
-      working-directory: src/bot
+      working-directory: src/telegram/bot
       shell: bash
