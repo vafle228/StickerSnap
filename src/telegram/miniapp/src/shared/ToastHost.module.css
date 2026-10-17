@@ -1,0 +1,7 @@
+.host {
+  position: fixed;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: calc(20px + var(--safe-bottom));
+  z-index: 60;
+}

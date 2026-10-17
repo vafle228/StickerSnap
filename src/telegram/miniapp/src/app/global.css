@@ -1,0 +1,55 @@
+/* The Mini App on top of DS v6 (artboard 13, «ma-layer»): Telegram draws the frame and the
+   header, everything inside is the design system in Telegram's light or dark theme. */
+
+:root {
+  /* Touch targets: buttons 48px, small buttons and icon buttons 44px (rule 5, «Касания») */
+  --size-control: 48px;
+  --size-control-sm: 44px;
+  --size-toast: 100%;
+  /* Telegram sets these (Bot API 8.0); older clients leave them out */
+  --safe-bottom: calc(
+    var(--tg-safe-area-inset-bottom, 0px) + var(--tg-content-safe-area-inset-bottom, 0px)
+  );
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.ss-btn {
+  font-size: 15px;
+}
+
+.ss-btn-sm {
+  padding: 0 14px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.ss-iconbtn-sm {
+  border-radius: var(--radius-md);
+}
+
+/* Windows of artboard 14: 20px from the sides, the two buttons share the width */
+.ss-overlay {
+  padding: 20px;
+}
+
+.ss-dialog-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
