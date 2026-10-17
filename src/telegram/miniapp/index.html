@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ru" class="ss-accent-indigo">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <title>StickerSnap</title>
+    <!-- Telegram's own bridge: window.Telegram.WebApp (core.telegram.org/bots/webapps) -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      // The theme before the first paint: Telegram's light or dark, our colours
+      // (artboard 16, variant A). Mirrors src/telegram/theme.ts.
+      (function () {
+        var webApp = window.Telegram && window.Telegram.WebApp;
+        var scheme = webApp && webApp.colorScheme === "dark" ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", scheme);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
