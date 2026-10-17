@@ -175,6 +175,26 @@ runs the service with `.env` from the repository root and keeps SQLite in a volu
 it is created there by hand or by the deploy workflow from a GitHub secret, never committed.
 In production `BOT_MODE=webhook` with `WEBHOOK_BASE_URL` and `WEBHOOK_SECRET`.
 
+### Telegram Mini App
+
+`src/telegram/miniapp` is the Mini App of @StickerSnapAppBot: the packs the bot made for a Telegram
+user, a sticker up close with «Удалить из пака», «Поделиться» and the linked computers. Same stack as
+the SPA (Vite, React, strict TypeScript, Zustand, TanStack Query, CSS Modules, no router) and the same
+design system, `@stickersnap/ds`, in Telegram's light or dark theme with our colours. It talks to the
+bot service by `src/contract/bot-service.yaml` (after changing it run `npm run gen:api`) and signs each
+request with Telegram's `initData` (`Authorization: tma …`).
+
+```sh
+npm run dev:miniapp      # http://127.0.0.1:5174, proxies /v1 to the bot service on :8080
+npm run build:miniapp    # production build into src/telegram/miniapp/dist
+npm test -w src/telegram/miniapp && npm run e2e -w src/telegram/miniapp
+```
+
+Outside Telegram, http://127.0.0.1:5174/?mock runs it on demo data (MSW by the contract) with a dev
+bar that switches the scenario (`?mock=offline`, `?mock=no-packs`…) and Telegram's theme
+(`&theme=dark`) and plays Telegram's header: «Закрыть» / «Назад» and «⋯ → Настройки».
+`&startapp=pack-<name>` opens a pack the way a bot link does. Production builds have none of it.
+
 ## Roadmap
 
 - [ ] Stage 0: proof of concept (render pipeline, Bot API upload)

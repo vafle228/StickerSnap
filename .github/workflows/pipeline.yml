@@ -62,6 +62,16 @@ jobs:
       # tsc strict over the main process, the preload, the tests and the e2e
       - run: npm run typecheck -w src/desktop
 
+  miniapp-lint:
+    name: Mini App lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/node
+      - run: npm run lint -w src/telegram/miniapp
+      # tsc strict over the Mini App, its tests and its e2e
+      - run: npm run typecheck -w src/telegram/miniapp
+
   bot-lint:
     name: Bot lint
     runs-on: ubuntu-latest
@@ -133,6 +143,24 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+  # The Telegram Mini App (src/telegram/miniapp): the production build Telegram opens; hosting is O1
+  build-miniapp:
+    name: Build Mini App
+    needs: [contract, miniapp-lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/node
+      - run: npm run build:miniapp
+      # no demo data or dev bar in what Telegram opens
+      - run: npm run check:prod-build -- src/telegram/miniapp/dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: miniapp-dist
+          path: src/telegram/miniapp/dist
+          retention-days: 7
+          if-no-files-found: error
+
   # The image the VPS runs (docker/telegram); nothing is pushed yet, that is the deploy workflow (O1)
   build-bot:
     name: Build bot image
@@ -178,6 +206,16 @@ jobs:
       # "no test projects" in an unpacked build, and without --no-build it recompiles everything.)
       - run: dotnet StickerSnap.Tests.dll -trait- "Category=Slow"
         working-directory: src/server/StickerSnap.Tests/bin/Release/net10.0
+
+  miniapp-unit:
+    name: Mini App tests
+    needs: [build-miniapp]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/node
+      # unit and contract tests in node, component tests (*.test.tsx) in happy-dom
+      - run: npm test -w src/telegram/miniapp
 
   bot-unit:
     name: Bot tests
@@ -261,13 +299,33 @@ jobs:
             src/web/test-results
           retention-days: 7
 
+  # The Mini App's critical path in a phone-sized Chromium on demo data (src/telegram/miniapp/e2e)
+  miniapp-e2e:
+    name: Mini App E2E
+    needs: [miniapp-unit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/node
+      - uses: ./.github/actions/playwright
+      - run: npm run e2e -w src/telegram/miniapp
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-miniapp
+          path: |
+            src/telegram/miniapp/playwright-report
+            src/telegram/miniapp/test-results
+          retention-days: 7
+
   # ─────────────────────── one status for the whole pipeline ───────────────────────
 
   # Green when no job failed or was cancelled. The required check of main.
   gate:
     name: Pipeline passed
     if: ${{ !cancelled() }}
-    needs: [contract, web-lint, desktop-lint, bot-lint, build-web, build-server, build-bot, web-unit, desktop-unit, server-fast, bot-unit, render-slow, e2e, e2e-server]
+    needs: [contract, web-lint, desktop-lint, miniapp-lint, bot-lint, build-web, build-server, build-miniapp, build-bot, web-unit, desktop-unit, server-fast, miniapp-unit, bot-unit, render-slow, e2e, e2e-server, miniapp-e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any job failed or was cancelled
