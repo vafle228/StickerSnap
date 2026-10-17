@@ -6,3 +6,6 @@ src/ds/src/tokens.css text eol=lf
 
 # Generated from the x-events of src/contract/openapi.yaml; npm run check:api compares it byte for byte
 src/web/src/shared/api/events.ts text eol=lf
+
+# Generated from src/contract/bot-service.yaml; npm run check:api compares it byte for byte
+src/telegram/miniapp/src/api/schema.d.ts text eol=lf

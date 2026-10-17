@@ -1,0 +1,366 @@
+openapi: 3.1.0
+info:
+  title: StickerSnap bot service API
+  version: 1.0.0
+  summary: Контракт облачного сервиса @StickerSnapAppBot (src/telegram/bot).
+  description: |
+    API облачного сервиса, единственного владельца токена бота (план бота, docs/bot-plan.md).
+    Пока здесь только API Mini App (задача S6); API десктопа (привязка и публикация, S4–S5)
+    ляжет в этот же файл. После изменения: `npm run gen:api`.
+
+    Транспорт: HTTPS, все пути под `/v1`. Mini App отдаётся с того же адреса, поэтому
+    ходит на относительные пути, без CORS.
+
+    Доступ Mini App: каждый запрос несёт `Authorization: tma <initData>`, где `initData` —
+    строка `Telegram.WebApp.initData` как есть. Сервис проверяет её подпись токеном бота
+    и срок (`auth_date`), а пользователя берёт из неё, а не из запроса. Без подписи,
+    с чужой или устаревшей подписью — 401 `unauthorized`, и Mini App показывает
+    «Не получилось войти» (артборд 14, состояние 4).
+
+    Медиа: `thumbUrl` и `videoUrl` стикеров и `coverUrl` пака — готовые адреса, которые
+    браузер грузит сам (`<img>`, `<video>`) без заголовка. Сервис подписывает их на короткий
+    срок и сам ходит за файлом в Bot API: адрес файла Telegram несёт токен бота и наружу
+    не попадает.
+
+    Формат: JSON, поля в camelCase, перечисления — строки, даты — ISO 8601 в UTC,
+    необязательное поле отсутствует, а не `null`. Сервис не присылает текст для человека,
+    только коды; фразы живут в Mini App.
+
+    Ошибки: RFC 9457 Problem Details (`application/problem+json`) с полем `code`
+    из `ErrorCode`, как в контракте десктопа (src/contract/openapi.yaml).
+
+servers:
+  - url: /
+
+security:
+  - telegramInitData: []
+
+tags:
+  - name: miniapp
+    description: Mini App — паки и устройства пользователя Telegram
+
+paths:
+  /v1/miniapp/packs:
+    get:
+      tags: [miniapp]
+      operationId: listPacks
+      summary: Паки, которые бот создал для этого пользователя
+      description: Свежие сверху (по `updatedAt`). Пак, которого Telegram больше не знает, приходит с `state = missing`.
+      responses:
+        "200":
+          description: Паки
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          $ref: "#/components/responses/TelegramError"
+
+  /v1/miniapp/packs/{name}:
+    parameters:
+      - $ref: "#/components/parameters/PackName"
+    get:
+      tags: [miniapp]
+      operationId: getPack
+      summary: Пак со стикерами в их порядке в Telegram
+      responses:
+        "200":
+          description: Пак
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/TelegramError"
+    delete:
+      tags: [miniapp]
+      operationId: forgetPack
+      summary: Убрать из списка пак, которого нет в Telegram
+      description: |
+        Только для пака с `state = missing` (артборд 14, состояние 6): стирает его у сервиса,
+        в Telegram его уже нет. Пак, который Telegram знает, — 409 `pack_in_telegram`.
+      responses:
+        "204":
+          description: Убран
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /v1/miniapp/packs/{name}/stickers/{stickerId}:
+    parameters:
+      - $ref: "#/components/parameters/PackName"
+      - name: stickerId
+        in: path
+        required: true
+        description: "`Sticker.id`"
+        schema:
+          type: string
+    delete:
+      tags: [miniapp]
+      operationId: deleteSticker
+      summary: Удалить стикер из пака
+      description: |
+        deleteStickerFromSet от имени бота. Последний стикер уносит с собой пак: Telegram
+        удаляет пустой набор, и сервис забывает его.
+      responses:
+        "204":
+          description: Удалён
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "502":
+          $ref: "#/components/responses/TelegramError"
+
+  /v1/miniapp/devices:
+    get:
+      tags: [miniapp]
+      operationId: listDevices
+      summary: Компьютеры, привязанные к этому пользователю
+      description: Новые сверху (по `linkedAt`).
+      responses:
+        "200":
+          description: Устройства
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/miniapp/devices/{deviceId}:
+    parameters:
+      - name: deviceId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      tags: [miniapp]
+      operationId: unlinkDevice
+      summary: Отвязать компьютер
+      description: Ключ устройства отзывается; компьютер узнает об этом по 401 на следующем вызове.
+      responses:
+        "204":
+          description: Отвязан
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    telegramInitData:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "`tma <Telegram.WebApp.initData>`"
+
+  parameters:
+    PackName:
+      name: name
+      in: path
+      required: true
+      description: Имя набора в Telegram, с суффиксом `_by_<бот>`
+      schema:
+        type: string
+        pattern: "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+
+  responses:
+    Unauthorized:
+      description: "`unauthorized` — нет подписи initData, она чужая или устарела"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotFound:
+      description: "`pack_not_found`, `sticker_not_found`, `device_not_found`"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Conflict:
+      description: "`pack_in_telegram`"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    RateLimited:
+      description: "`rate_limited` — Telegram просит подождать, `params.retryAfterSec`"
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    TelegramError:
+      description: "`telegram_error` — Telegram не ответил или ответил ошибкой"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+
+  schemas:
+    PackList:
+      type: object
+      required: [packs]
+      properties:
+        packs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Pack"
+
+    Pack:
+      type: object
+      required: [name, title, kind, count, limit, state, updatedAt]
+      properties:
+        name:
+          type: string
+          examples: [reactions_call_by_StickerSnapAppBot]
+        title:
+          type: string
+          examples: [Реакции с созвона]
+        kind:
+          $ref: "#/components/schemas/PackKind"
+        count:
+          type: integer
+          minimum: 0
+          description: Стикеров в паке сейчас
+        limit:
+          type: integer
+          description: Сколько Telegram примет всего (120 стикеров, 200 эмодзи); `count = limit` — «Заполнен»
+        state:
+          $ref: "#/components/schemas/PackState"
+        coverUrl:
+          type: string
+          description: Первый кадр первого стикера (или обложка пака); нет у пустого или пропавшего пака
+        updatedAt:
+          type: string
+          format: date-time
+
+    PackKind:
+      type: string
+      enum: [stickers, emoji]
+
+    PackState:
+      type: string
+      description: "`missing` — Telegram этого пака не знает (удалён через @Stickers)"
+      enum: [ok, missing]
+
+    PackDetail:
+      allOf:
+        - $ref: "#/components/schemas/Pack"
+        - type: object
+          required: [stickers]
+          properties:
+            stickers:
+              type: array
+              description: В порядке Telegram; у пропавшего пака пусто
+              items:
+                $ref: "#/components/schemas/Sticker"
+
+    Sticker:
+      type: object
+      required: [id, emoji, thumbUrl, videoUrl]
+      properties:
+        id:
+          type: string
+          description: "`file_id` стикера в Telegram"
+        emoji:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: string
+          examples: [["😴", "💤"]]
+        thumbUrl:
+          type: string
+          description: Первый кадр (thumbnail из Bot API), для сетки
+        videoUrl:
+          type: string
+          description: Сам .webm, для листа просмотра
+
+    DeviceList:
+      type: object
+      required: [devices]
+      properties:
+        devices:
+          type: array
+          items:
+            $ref: "#/components/schemas/Device"
+
+    Device:
+      type: object
+      required: [id, name, os, linkedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          description: Имя компьютера, как его прислал десктоп при привязке
+          examples: [DESKTOP-7F3K2Q]
+        os:
+          type: string
+          enum: [windows, macos, linux]
+        linkedAt:
+          type: string
+          format: date-time
+
+    Problem:
+      type: object
+      description: |
+        RFC 9457 Problem Details. `title` и `detail` — английский для журнала, в интерфейс не попадают.
+      required: [type, status, title, code]
+      properties:
+        type:
+          type: string
+          examples: ["https://stickersnap.app/problems/unauthorized"]
+        status:
+          type: integer
+        title:
+          type: string
+        detail:
+          type: string
+        code:
+          $ref: "#/components/schemas/ErrorCode"
+        params:
+          type: object
+          description: "{ retryAfterSec: 24 }"
+          additionalProperties:
+            type: [string, number]
+
+    ErrorCode:
+      type: string
+      description: |
+        | code | HTTP |
+        | --- | --- |
+        | `bad_request` | 400 |
+        | `unauthorized` | 401 |
+        | `pack_not_found`, `sticker_not_found`, `device_not_found` | 404 |
+        | `pack_in_telegram` | 409 |
+        | `rate_limited` | 429 |
+        | `internal` | 500 |
+        | `telegram_error` | 502 |
+      enum:
+        - bad_request
+        - unauthorized
+        - pack_not_found
+        - sticker_not_found
+        - device_not_found
+        - pack_in_telegram
+        - rate_limited
+        - internal
+        - telegram_error

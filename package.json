@@ -4,7 +4,8 @@
   "workspaces": [
     "src/ds",
     "src/web",
-    "src/desktop"
+    "src/desktop",
+    "src/telegram/miniapp"
   ],
   "scripts": {
     "dev": "npm run dev -w src/web",
@@ -17,13 +18,15 @@
     "test": "npm run test -w src/ds -w src/web",
     "e2e": "npm run e2e -w src/web",
     "e2e:server": "npm run e2e:server -w src/web",
-    "format": "prettier --write src/ds src/web src/desktop tools",
-    "format:check": "prettier --check src/ds src/web src/desktop tools",
+    "dev:miniapp": "npm run dev -w src/telegram/miniapp",
+    "build:miniapp": "npm run build -w src/telegram/miniapp",
+    "format": "prettier --write src/ds src/web src/desktop src/telegram/miniapp tools",
+    "format:check": "prettier --check src/ds src/web src/desktop src/telegram/miniapp tools",
     "gen:tokens": "node tools/build-tokens.mjs",
     "check:tokens": "node tools/build-tokens.mjs --check",
-    "gen:api": "openapi-typescript src/contract/openapi.yaml -o src/web/src/shared/api/schema.d.ts && node tools/build-events.mjs",
-    "check:api": "openapi-typescript src/contract/openapi.yaml -o src/web/src/shared/api/schema.d.ts --check && node tools/build-events.mjs --check",
-    "typecheck:api": "tsc --strict --noEmit src/web/src/shared/api/schema.d.ts"
+    "gen:api": "openapi-typescript src/contract/openapi.yaml -o src/web/src/shared/api/schema.d.ts && openapi-typescript src/contract/bot-service.yaml -o src/telegram/miniapp/src/api/schema.d.ts && node tools/build-events.mjs",
+    "check:api": "openapi-typescript src/contract/openapi.yaml -o src/web/src/shared/api/schema.d.ts --check && openapi-typescript src/contract/bot-service.yaml -o src/telegram/miniapp/src/api/schema.d.ts --check && node tools/build-events.mjs --check",
+    "typecheck:api": "tsc --strict --noEmit src/web/src/shared/api/schema.d.ts src/telegram/miniapp/src/api/schema.d.ts"
   },
   "devDependencies": {
     "openapi-typescript": "^7.4.4",

@@ -6,3 +6,4 @@ src/ds/src/tokens.css
 src/ds/src/tokens.json
 src/ds/src/components.css
 src/ds/fonts/
+src/telegram/miniapp/src/api/schema.d.ts
