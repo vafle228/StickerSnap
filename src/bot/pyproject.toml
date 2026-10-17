@@ -1,7 +1,7 @@
 [project]
 name = "stickersnap-bot"
 version = "0.1.0"
-description = "Add your description here"
+description = "StickerSnap Telegram bot and its HTTP API for the desktop app and the Mini App"
 authors = [
     { name = "Claude", email = "noreply@anthropic.com" }
 ]
@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-stickersnap-bot = "stickersnap_bot:main"
+stickersnap-bot = "stickersnap_bot.main:main"
 
 [build-system]
 requires = ["uv_build>=0.11.7,<0.12.0"]
@@ -31,4 +31,38 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "ruff>=0.17.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "N", "ASYNC", "PT"]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+# warnings are errors, as in the .NET server
+filterwarnings = ["error"]
+asyncio_default_fixture_loop_scope = "function"
+
+# Dependencies point only inwards, like the server's layer tests (ArchUnitNET):
+# api and infrastructure never import each other; main.py is the only composition root.
+[tool.importlinter]
+root_package = "stickersnap_bot"
+
+[[tool.importlinter.contracts]]
+name = "Layers point inwards"
+type = "layers"
+layers = [
+    "stickersnap_bot.main",
+    "stickersnap_bot.api | stickersnap_bot.infrastructure",
+    "stickersnap_bot.application",
+    "stickersnap_bot.domain",
 ]
