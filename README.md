@@ -87,9 +87,10 @@ npm run dev                                       # SPA with HMR on http://127.0
 
 `npm run build` puts the SPA into `src/server/StickerSnap.Api/wwwroot`, and the server then serves
 it on its own port.
-Design tokens come from `src/web/src/ds/tokens.json`; after changing it run `npm run gen:tokens`.
-The design system components live in `src/web/src/ds` (import them from `src/ds`); the dev server shows
-all of them in both themes and five accents at http://127.0.0.1:5173/?showcase.
+The design system is the workspace package `src/ds` (`@stickersnap/ds`), shared by the SPA and the
+Telegram Mini App: tokens, fonts, global CSS and components, imported from `@stickersnap/ds`.
+Design tokens come from `src/ds/src/tokens.json`; after changing it run `npm run gen:tokens`.
+The dev server shows all the components in both themes and five accents at http://127.0.0.1:5173/?showcase.
 Without the server, http://127.0.0.1:5173/?mock runs the SPA on demo data (MSW and a fake SignalR hub,
 typed by the API contract). In dev builds a bar on top of the window switches between the real
 server and the demo scenarios such as `?mock=offline`; production builds have neither.

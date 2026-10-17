@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { prefersReducedMotion } from "../../ds/hooks";
+import { prefersReducedMotion } from "@stickersnap/ds/hooks";
 
 /* Jumps made by a click glide: a frame preset, «Скопировать кадр во все стикеры», another
    segment tab, «Вписать целиком», the zoom buttons. Drags, keys and undo land at once

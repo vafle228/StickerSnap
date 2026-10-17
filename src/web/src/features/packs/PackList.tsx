@@ -1,4 +1,4 @@
-import { Badge } from "../../ds";
+import { Badge } from "@stickersnap/ds";
 import type { PackSummary } from "../../shared/api/types";
 import { t } from "../../shared/strings/ru";
 import { packMeta } from "./format";

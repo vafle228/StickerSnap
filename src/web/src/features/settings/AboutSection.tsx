@@ -1,5 +1,5 @@
 import appIcon from "../../assets/app-icon.png";
-import { Button } from "../../ds";
+import { Button } from "@stickersnap/ds";
 import { useAppInfo } from "../../shared/api/queries";
 import type { AppInfo } from "../../shared/api/types";
 import { notify } from "../../shared/notify";

@@ -2,7 +2,7 @@ node_modules/
 dist/
 src/web/src/shared/api/schema.d.ts
 src/web/src/shared/api/events.ts
-src/web/src/ds/tokens.css
-src/web/src/ds/tokens.json
-src/web/src/ds/components.css
-src/web/public/fonts/
+src/ds/src/tokens.css
+src/ds/src/tokens.json
+src/ds/src/components.css
+src/ds/fonts/

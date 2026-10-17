@@ -1,5 +1,5 @@
-import { Badge, Button, Card, Icon } from "../../../ds";
-import { cx } from "../../../ds/cx";
+import { Badge, Button, Card, Icon } from "@stickersnap/ds";
+import { cx } from "@stickersnap/ds/cx";
 import { useAppInfo } from "../../../shared/api/queries";
 import { platform } from "../../../shared/platform";
 import { t } from "../../../shared/strings/ru";

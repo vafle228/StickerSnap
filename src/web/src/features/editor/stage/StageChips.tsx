@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Icon, IconButton } from "../../../ds";
+import { Icon, IconButton } from "@stickersnap/ds";
 import { useJob } from "../../../shared/api/queries";
 import type { SourceInfo } from "../../../shared/api/types";
 import { t } from "../../../shared/strings/ru";

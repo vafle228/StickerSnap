@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Button, Dialog, TextField } from "../../ds";
+import { Button, Dialog, TextField } from "@stickersnap/ds";
 import { notify, notifyProblem, PROBLEMS, problemText, toProblem } from "../../shared/notify";
 import { t } from "../../shared/strings/ru";
 import { usePackActions } from "./actions";

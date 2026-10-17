@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { StickerArt } from "../../../ds";
+import { StickerArt } from "@stickersnap/ds";
 import styles from "./StartSlot.module.css";
 
 /** A small cover on the checker; the placeholder art stays until a real picture loads. */

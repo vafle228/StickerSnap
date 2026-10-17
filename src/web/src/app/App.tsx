@@ -1,4 +1,4 @@
-import { NavRail, type NavRailItem } from "../ds";
+import { NavRail, type NavRailItem } from "@stickersnap/ds";
 import { EditorScreen } from "../features/editor/EditorScreen";
 import { PacksScreen } from "../features/packs/PacksScreen";
 import { PublishWatch } from "../features/packs/PublishWatch";

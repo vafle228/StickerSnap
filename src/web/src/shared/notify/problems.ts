@@ -1,4 +1,4 @@
-import type { Tone } from "../../ds";
+import type { Tone } from "@stickersnap/ds";
 import { ApiError } from "../api/client";
 import type { ErrorCode, Problem } from "../api/types";
 import { t } from "../strings/ru";

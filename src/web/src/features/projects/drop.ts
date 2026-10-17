@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { create } from "zustand";
-import { useLatest } from "../../ds/hooks";
+import { useLatest } from "@stickersnap/ds/hooks";
 
 /** A file is carried over the window (artboard 3c, 0): every import zone turns its dashes into
  *  the rainbow at once, not only the one under the pointer. */

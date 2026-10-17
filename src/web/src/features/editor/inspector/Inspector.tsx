@@ -1,4 +1,4 @@
-import { Button, Card } from "../../../ds";
+import { Button, Card } from "@stickersnap/ds";
 import { t } from "../../../shared/strings/ru";
 import { useSegment } from "../model/store";
 import { ExportCard } from "./ExportCard";

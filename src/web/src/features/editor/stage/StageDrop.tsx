@@ -1,4 +1,4 @@
-import { DropZone } from "../../../ds";
+import { DropZone } from "@stickersnap/ds";
 import { t } from "../../../shared/strings/ru";
 import { useProjectActions } from "../../projects/actions";
 import { useFileDrag } from "../../projects/drop";

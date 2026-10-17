@@ -1,6 +1,6 @@
 import type { UseMutationResult } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { Badge, Banner, Button, Icon } from "../../ds";
+import { Badge, Banner, Button, Icon } from "@stickersnap/ds";
 import { useApp } from "../../app/store";
 import { useAccount, useAccountActions, useAppInfo } from "../../shared/api/queries";
 import type { AccountLink, Problem } from "../../shared/api/types";

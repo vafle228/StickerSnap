@@ -1,5 +1,5 @@
-import { Button } from "../../ds";
-import { cx } from "../../ds/cx";
+import { Button } from "@stickersnap/ds";
+import { cx } from "@stickersnap/ds/cx";
 import { t } from "../../shared/strings/ru";
 import styles from "./ReadingFile.module.css";
 import { cancelReading, useImport } from "./reading";

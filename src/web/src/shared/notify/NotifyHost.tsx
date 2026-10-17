@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { Badge, Button, Toast, ToastStack } from "../../ds";
+import { Badge, Button, Toast, ToastStack } from "@stickersnap/ds";
 import { t } from "../strings/ru";
 import { notify, useToasts } from "./notify";
 import styles from "./notify.module.css";

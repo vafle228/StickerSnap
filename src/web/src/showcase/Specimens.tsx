@@ -32,7 +32,7 @@ import {
   Timeline,
   Toast,
   ToastStack,
-} from "../ds";
+} from "@stickersnap/ds";
 import styles from "./Showcase.module.css";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {

@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { Button, TextField } from "../../ds";
+import { Button, TextField } from "@stickersnap/ds";
 import { useSettings, useUpdateSettings } from "../../shared/api/queries";
 import type { Settings } from "../../shared/api/types";
 import { platform } from "../../shared/platform";

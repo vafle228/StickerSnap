@@ -10,7 +10,7 @@ import {
   Segmented,
   Select,
   TextField,
-} from "../../ds";
+} from "@stickersnap/ds";
 import { useApp } from "../../app/store";
 import { api, call } from "../../shared/api/client";
 import { useAccount, useAppInfo, useProjects, usePublishDraft } from "../../shared/api/queries";

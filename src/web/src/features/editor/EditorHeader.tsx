@@ -1,4 +1,4 @@
-import { Button, IconButton, SaveStatus } from "../../ds";
+import { Button, IconButton, SaveStatus } from "@stickersnap/ds";
 import { useApp } from "../../app/store";
 import { t } from "../../shared/strings/ru";
 import { useProjectActions } from "../projects/actions";

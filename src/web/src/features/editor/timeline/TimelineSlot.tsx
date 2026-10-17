@@ -1,5 +1,5 @@
 import { useEffect, useRef, type CSSProperties } from "react";
-import { Button, Card, Icon, IconButton, TONE_ICON } from "../../../ds";
+import { Button, Card, Icon, IconButton, TONE_ICON } from "@stickersnap/ds";
 import { useHotkey } from "../../../shared/hotkeys";
 import { plural, t } from "../../../shared/strings/ru";
 import { num, speed as speedText, timecode } from "../format";

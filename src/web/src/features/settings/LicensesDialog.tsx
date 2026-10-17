@@ -1,4 +1,4 @@
-import { Button, Dialog } from "../../ds";
+import { Button, Dialog } from "@stickersnap/ds";
 import { platform } from "../../shared/platform";
 import { LICENSES } from "./model";
 import { t } from "../../shared/strings/ru";

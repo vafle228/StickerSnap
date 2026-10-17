@@ -1,4 +1,4 @@
-import { Banner, Button, Collapse } from "../../../ds";
+import { Banner, Button, Collapse } from "@stickersnap/ds";
 import { t } from "../../../shared/strings/ru";
 import { useProjectActions } from "../../projects/actions";
 import { useEditor } from "../model/store";

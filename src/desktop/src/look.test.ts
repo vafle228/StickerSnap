@@ -8,7 +8,7 @@ interface Tokens {
 
 describe("the window before the SPA paints", () => {
   it("has the colour of token bg in both themes", () => {
-    const url = new URL("../../web/src/ds/tokens.json", import.meta.url);
+    const url = new URL("../../ds/src/tokens.json", import.meta.url);
     const tokens = JSON.parse(readFileSync(url, "utf8")) as Tokens;
     const bg = tokens.color.tokens.find((t) => t.name === "bg");
     expect(bg?.value).toEqual(BACKGROUND);

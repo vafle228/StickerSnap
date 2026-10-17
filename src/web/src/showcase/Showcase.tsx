@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { SwatchPicker, type AccentName } from "../ds";
+import { SwatchPicker, type AccentName } from "@stickersnap/ds";
 import styles from "./Showcase.module.css";
 import { Specimens } from "./Specimens";
 
