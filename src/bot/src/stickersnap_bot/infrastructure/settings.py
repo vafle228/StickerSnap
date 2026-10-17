@@ -26,8 +26,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _webhook_needs_address_and_secret(self) -> Self:
-        if self.bot_mode == "webhook" and (
-            not self.webhook_base_url or self.webhook_secret is None
-        ):
+        # .env.example leaves them empty, and an empty secret is no secret
+        secret = self.webhook_secret.get_secret_value() if self.webhook_secret else ""
+        if self.bot_mode == "webhook" and (not self.webhook_base_url or not secret):
             raise ValueError("BOT_MODE=webhook needs WEBHOOK_BASE_URL and WEBHOOK_SECRET")
         return self

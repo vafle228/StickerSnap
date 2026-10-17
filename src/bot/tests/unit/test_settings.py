@@ -31,3 +31,15 @@ def test_webhook_mode_needs_address_and_secret(monkeypatch: pytest.MonkeyPatch) 
 
     with pytest.raises(ValidationError, match="WEBHOOK_BASE_URL"):
         Settings()
+
+
+def test_webhook_mode_refuses_the_empty_values_of_env_example(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("BOT_TOKEN", "123:secret")
+    monkeypatch.setenv("BOT_MODE", "webhook")
+    monkeypatch.setenv("WEBHOOK_BASE_URL", "https://bot.example")
+    monkeypatch.setenv("WEBHOOK_SECRET", "")
+
+    with pytest.raises(ValidationError, match="WEBHOOK_SECRET"):
+        Settings()
