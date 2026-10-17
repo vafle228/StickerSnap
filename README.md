@@ -151,25 +151,25 @@ server in `server-dist` (`npm run server -w src/desktop`), or over `dotnet run` 
 
 ### Bot service
 
-The Telegram bot and its HTTP API for the desktop app and the Mini App live in `src/bot`: Python 3.13
+The Telegram bot and its HTTP API for the desktop app and the Mini App live in `src/telegram/bot`: Python 3.13
 with uv, aiogram 3 and FastAPI in one process, in the same layers as the server
 (`stickersnap_bot.domain`, `application`, `infrastructure`, `api`; `main.py` is the only composition
 root). import-linter checks that dependencies point inwards (`[tool.importlinter]` in
-`src/bot/pyproject.toml`).
+`src/telegram/bot/pyproject.toml`).
 
 The bot token and the other settings come from environment variables. Copy `.env.example` in the
 repository root to `.env` and put the dev bot's token in it; `.env` is in `.gitignore`, so the token
 never reaches git or the image.
 
 ```sh
-cd src/bot
-uv sync                                   # Python and the locked dependencies into src/bot/.venv
-uv run --env-file ../../.env stickersnap-bot   # polling, /health on http://127.0.0.1:8080
+cd src/telegram/bot
+uv sync                                   # Python and the locked dependencies into src/telegram/bot/.venv
+uv run --env-file ../../../.env stickersnap-bot   # polling, /health on http://127.0.0.1:8080
 uv run pytest                             # tests, as CI
 uv run ruff check . && uv run mypy && uv run lint-imports
 ```
 
-`docker/bot` holds the image and its compose file: `docker compose -f docker/bot/compose.yaml up --build`
+`docker/telegram` holds the image and its compose file: `docker compose -f docker/telegram/compose.yaml up --build`
 runs the service with `.env` from the repository root and keeps SQLite in a volume. On the VPS the
 `.env` with the production token lies beside `compose.yaml` and is passed with `BOT_ENV_FILE=./.env`;
 it is created there by hand or by the deploy workflow from a GitHub secret, never committed.

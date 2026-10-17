@@ -1,4 +1,4 @@
-# The bot service (src/bot). Built by docker/bot/compose.yaml with src/bot as the context.
+# The bot service (src/telegram/bot). Built by docker/telegram/compose.yaml with src/telegram/bot as the context.
 FROM python:3.13-slim
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.7 /uv /bin/uv

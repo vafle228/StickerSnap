@@ -99,7 +99,7 @@ server-dist/
 *.blockmap
 latest*.yml
 
-# ---- Python (bot service, src/bot) ----
+# ---- Python (bot service, src/telegram/bot) ----
 __pycache__/
 *.py[cod]
 .venv/

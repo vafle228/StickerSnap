@@ -69,15 +69,15 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/uv
       - run: uv run ruff format --check .
-        working-directory: src/bot
+        working-directory: src/telegram/bot
       - run: uv run ruff check .
-        working-directory: src/bot
+        working-directory: src/telegram/bot
       # mypy --strict over the service and its tests
       - run: uv run mypy
-        working-directory: src/bot
+        working-directory: src/telegram/bot
       # the layers point inwards (pyproject.toml, [tool.importlinter])
       - run: uv run lint-imports
-        working-directory: src/bot
+        working-directory: src/telegram/bot
 
   # Reports vulnerable packages; never fails the pipeline (GitLab's allow_failure)
   dependency-check:
@@ -133,14 +133,14 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  # The image the VPS runs (docker/bot); nothing is pushed yet, that is the deploy workflow (O1)
+  # The image the VPS runs (docker/telegram); nothing is pushed yet, that is the deploy workflow (O1)
   build-bot:
     name: Build bot image
     needs: [bot-lint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - run: docker build -f docker/bot/Dockerfile -t stickersnap-bot src/bot
+      - run: docker build -f docker/telegram/Dockerfile -t stickersnap-bot src/telegram/bot
 
   # ─────────────────────── test · fast unit and integration tests ───────────────────────
 
@@ -188,7 +188,7 @@ jobs:
       - uses: ./.github/actions/uv
       # unit, FastAPI through httpx and the layer contract; nothing reaches Telegram
       - run: uv run pytest
-        working-directory: src/bot
+        working-directory: src/telegram/bot
 
   # ─────────────────────── test-slow · after the fast tests, in parallel ───────────────────────
 
