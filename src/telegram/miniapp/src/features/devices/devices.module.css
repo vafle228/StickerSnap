@@ -1,0 +1,4 @@
+.unlink {
+  flex: none;
+  color: var(--danger);
+}
