@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from stickersnap_bot.api.app import Polling, UpdateDelivery, Webhook, create_app
 from stickersnap_bot.api.telegram import create_dispatcher
+from stickersnap_bot.infrastructure.database.migrate import migrate
 from stickersnap_bot.infrastructure.settings import Settings
 
 
@@ -29,6 +30,8 @@ def build_app(settings: Settings) -> FastAPI:
 
 def main() -> None:
     settings = Settings()
+    # before the app: the schema is ready when the first update or request arrives
+    migrate(settings.database_path)
     uvicorn.run(build_app(settings), host=settings.host, port=settings.port)
 
 

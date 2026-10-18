@@ -167,7 +167,12 @@ uv sync                                   # Python and the locked dependencies i
 uv run --env-file ../../../.env stickersnap-bot   # polling, /health on http://127.0.0.1:8080
 uv run pytest                             # tests, as CI
 uv run ruff check . && uv run mypy && uv run lint-imports
+uv run alembic revision --autogenerate -m "what changed"   # a migration after editing database/tables.py
 ```
+
+The service keeps users, linked computers, link codes and its packs in SQLite (`DATABASE_PATH`,
+`data/bot.sqlite3` by default) and brings the file to the latest Alembic migration itself on every
+start, so a deploy needs no separate migration step.
 
 `docker/telegram` holds the image and its compose file: `docker compose -f docker/telegram/compose.yaml up --build`
 runs the service with `.env` from the repository root and keeps SQLite in a volume. On the VPS the
