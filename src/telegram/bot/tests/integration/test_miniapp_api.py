@@ -24,7 +24,9 @@ from tests.fakes import (
     TOKEN,
     FakeStickerSets,
     Tables,
+    bot_chat,
     miniapp,
+    notifications,
     sign_in,
     signed_launch,
     sticker_set,
@@ -59,7 +61,14 @@ def sets() -> FakeStickerSets:
 async def client(tables: Tables, sets: FakeStickerSets) -> AsyncIterator[AsyncClient]:
     # The lifespan (polling) is not run, so nothing reaches Telegram
     bot = Bot(TOKEN)
-    app = create_app(bot, create_dispatcher(), Polling(), sign_in(tables), miniapp(tables, sets))
+    app = create_app(
+        bot,
+        create_dispatcher(bot_chat(tables)),
+        Polling(),
+        sign_in(tables),
+        miniapp(tables, sets),
+        notifications(tables),
+    )
     headers = {"Authorization": f"tma {signed_launch(ME)}"}
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test", headers=headers) as http:

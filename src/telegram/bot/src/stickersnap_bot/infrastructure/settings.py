@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     webhook_secret: SecretStr | None = None
     # another Bot API server, for a fake one in tests; the real Telegram when not set
     telegram_api_url: str | None = None
+    # «Скачать для Windows и Linux» in the bot's messages
+    download_url: str = "https://github.com/vafle228/StickerSnap/releases/latest"
     database_path: Path = Path("data/bot.sqlite3")
     # how long the Mini App's launch data stays good; Telegram signs it when the Mini App opens
     init_data_max_age: timedelta = timedelta(days=1)
