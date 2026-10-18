@@ -10,12 +10,14 @@ from aiohttp import ClientError
 
 from stickersnap_bot.application.chat_messages import Button, ChatMessage, OpenApp
 from stickersnap_bot.application.errors import TelegramUnavailableError
+from stickersnap_bot.infrastructure.telegram.app_links import BotAppLinks
 from stickersnap_bot.infrastructure.telegram.errors import translate
 
 
 class BotChatMessages:
     def __init__(self, bot: Bot) -> None:
         self._bot = bot
+        self._links = BotAppLinks(bot)
 
     async def send(self, chat_id: int, message: ChatMessage) -> int | None:
         try:
@@ -64,11 +66,8 @@ class BotChatMessages:
     async def _button(self, button: Button) -> InlineKeyboardButton:
         if not isinstance(button, OpenApp):
             return InlineKeyboardButton(text=button.text, url=button.url)
-        # A web_app button carries no start_param: only a t.me link to the Main Mini App
-        # opens it on a screen. The bot's username comes from getMe, cached by aiogram.
-        me = await self._bot.me()
-        param = button.start_param
-        link = f"https://t.me/{me.username}?startapp" + (f"={param}" if param else "")
+        # A web_app button carries no start_param: only a t.me link opens the Mini App on a screen
+        link = await self._links.startapp(button.start_param)
         return InlineKeyboardButton(text=button.text, url=link)
 
 
