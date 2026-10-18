@@ -12,6 +12,7 @@ from stickersnap_bot.application.chat_messages import ChatMessage
 from stickersnap_bot.application.errors import ApplicationError
 from stickersnap_bot.application.feedback import SendFeedback
 from stickersnap_bot.application.init_data import InitDataVerifier, sign_init_data
+from stickersnap_bot.application.linking import Linking, LinkSignals
 from stickersnap_bot.application.media import MediaLinks
 from stickersnap_bot.application.miniapp import MiniApp
 from stickersnap_bot.application.persistence import UnitOfWorkFactory
@@ -386,4 +387,25 @@ def notifications(
         messages or FakeChatMessages(),
         history or ChatHistory(),
         clock=clock or FakeClock(),
+    )
+
+
+class FakeAppLinks:
+    async def startapp(self, param: str | None = None) -> str:
+        return "https://t.me/StickerSnapAppBot?startapp" + (f"={param}" if param else "")
+
+
+def linking(
+    tables: Tables,
+    messages: FakeChatMessages | None = None,
+    clock: FakeClock | None = None,
+    signals: LinkSignals | None = None,
+) -> Linking:
+    clock = clock or FakeClock()
+    return Linking(
+        fake_unit_of_work(tables),
+        FakeAppLinks(),
+        notifications(tables, messages, clock=clock),
+        signals or LinkSignals(),
+        clock=clock,
     )

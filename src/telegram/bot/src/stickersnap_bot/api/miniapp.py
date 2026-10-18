@@ -84,7 +84,7 @@ def _sticker(view: StickerView) -> StickerBody:
     )
 
 
-def _device(device: Device) -> DeviceBody:
+def device_body(device: Device) -> DeviceBody:
     return DeviceBody(
         id=device.id, name=device.name, os=device.os.value, linked_at=device.linked_at
     )
@@ -135,7 +135,7 @@ async def delete_sticker(
 
 @router.get("/devices", operation_id="listDevices")
 async def list_devices(miniapp: _MiniAppDep, user: TelegramUserId) -> DeviceListBody:
-    return DeviceListBody(devices=[_device(d) for d in await miniapp.list_devices(user)])
+    return DeviceListBody(devices=[device_body(d) for d in await miniapp.list_devices(user)])
 
 
 @router.delete(
