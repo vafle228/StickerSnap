@@ -224,7 +224,10 @@ npm test -w src/telegram/miniapp && npm run e2e -w src/telegram/miniapp
 Outside Telegram, http://127.0.0.1:5174/?mock runs it on demo data (MSW by the contract) with a dev
 bar that switches the scenario (`?mock=offline`, `?mock=no-packs`…) and Telegram's theme
 (`&theme=dark`) and plays Telegram's header: «Закрыть» / «Назад» and «⋯ → Настройки».
-`&startapp=pack-<name>` opens a pack the way a bot link does. Production builds have none of it.
+`&startapp=pack_<name>` opens a pack the way a bot link does, `&startapp=link_demo` the desktop's
+«Привязать компьютер?» (`link_again`: a computer that is yours already, any other code: an expired
+link), and `&write=ask` or `&write=deny` makes the bot not yet allowed to write to you, with Telegram's
+question answered «yes» or first «no». Production builds have none of it.
 
 `/?tma=<launch data>` runs the dev Mini App against the real bot service instead, behind the same dev
 bar. `uv run --env-file ../../../.env stickersnap-bot-launch-data <your Telegram id>` in

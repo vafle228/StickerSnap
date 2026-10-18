@@ -31,7 +31,9 @@ function realTelegram(): Telegram {
 // plain browser on demo data (/?mock=offline and the other scenarios of mocks/scenarios.ts);
 // /?tma=<launch data> runs it against the real bot service that Vite proxies /v1 to, with launch
 // data the service signed (`uv run stickersnap-bot-launch-data <user id>` in src/telegram/bot).
-// Both get a dev bar that plays Telegram's header and switches the theme.
+// Both get a dev bar that plays Telegram's header and switches the theme. &write=ask or
+// &write=deny launches as someone the bot may not write to yet, who answers Telegram's
+// «Разрешить боту писать?» with «yes», or with «no» first.
 async function startDev() {
   const params = new URLSearchParams(location.search);
   const launchData = params.get("tma");
@@ -50,6 +52,10 @@ async function startDev() {
     initData: launchData ?? "query_id=mock&user=%7B%22id%22%3A1%7D&hash=mock",
     startParam: params.get("startapp") ?? undefined,
     colorScheme: params.get("theme") === "dark" ? "dark" : "light",
+    ...(params.has("write") && {
+      canWrite: false,
+      writeAnswers: params.get("write") === "deny" ? [false, true] : [true],
+    }),
   });
   render(
     telegram,
