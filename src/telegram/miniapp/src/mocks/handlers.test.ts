@@ -118,12 +118,9 @@ describe("demo bot service", () => {
 
   it("takes feedback by the contract's rules, five an hour", async () => {
     use("ok");
-    const send = (body: FeedbackRequest) =>
-      call(api.POST("/v1/feedback", { body }));
+    const send = (body: FeedbackRequest) => call(api.POST("/v1/feedback", { body }));
     expect(await send({ type: "bug", text: "Пак пустой", canReply: true })).toEqual({ id: 41 });
-    expect(await failure(send({ type: "idea", text: "   ", canReply: false }))).toBe(
-      "bad_request",
-    );
+    expect(await failure(send({ type: "idea", text: "   ", canReply: false }))).toBe("bad_request");
     // the Mini App's caller is known: a contact is the desktop's, for a computer without a link
     expect(
       await failure(send({ type: "other", text: "Привет", canReply: true, contact: "@me" })),
