@@ -6,7 +6,15 @@ from httpx import ASGITransport, AsyncClient
 
 from stickersnap_bot.api.app import Webhook, create_app
 from stickersnap_bot.api.telegram import WEBHOOK_PATH, create_dispatcher
-from tests.fakes import FakeChatMessages, Tables, bot_chat, miniapp, notifications, sign_in
+from tests.fakes import (
+    FakeChatMessages,
+    Tables,
+    bot_chat,
+    miniapp,
+    notifications,
+    send_feedback,
+    sign_in,
+)
 
 SECRET = "webhook-secret"
 TEXT_MESSAGE = {
@@ -38,6 +46,7 @@ async def client(messages: FakeChatMessages) -> AsyncIterator[AsyncClient]:
         sign_in(tables),
         miniapp(tables),
         notifications(tables, messages),
+        send_feedback(tables),
     )
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
         yield http

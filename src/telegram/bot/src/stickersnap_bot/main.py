@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from stickersnap_bot.api.app import Polling, UpdateDelivery, Webhook, create_app
 from stickersnap_bot.api.telegram import create_dispatcher
 from stickersnap_bot.application.chat import BotChat, ChatHistory, Notifications
+from stickersnap_bot.application.feedback import SendFeedback
 from stickersnap_bot.application.init_data import InitDataVerifier, sign_init_data
 from stickersnap_bot.application.media import MediaLinks
 from stickersnap_bot.application.miniapp import MiniApp
@@ -22,6 +23,7 @@ from stickersnap_bot.infrastructure.database.migrate import migrate
 from stickersnap_bot.infrastructure.database.unit_of_work import SqlUnitOfWork, create_engine
 from stickersnap_bot.infrastructure.settings import Settings
 from stickersnap_bot.infrastructure.telegram.chat_messages import BotChatMessages
+from stickersnap_bot.infrastructure.telegram.feedback_inbox import TelegramFeedbackInbox
 from stickersnap_bot.infrastructure.telegram.sticker_sets import BotStickerSets
 
 
@@ -57,6 +59,12 @@ def build_app(settings: Settings) -> FastAPI:
     history = ChatHistory()
     chat = BotChat(unit_of_work, messages, history, clock=_now, download_url=settings.download_url)
     notifications = Notifications(unit_of_work, messages, history, clock=_now)
+    inbox = (
+        None
+        if settings.feedback_chat_id is None
+        else TelegramFeedbackInbox(bot, settings.feedback_chat_id)
+    )
+    send_feedback = SendFeedback(unit_of_work, inbox, clock=_now)
     return create_app(
         bot,
         create_dispatcher(chat),
@@ -64,6 +72,7 @@ def build_app(settings: Settings) -> FastAPI:
         sign_in,
         miniapp,
         notifications,
+        send_feedback,
         closing=[engine.dispose],
     )
 

@@ -6,11 +6,13 @@ from dataclasses import dataclass
 from aiogram import Bot, Dispatcher
 from fastapi import FastAPI
 
+from stickersnap_bot.api import feedback as feedback_api
 from stickersnap_bot.api import health
 from stickersnap_bot.api import miniapp as miniapp_api
 from stickersnap_bot.api.problems import add_problem_handlers
 from stickersnap_bot.api.telegram import COMMANDS, WEBHOOK_PATH, create_webhook_router
 from stickersnap_bot.application.chat import Notifications
+from stickersnap_bot.application.feedback import SendFeedback
 from stickersnap_bot.application.miniapp import MiniApp
 from stickersnap_bot.application.sign_in import SignIn
 
@@ -38,6 +40,7 @@ def create_app(
     sign_in: SignIn,
     miniapp: MiniApp,
     notifications: Notifications,
+    send_feedback: SendFeedback,
     closing: Sequence[Callable[[], Awaitable[None]]] = (),
 ) -> FastAPI:
     """`closing` runs on shutdown after the bot stops: the database engine and the like."""
@@ -76,9 +79,11 @@ def create_app(
     app.state.miniapp = miniapp
     # what the bot writes by itself; the linking (S4) and publishing (S5) routes call it
     app.state.notifications = notifications
+    app.state.send_feedback = send_feedback
     # what the lifespan closes on shutdown, for a host that never ran it
     app.state.close = close
     app.include_router(miniapp_api.router)
+    app.include_router(feedback_api.router)
     if isinstance(delivery, Webhook):
         app.include_router(create_webhook_router(bot, dispatcher, delivery.secret))
     return app
