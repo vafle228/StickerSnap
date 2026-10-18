@@ -26,6 +26,11 @@ class DeviceNotFoundError(ApplicationError):
     pass
 
 
+class LinkNotFoundError(ApplicationError):
+    """No such link code, someone else's poll token, or a code that ran out or was answered:
+    the Mini App shows «Ссылка устарела» for all of them."""
+
+
 class PackInTelegramError(ApplicationError):
     """Only a pack Telegram no longer knows may be forgotten."""
 
