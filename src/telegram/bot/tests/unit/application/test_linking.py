@@ -132,6 +132,20 @@ async def test_notifications_switched_off_keep_the_bot_quiet(service: Service) -
     assert service.messages.sent == []
 
 
+async def test_confirming_without_the_switch_keeps_the_users_choice(service: Service) -> None:
+    muted = await service.linking.create(PC)
+    await service.linking.confirm(ME, muted.code, notifications=False)
+    await service.linking.poll(muted.code, muted.poll_token)
+
+    again = await service.linking.create(PC)
+    await service.linking.confirm(ME, again.code)
+    poll = await service.linking.poll(again.code, again.poll_token)
+
+    assert poll.status is PollStatus.LINKED
+    assert not service.tables.users[ME].notifications
+    assert service.messages.sent == []
+
+
 async def test_a_bot_that_cannot_write_does_not_stop_the_linking(service: Service) -> None:
     service.messages.refused.add(ME)
     link = await service.linking.create(PC)

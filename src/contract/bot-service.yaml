@@ -1020,12 +1020,13 @@ components:
 
     LinkConfirmBody:
       type: object
-      required: [notifications]
       additionalProperties: false
       properties:
         notifications:
           type: boolean
-          description: Переключатель «Уведомления в чат»
+          description: |
+            Переключатель «Уведомления в чат». Нет поля — прежнее значение аккаунта: так Mini App
+            подтверждает уже привязанный здесь компьютер, не включая заглушённые уведомления
 
     DeviceOs:
       type: string

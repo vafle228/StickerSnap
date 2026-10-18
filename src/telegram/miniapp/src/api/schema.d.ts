@@ -648,8 +648,11 @@ export interface components {
             linkedHere: boolean;
         };
         LinkConfirmBody: {
-            /** @description Переключатель «Уведомления в чат» */
-            notifications: boolean;
+            /**
+             * @description Переключатель «Уведомления в чат». Нет поля — прежнее значение аккаунта: так Mini App
+             *     подтверждает уже привязанный здесь компьютер, не включая заглушённые уведомления
+             */
+            notifications?: boolean;
         };
         /** @enum {string} */
         DeviceOs: "windows" | "macos" | "linux";

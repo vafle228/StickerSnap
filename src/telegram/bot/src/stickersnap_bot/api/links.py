@@ -92,7 +92,8 @@ class LinkQuestionBody(Body):
 class LinkConfirmBody(Body):
     model_config = ConfigDict(extra="forbid")
 
-    notifications: bool
+    # absent: the account's switch stays as it was
+    notifications: bool | None = None
 
 
 def _linked(linked: LinkedComputer) -> LinkedDeviceBody:
