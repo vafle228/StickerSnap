@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StickerSnap.Application.Account;
 using StickerSnap.Application.Exports;
+using StickerSnap.Application.Feedback;
 using StickerSnap.Application.Files;
 using StickerSnap.Application.Media;
 using StickerSnap.Application.Packs;
@@ -10,6 +11,7 @@ using StickerSnap.Application.Projects;
 using StickerSnap.Application.Settings;
 using StickerSnap.Application.Sources;
 using StickerSnap.Infrastructure.Account;
+using StickerSnap.Infrastructure.Cloud;
 using StickerSnap.Infrastructure.Ffmpeg;
 using StickerSnap.Infrastructure.Files;
 using StickerSnap.Infrastructure.Packs;
@@ -26,7 +28,7 @@ public static class DependencyInjection
 {
     /// <summary>
     /// The adapters behind the Application's ports: JSON-file repositories in the data directory,
-    /// the media engine (FFmpeg and ffprobe processes), the Telegram Bot API client. Each binds its
+    /// the media engine (FFmpeg and ffprobe processes), the Telegram Bot API client, the cloud service's client. Each binds its
     /// options from <paramref name="configuration"/>.
     /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
@@ -70,6 +72,14 @@ public static class DependencyInjection
         // The messenger of the Application's ports is Telegram, with the one product bot
         services.AddTransient<IStickerPublisher, TelegramStickerPublisher>();
         services.AddTransient<IBotChat, TelegramBotChat>();
+
+        // The cloud service holds the bot's token; this computer holds only its own key
+        services.Configure<CloudOptions>(configuration.GetSection(CloudOptions.Section));
+        services.AddSingleton<DeviceCredentials>();
+        services.AddSingleton<ThisComputer>();
+        services.AddHttpClient<CloudClient>(client => client.Timeout = CloudClient.Timeout);
+        services.AddTransient<IDeviceLinking, CloudDeviceLinking>();
+        services.AddTransient<IFeedbackInbox, CloudFeedbackInbox>();
 
         return services;
     }
