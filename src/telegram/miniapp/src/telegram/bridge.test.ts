@@ -29,6 +29,8 @@ function webApp(version: string, { canWrite = false, grants = true } = {}) {
     requestWriteAccess: vi.fn((callback?: (granted: boolean) => void) => callback?.(grants)),
     disableVerticalSwipes: vi.fn(),
     enableVerticalSwipes: vi.fn(),
+    enableClosingConfirmation: vi.fn(),
+    disableClosingConfirmation: vi.fn(),
     BackButton: { ...button },
     SettingsButton: { ...button, show: vi.fn() },
     HapticFeedback: {
@@ -45,6 +47,7 @@ describe("the Telegram bridge", () => {
     expect(telegram.initData).toBe("query_id=1&hash=2");
     expect(telegram.startParam).toBe("pack_a");
     expect(telegram.colorScheme()).toBe("dark");
+    expect(telegram.platform).toBe("ios");
   });
 
   it("paints the header, the background and the bottom bar on a new client", () => {
@@ -63,11 +66,22 @@ describe("the Telegram bridge", () => {
     telegram.showSettings();
     telegram.haptic("done");
     telegram.setVerticalSwipes(false);
+    telegram.setClosingConfirmation(true);
     expect(app.setHeaderColor).not.toHaveBeenCalled();
     expect(app.BackButton.show).not.toHaveBeenCalled();
     expect(app.SettingsButton.show).not.toHaveBeenCalled();
     expect(app.HapticFeedback.notificationOccurred).not.toHaveBeenCalled();
     expect(app.disableVerticalSwipes).not.toHaveBeenCalled();
+    expect(app.enableClosingConfirmation).not.toHaveBeenCalled();
+  });
+
+  it("makes Telegram ask before closing while a form holds unsent text", () => {
+    const app = webApp("8.0");
+    const telegram = createTelegram(app);
+    telegram.setClosingConfirmation(true);
+    expect(app.enableClosingConfirmation).toHaveBeenCalledOnce();
+    telegram.setClosingConfirmation(false);
+    expect(app.disableClosingConfirmation).toHaveBeenCalledOnce();
   });
 
   it("maps the haptics of artboard 14 to Telegram's", () => {

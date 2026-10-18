@@ -10,6 +10,8 @@ export interface Telegram {
   readonly initData: string;
   /** `startapp` of the link that opened the Mini App (t.me/StickerSnapAppBot?startapp=…) */
   readonly startParam?: string;
+  /** `Telegram.WebApp.platform`: ios, android, tdesktop… («unknown» outside Telegram) */
+  readonly platform: string;
   colorScheme(): ColorScheme;
   /** Telegram switched between its light and dark theme; returns the unsubscribe */
   onThemeChanged(callback: () => void): () => void;
@@ -35,6 +37,8 @@ export interface Telegram {
   askWriteAccess(): Promise<boolean>;
   /** Off while a sheet is open: a downward swipe closes the sheet, not the Mini App */
   setVerticalSwipes(enabled: boolean): void;
+  /** On while a form holds unsent text: closing the Mini App asks first */
+  setClosingConfirmation(enabled: boolean): void;
 }
 
 function subscribe(webApp: WebApp, event: WebAppEvent, callback: () => void) {
@@ -50,6 +54,7 @@ export function createTelegram(webApp: WebApp): Telegram {
   return {
     initData: webApp.initData,
     startParam: webApp.initDataUnsafe.start_param,
+    platform: webApp.platform,
     colorScheme: () => webApp.colorScheme,
     onThemeChanged: (callback) => subscribe(webApp, "themeChanged", callback),
     paint(color) {
@@ -98,6 +103,11 @@ export function createTelegram(webApp: WebApp): Telegram {
       if (!since("7.7")) return;
       if (enabled) webApp.enableVerticalSwipes();
       else webApp.disableVerticalSwipes();
+    },
+    setClosingConfirmation(enabled) {
+      if (!since("6.2")) return;
+      if (enabled) webApp.enableClosingConfirmation();
+      else webApp.disableClosingConfirmation();
     },
   };
 }

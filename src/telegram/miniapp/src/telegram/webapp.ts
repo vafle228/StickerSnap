@@ -40,6 +40,9 @@ export interface WebApp {
   requestWriteAccess(callback?: (granted: boolean) => void): void;
   disableVerticalSwipes(): void;
   enableVerticalSwipes(): void;
+  /** Telegram asks «Закрыть?» before the Mini App closes (Bot API 6.2) */
+  enableClosingConfirmation(): void;
+  disableClosingConfirmation(): void;
   readonly BackButton: WebAppButton;
   readonly SettingsButton: WebAppButton;
   readonly HapticFeedback: {
