@@ -24,6 +24,8 @@
     <EmbeddedResource Include="TestData\**\*" Exclude="TestData\**\*.cs;TestData\**\*.md" LogicalName="TestData/$([System.String]::Copy('%(RecursiveDir)').Replace('\','/'))%(Filename)%(Extension)" />
     <!-- The contract itself, as the repository has it, for Api/Contract: read through ContractDocuments.cs -->
     <EmbeddedResource Include="..\..\contract\openapi.yaml" LogicalName="Contract/openapi.yaml" />
+    <!-- The cloud service's contract, for Infrastructure/Cloud: read through ContractDocuments.BotServiceAsync -->
+    <EmbeddedResource Include="..\..\contract\bot-service.yaml" LogicalName="Contract/bot-service.yaml" />
   </ItemGroup>
 
   <ItemGroup>
