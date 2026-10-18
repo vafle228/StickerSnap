@@ -15,6 +15,7 @@ export const keys = {
   packs: ["packs"] as const,
   pack: (name: string) => ["pack", name] as const,
   devices: ["devices"] as const,
+  link: (code: string) => ["link", code] as const,
 };
 
 export function usePacks() {
@@ -89,5 +90,41 @@ export function useUnlinkDevice() {
     mutationFn: (deviceId: string) =>
       call(api.DELETE("/v1/miniapp/devices/{deviceId}", { params: { path: { deviceId } } })),
     onSuccess: () => client.invalidateQueries({ queryKey: keys.devices }),
+  });
+}
+
+/** «Привязать компьютер?» (18·1): the request the desktop made. Asked once: after an answer the
+ *  code is gone, and asking again would turn the screen into «Ссылка устарела». */
+export function useLinkRequest(code: string) {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.link(code),
+    queryFn: () => call(api.GET("/v1/miniapp/links/{code}", { params: { path: { code } } })),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useConfirmLink(code: string) {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (notifications: boolean) =>
+      call(
+        api.POST("/v1/miniapp/links/{code}/confirm", {
+          params: { path: { code } },
+          body: { notifications },
+        }),
+      ),
+    // «Устройства» gains the computer
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.devices }),
+  });
+}
+
+export function useDeclineLink(code: string) {
+  const api = useApi();
+  return useMutation({
+    mutationFn: () =>
+      call(api.POST("/v1/miniapp/links/{code}/decline", { params: { path: { code } } })),
   });
 }

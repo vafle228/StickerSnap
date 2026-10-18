@@ -6,7 +6,7 @@ import type { ErrorCode, Problem } from "../api/types";
    bot-service.yaml and a reply must be one of the operation's success responses. The demo
    data therefore cannot drift from the contract. */
 
-type Method = "get" | "delete";
+type Method = "get" | "post" | "delete";
 type Op<P extends keyof paths, M extends Method> = NonNullable<paths[P][M]>;
 type Responses<P extends keyof paths, M extends Method> =
   Op<P, M> extends { responses: infer R } ? R : never;

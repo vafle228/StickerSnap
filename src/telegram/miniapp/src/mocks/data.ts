@@ -1,4 +1,4 @@
-import type { Device, Pack, PackDetail, PackKind, Sticker } from "../api/types";
+import type { Device, LinkRequest, Pack, PackDetail, PackKind, Sticker } from "../api/types";
 import type { Scenario } from "./scenarios";
 
 /* The demo data of the Mini App: the packs and computers of artboard 13, as the bot service
@@ -22,10 +22,36 @@ export interface MockPack extends Omit<PackDetail, "count" | "stickers"> {
   stickers: MockSticker[];
 }
 
+export interface MockLink extends LinkRequest {
+  answer?: "confirmed" | "declined";
+  notifications?: boolean;
+}
+
 export interface MockDb {
   scenario: Scenario;
   packs: MockPack[];
   devices: Device[];
+  /** Codes of the desktop's «Привязать» (18·1): open the dev server with
+   *  ?mock&startapp=link_demo, link_again for a computer that is already yours, or any
+   *  other code for «Ссылка устарела» */
+  links: MockLink[];
+}
+
+const LINK_MINUTES = 10;
+
+/** A request the desktop made `minutes` ago */
+export function mockLink(code: string, minutes: number, linkedHere: boolean, now = Date.now()) {
+  const requestedAt = now - minutes * 60_000;
+  return {
+    code,
+    name: "DESKTOP-7F3K2Q",
+    os: "windows",
+    platform: "Windows 11",
+    appVersion: "0.3.1",
+    requestedAt: new Date(requestedAt).toISOString(),
+    expiresAt: new Date(requestedAt + LINK_MINUTES * 60_000).toISOString(),
+    linkedHere,
+  } satisfies MockLink;
 }
 
 /** The first frame: a shape on a transparent 512×512 square, like a sticker's thumbnail */
@@ -148,7 +174,8 @@ export function createDb(scenario: Scenario): MockDb {
           { id: "dev-1", name: "DESKTOP-7F3K2Q", os: "windows", linkedAt: "2026-10-12T08:30:00Z" },
           { id: "dev-2", name: "ubuntu-laptop", os: "linux", linkedAt: "2026-10-03T17:10:00Z" },
         ];
-  return { scenario, packs, devices };
+  const links = [mockLink("demo", 2, false), mockLink("again", 1, true)];
+  return { scenario, packs, devices, links };
 }
 
 function strip(sticker: MockSticker): Sticker {
