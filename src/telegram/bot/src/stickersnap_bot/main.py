@@ -13,6 +13,7 @@ from fastapi import FastAPI
 
 from stickersnap_bot.api.app import Polling, UpdateDelivery, Webhook, create_app
 from stickersnap_bot.api.telegram import create_dispatcher
+from stickersnap_bot.application.chat import BotChat, ChatHistory, Notifications
 from stickersnap_bot.application.init_data import InitDataVerifier, sign_init_data
 from stickersnap_bot.application.media import MediaLinks
 from stickersnap_bot.application.miniapp import MiniApp
@@ -20,6 +21,7 @@ from stickersnap_bot.application.sign_in import SignIn
 from stickersnap_bot.infrastructure.database.migrate import migrate
 from stickersnap_bot.infrastructure.database.unit_of_work import SqlUnitOfWork, create_engine
 from stickersnap_bot.infrastructure.settings import Settings
+from stickersnap_bot.infrastructure.telegram.chat_messages import BotChatMessages
 from stickersnap_bot.infrastructure.telegram.sticker_sets import BotStickerSets
 
 
@@ -50,8 +52,19 @@ def build_app(settings: Settings) -> FastAPI:
         unit_of_work, InitDataVerifier(token, max_age=settings.init_data_max_age), clock=_now
     )
     miniapp = MiniApp(unit_of_work, BotStickerSets(bot), MediaLinks(token), clock=_now)
+    messages = BotChatMessages(bot)
+    # one history: an answer in the chat ends the editing of the last notice
+    history = ChatHistory()
+    chat = BotChat(unit_of_work, messages, history, clock=_now, download_url=settings.download_url)
+    notifications = Notifications(unit_of_work, messages, history, clock=_now)
     return create_app(
-        bot, create_dispatcher(), delivery, sign_in, miniapp, closing=[engine.dispose]
+        bot,
+        create_dispatcher(chat),
+        delivery,
+        sign_in,
+        miniapp,
+        notifications,
+        closing=[engine.dispose],
     )
 
 

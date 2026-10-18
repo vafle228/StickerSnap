@@ -1,12 +1,7 @@
-import json
-from collections.abc import AsyncGenerator
 from typing import Any
 
 import pytest
 from aiogram import Bot
-from aiogram.client.session.base import BaseSession
-from aiogram.methods import TelegramMethod
-from aiogram.methods.base import TelegramType
 
 from stickersnap_bot.application.errors import (
     RateLimitedError,
@@ -15,6 +10,7 @@ from stickersnap_bot.application.errors import (
 )
 from stickersnap_bot.domain.packs import PackKind
 from stickersnap_bot.infrastructure.telegram.sticker_sets import BotStickerSets
+from tests.integration.telegram.bot_api import FakeBotApi, bad_request, ok
 
 CATS = "cats_by_StickerSnapAppBot"
 
@@ -39,50 +35,6 @@ def sticker(file_id: str, thumb: str | None) -> dict[str, Any]:
             "height": 128,
         }
     return found
-
-
-def ok(result: Any) -> tuple[int, dict[str, Any]]:
-    return 200, {"ok": True, "result": result}
-
-
-def bad_request(description: str) -> tuple[int, dict[str, Any]]:
-    return 400, {"ok": False, "error_code": 400, "description": f"Bad Request: {description}"}
-
-
-class FakeBotApi(BaseSession):
-    """Answers Bot API methods with canned responses, checked by aiogram as real ones are."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.answers: dict[str, tuple[int, dict[str, Any]]] = {}
-        self.files: dict[str, bytes] = {}
-        self.calls: list[str] = []
-
-    async def make_request(
-        self,
-        bot: Bot,
-        method: TelegramMethod[TelegramType],
-        timeout: int | None = None,  # noqa: ASYNC109
-    ) -> TelegramType:
-        name = type(method).__name__
-        self.calls.append(name)
-        status, body = self.answers[name]
-        response = self.check_response(bot, method, status, json.dumps(body))
-        return response.result  # type: ignore[return-value]
-
-    async def stream_content(
-        self,
-        url: str,
-        headers: dict[str, Any] | None = None,
-        timeout: int = 30,  # noqa: ASYNC109
-        chunk_size: int = 65536,
-        raise_for_status: bool = True,
-    ) -> AsyncGenerator[bytes]:
-        self.calls.append(url.rsplit("/", 1)[-1])
-        yield self.files[url.rsplit("/", 1)[-1]]
-
-    async def close(self) -> None:
-        pass
 
 
 @pytest.fixture
