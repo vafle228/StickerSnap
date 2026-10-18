@@ -103,7 +103,13 @@ export function FeedbackScreen() {
   return (
     <Page label="Отзыв">
       <PageHead title="Отзыв" sub="Что сломалось или чего не хватает. Читаем каждый." />
-      <Segmented<FeedbackType> label="Тип отзыва" items={TYPES} value={type} onChange={setType} />
+      <Segmented<FeedbackType>
+        label="Тип отзыва"
+        className={styles.types}
+        items={TYPES}
+        value={type}
+        onChange={setType}
+      />
       <div className={styles.field}>
         <label className={`ss-field-label ${styles.label}`} htmlFor={areaId}>
           {field.label}
