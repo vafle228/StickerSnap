@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { currentScreen, startStack, useNav } from "./nav";
+import { backOrAsk, currentScreen, guardBack, startStack, useNav } from "./nav";
 
 beforeEach(() => useNav.getState().reset([{ kind: "packs" }]));
 
@@ -24,8 +24,8 @@ describe("screens", () => {
     expect(startStack("link_Ab-9_x")).toEqual([{ kind: "link", code: "Ab-9_x" }]);
   });
 
-  it("open «Мои паки» for the feedback form until the Mini App has it", () => {
-    expect(startStack("feedback")).toEqual([{ kind: "packs" }]);
+  it("open «Отзыв» on top of «Мои паки» from the bot's «Написать отзыв» and /feedback", () => {
+    expect(startStack("feedback")).toEqual([{ kind: "packs" }, { kind: "feedback" }]);
   });
 
   it("ignore a startapp they do not know", () => {
@@ -54,5 +54,37 @@ describe("screens", () => {
     nav.push({ kind: "devices" });
     nav.push({ kind: "devices" });
     expect(useNav.getState().stack).toHaveLength(2);
+  });
+});
+
+describe("«Назад»", () => {
+  it("goes up a level when no screen guards it", () => {
+    useNav.getState().push({ kind: "feedback" });
+    backOrAsk();
+    expect(useNav.getState().stack).toEqual([{ kind: "packs" }]);
+  });
+
+  it("asks the guarding screen instead, until it lets go", () => {
+    useNav.getState().push({ kind: "feedback" });
+    let asked = 0;
+    const release = guardBack(() => (asked += 1));
+    backOrAsk();
+    expect(asked).toBe(1);
+    expect(useNav.getState().stack).toHaveLength(2);
+
+    release();
+    backOrAsk();
+    expect(asked).toBe(1);
+    expect(useNav.getState().stack).toEqual([{ kind: "packs" }]);
+  });
+
+  it("keeps a newer guard when an older one lets go", () => {
+    let newer = 0;
+    const older = guardBack(() => undefined);
+    const release = guardBack(() => (newer += 1));
+    older();
+    backOrAsk();
+    expect(newer).toBe(1);
+    release();
   });
 });
