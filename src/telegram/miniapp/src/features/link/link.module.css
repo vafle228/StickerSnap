@@ -1,0 +1,111 @@
+/* «Привязать этот компьютер?» and how it ends (artboard 18, sections 2–3). */
+
+.head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 4px 0;
+  text-align: center;
+}
+
+.title {
+  margin: 8px 0 0;
+  font: 700 22px/28px var(--font-sans);
+  letter-spacing: -0.01em;
+}
+
+/* The computer of the request: its icon and what the desktop told the service */
+.device {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-raised);
+}
+
+.deviceIcon {
+  margin: 0;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  min-width: 0;
+  margin: 0;
+  font: 500 13px/18px var(--font-sans);
+}
+
+.facts dt {
+  color: var(--ink-muted);
+}
+
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* «Уведомления в чат»: a whole row with the text on the left and the switch on the right */
+.switch {
+  flex-direction: row-reverse;
+  justify-content: space-between;
+  min-height: 64px;
+  padding: 8px 14px;
+  box-sizing: border-box;
+  color: var(--ink);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.center {
+  text-align: center;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.actions > * {
+  width: 100%;
+}
+
+/* The big round sign of 18·2–18·4 in the tone of the outcome */
+.big {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  flex: none;
+  border-radius: var(--radius-pill);
+}
+
+.done {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.info {
+  background: var(--info-soft);
+  color: var(--info);
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: 12px;
+}

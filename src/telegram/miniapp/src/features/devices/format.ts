@@ -1,7 +1,11 @@
 import type { Device } from "../../api/types";
 import { plural } from "../../shared/plural";
 
-const OS: Record<Device["os"], string> = { windows: "Windows", macos: "macOS", linux: "Linux" };
+export const OS: Record<Device["os"], string> = {
+  windows: "Windows",
+  macos: "macOS",
+  linux: "Linux",
+};
 
 const DAY_MONTH = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" });
 
