@@ -7,6 +7,8 @@ from datetime import UTC, datetime, timedelta
 from types import TracebackType
 from typing import Self
 
+from stickersnap_bot.application.chat import BotChat, ChatHistory, Notifications
+from stickersnap_bot.application.chat_messages import ChatMessage
 from stickersnap_bot.application.errors import ApplicationError
 from stickersnap_bot.application.init_data import InitDataVerifier, sign_init_data
 from stickersnap_bot.application.media import MediaLinks
@@ -21,6 +23,7 @@ from stickersnap_bot.domain.users import User
 
 NOW = datetime(2026, 10, 18, 9, 0, tzinfo=UTC)
 TOKEN = "123:secret"
+DOWNLOAD_URL = "https://example.com/download"
 
 
 @dataclass
@@ -212,3 +215,87 @@ def signed_launch(user_id: int, first_name: str = "Дима", now: datetime = NO
     """initData as Telegram signs it for the bot with TOKEN."""
     user = json.dumps({"id": user_id, "first_name": first_name}, ensure_ascii=False)
     return sign_init_data(TOKEN, {"user": user, "auth_date": str(int(now.timestamp()))})
+
+
+class FakeClock:
+    def __init__(self, now: datetime = NOW) -> None:
+        self.now = now
+
+    def __call__(self) -> datetime:
+        return self.now
+
+    def advance(self, by: timedelta) -> None:
+        self.now += by
+
+
+@dataclass(frozen=True)
+class Sent:
+    chat_id: int
+    message: ChatMessage
+    message_id: int
+
+
+class FakeChatMessages:
+    """The chats as Telegram would keep them: `chats[chat_id]` is what the user sees now.
+
+    `refused` chats get None as a stopped bot does; `uneditable` messages refuse edits; `failure`
+    makes every call raise it.
+    """
+
+    def __init__(self) -> None:
+        self.sent: list[Sent] = []
+        self.edited: list[Sent] = []
+        self.refused: set[int] = set()
+        self.uneditable: set[int] = set()
+        self.failure: ApplicationError | None = None
+
+    async def send(self, chat_id: int, message: ChatMessage) -> int | None:
+        if self.failure is not None:
+            raise self.failure
+        if chat_id in self.refused:
+            return None
+        sent = Sent(chat_id, message, message_id=len(self.sent) + 1)
+        self.sent.append(sent)
+        return sent.message_id
+
+    async def edit(self, chat_id: int, message_id: int, message: ChatMessage) -> bool:
+        if self.failure is not None:
+            raise self.failure
+        if message_id in self.uneditable:
+            return False
+        self.edited.append(Sent(chat_id, message, message_id))
+        return True
+
+    def texts(self, chat_id: int) -> list[str]:
+        """The chat's messages from the bot, oldest first, each as last edited."""
+        latest = {s.message_id: s.message for s in [*self.sent, *self.edited]}
+        return [latest[s.message_id].text for s in self.sent if s.chat_id == chat_id]
+
+
+def bot_chat(
+    tables: Tables,
+    messages: FakeChatMessages | None = None,
+    history: ChatHistory | None = None,
+    clock: FakeClock | None = None,
+) -> BotChat:
+    return BotChat(
+        fake_unit_of_work(tables),
+        messages or FakeChatMessages(),
+        history or ChatHistory(),
+        clock=clock or FakeClock(),
+        download_url=DOWNLOAD_URL,
+    )
+
+
+def notifications(
+    tables: Tables,
+    messages: FakeChatMessages | None = None,
+    history: ChatHistory | None = None,
+    clock: FakeClock | None = None,
+) -> Notifications:
+    return Notifications(
+        fake_unit_of_work(tables),
+        messages or FakeChatMessages(),
+        history or ChatHistory(),
+        clock=clock or FakeClock(),
+    )
