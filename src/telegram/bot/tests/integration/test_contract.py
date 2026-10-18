@@ -16,6 +16,7 @@ from tests.fakes import (
     linking,
     miniapp,
     notifications,
+    publishing,
     send_feedback,
     sign_in,
 )
@@ -48,6 +49,7 @@ async def test_serves_exactly_the_contracts_operations() -> None:
         notifications(tables),
         send_feedback(tables),
         linking(tables),
+        publishing(tables),
     ).openapi()
     await bot.session.close()
     contract = yaml.safe_load(CONTRACT.read_text(encoding="utf-8"))

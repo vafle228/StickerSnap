@@ -2,12 +2,25 @@ from typing import Any
 
 import pytest
 from aiogram import Bot
+from aiogram.methods import (
+    AddStickerToSet,
+    CreateNewStickerSet,
+    ReplaceStickerInSet,
+    UploadStickerFile,
+)
+from aiogram.types import BufferedInputFile
 
 from stickersnap_bot.application.errors import (
+    ApplicationError,
+    BotBlockedError,
+    PackFullError,
+    PackNameTakenError,
+    PackNotFoundError,
     RateLimitedError,
     StickerNotFoundError,
     TelegramUnavailableError,
 )
+from stickersnap_bot.application.sticker_sets import NewSticker
 from stickersnap_bot.domain.packs import PackKind
 from stickersnap_bot.infrastructure.telegram.sticker_sets import BotStickerSets
 from tests.integration.telegram.bot_api import FakeBotApi, bad_request, ok
@@ -62,9 +75,9 @@ async def test_reads_a_set_in_telegrams_order(api: FakeBotApi, sets: BotStickerS
     assert found is not None
     assert found.title == "Котики"
     assert found.kind is PackKind.STICKERS
-    assert [(s.id, s.thumb_file_id, s.emoji) for s in found.stickers] == [
-        ("a", "ta", ("😴",)),
-        ("b", None, ("😴",)),
+    assert [(s.id, s.unique_id, s.thumb_file_id, s.emoji) for s in found.stickers] == [
+        ("a", "ua", "ta", ("😴",)),
+        ("b", "ub", None, ("😴",)),
     ]
 
 
@@ -141,3 +154,104 @@ async def test_an_unknown_file_is_none(api: FakeBotApi, sets: BotStickerSets) ->
     api.answers["GetFile"] = bad_request("invalid file_id")
 
     assert await sets.download("nope") is None
+
+
+SMILE = NewSticker("uploaded", ("😂", "🐱"))
+ME = 42
+
+
+def forbidden(description: str) -> tuple[int, dict[str, Any]]:
+    return 403, {"ok": False, "error_code": 403, "description": f"Forbidden: {description}"}
+
+
+async def test_knows_the_bots_username(api: FakeBotApi, sets: BotStickerSets) -> None:
+    api.answers["GetMe"] = ok(
+        {"id": 1, "is_bot": True, "first_name": "S", "username": "StickerSnapAppBot"}
+    )
+
+    assert await sets.bot_username() == "StickerSnapAppBot"
+    assert await sets.bot_username() == "StickerSnapAppBot"
+    assert api.calls == ["GetMe"]
+
+
+async def test_uploads_a_video_sticker_for_its_owner(api: FakeBotApi, sets: BotStickerSets) -> None:
+    api.answers["UploadStickerFile"] = ok({"file_id": "uploaded", "file_unique_id": "uu"})
+
+    assert await sets.upload(ME, b"webm") == "uploaded"
+
+    [method] = api.methods
+    assert isinstance(method, UploadStickerFile)
+    assert (method.user_id, method.sticker_format) == (ME, "video")
+    assert isinstance(method.sticker, BufferedInputFile)
+    assert method.sticker.data == b"webm"
+
+
+async def test_creates_a_set_of_video_stickers(api: FakeBotApi, sets: BotStickerSets) -> None:
+    api.answers["CreateNewStickerSet"] = ok(True)
+
+    await sets.create(ME, CATS, "Котики", PackKind.EMOJI, [SMILE])
+
+    [method] = api.methods
+    assert isinstance(method, CreateNewStickerSet)
+    assert (method.user_id, method.name, method.title) == (ME, CATS, "Котики")
+    assert method.sticker_type == "custom_emoji"
+    [made] = method.stickers
+    assert (made.sticker, made.format, made.emoji_list) == ("uploaded", "video", ["😂", "🐱"])
+
+
+async def test_adds_and_replaces_for_the_owner(api: FakeBotApi, sets: BotStickerSets) -> None:
+    api.answers["AddStickerToSet"] = ok(True)
+    api.answers["ReplaceStickerInSet"] = ok(True)
+
+    await sets.add(ME, CATS, SMILE)
+    await sets.replace(ME, CATS, "old", SMILE)
+
+    added, replaced = api.methods
+    assert isinstance(added, AddStickerToSet)
+    assert (added.user_id, added.name, added.sticker.sticker) == (ME, CATS, "uploaded")
+    assert isinstance(replaced, ReplaceStickerInSet)
+    assert (replaced.old_sticker, replaced.sticker.emoji_list) == ("old", ["😂", "🐱"])
+
+
+@pytest.mark.parametrize(
+    ("answer", "refusal"),
+    [
+        (forbidden("bot was blocked by the user"), BotBlockedError),
+        (bad_request("PEER_ID_INVALID"), BotBlockedError),
+        (bad_request("user not found"), BotBlockedError),
+        (forbidden("bot can't initiate conversation with a user"), BotBlockedError),
+        (bad_request("sticker set name is already occupied"), PackNameTakenError),
+        (bad_request("STICKERS_TOO_MUCH"), PackFullError),
+        (bad_request("STICKERSET_INVALID"), PackNotFoundError),
+        (bad_request("STICKER_VIDEO_LONG"), TelegramUnavailableError),
+    ],
+)
+async def test_telegrams_refusals_become_contract_errors(
+    api: FakeBotApi,
+    sets: BotStickerSets,
+    answer: tuple[int, dict[str, Any]],
+    refusal: type[ApplicationError],
+) -> None:
+    api.answers["AddStickerToSet"] = answer
+
+    with pytest.raises(refusal):
+        await sets.add(ME, CATS, SMILE)
+
+
+async def test_flood_control_on_a_change_is_rate_limited(
+    api: FakeBotApi, sets: BotStickerSets
+) -> None:
+    api.answers["UploadStickerFile"] = (
+        429,
+        {
+            "ok": False,
+            "error_code": 429,
+            "description": "Too Many Requests: retry after 7",
+            "parameters": {"retry_after": 7},
+        },
+    )
+
+    with pytest.raises(RateLimitedError) as raised:
+        await sets.upload(ME, b"webm")
+
+    assert raised.value.retry_after_sec == 7

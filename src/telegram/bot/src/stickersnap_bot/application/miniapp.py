@@ -1,7 +1,7 @@
 """The Mini App's use cases: the caller's packs and stickers, their computers.
 
-A pack is the user's when the service's row says so; any other pack, someone else's included,
-is «not found». What a set holds comes from Telegram on every call.
+A pack is the user's when the service's row says so (owned_packs). What a set holds comes from
+Telegram on every call.
 """
 
 import asyncio
@@ -11,14 +11,10 @@ from datetime import datetime
 from enum import StrEnum
 
 from stickersnap_bot.application.clock import Clock
-from stickersnap_bot.application.errors import (
-    DeviceNotFoundError,
-    PackInTelegramError,
-    PackNotFoundError,
-    StickerNotFoundError,
-)
+from stickersnap_bot.application.errors import DeviceNotFoundError, PackInTelegramError
 from stickersnap_bot.application.media import MediaLinks
-from stickersnap_bot.application.persistence import UnitOfWork, UnitOfWorkFactory
+from stickersnap_bot.application.owned_packs import delete_sticker, owned_pack
+from stickersnap_bot.application.persistence import UnitOfWorkFactory
 from stickersnap_bot.application.sticker_sets import StickerFile, StickerSet, StickerSets
 from stickersnap_bot.domain.devices import Device
 from stickersnap_bot.domain.packs import Pack, PackKind
@@ -77,34 +73,20 @@ class MiniApp:
 
     async def get_pack(self, user_id: int, name: str) -> PackView:
         async with self._unit_of_work() as uow:
-            pack = await _owned_pack(uow, user_id, name)
+            pack = await owned_pack(uow, user_id, name)
         found = await self._sets.get(pack.name)
         return self._view(pack, found, self._clock(), with_stickers=True)
 
     async def forget_pack(self, user_id: int, name: str) -> None:
         async with self._unit_of_work() as uow:
-            pack = await _owned_pack(uow, user_id, name)
+            pack = await owned_pack(uow, user_id, name)
             if await self._sets.get(pack.name) is not None:
                 raise PackInTelegramError(pack.name)
             await uow.packs.delete(pack.name)
             await uow.commit()
 
     async def delete_sticker(self, user_id: int, name: str, sticker_id: str) -> None:
-        async with self._unit_of_work() as uow:
-            pack = await _owned_pack(uow, user_id, name)
-        found = await self._sets.get(pack.name)
-        if found is None:
-            raise PackNotFoundError(pack.name)
-        if all(sticker.id != sticker_id for sticker in found.stickers):
-            raise StickerNotFoundError(sticker_id)
-        await self._sets.delete_sticker(sticker_id)
-        async with self._unit_of_work() as uow:
-            # The last sticker takes the set with it: Telegram drops an empty set
-            if len(found.stickers) == 1:
-                await uow.packs.delete(pack.name)
-            else:
-                await uow.packs.save(pack.touched(self._clock()))
-            await uow.commit()
+        await delete_sticker(self._unit_of_work, self._sets, self._clock, user_id, name, sticker_id)
 
     async def list_devices(self, user_id: int) -> Sequence[Device]:
         async with self._unit_of_work() as uow:
@@ -166,10 +148,3 @@ class MiniApp:
             cover=None if cover is None else self._media.token(cover, now),
             stickers=stickers if with_stickers else (),
         )
-
-
-async def _owned_pack(uow: UnitOfWork, user_id: int, name: str) -> Pack:
-    pack = await uow.packs.get(name)
-    if pack is None or pack.owner_id != user_id:
-        raise PackNotFoundError(name)
-    return pack
