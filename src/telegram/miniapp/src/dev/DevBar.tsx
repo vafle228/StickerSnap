@@ -10,10 +10,10 @@ const THEMES = [
   { value: "dark" as const, label: "Тёмная" },
 ];
 
-/** Dev only (?mock): a strip that switches the demo scenario and Telegram's theme, and under it
- *  a stand-in for Telegram's header with its «Закрыть» / «Назад» and «⋯ → Настройки», so the
- *  Mini App can be walked through in a plain browser. */
-export function DevBar({ telegram, scenario }: { telegram: FakeTelegram; scenario: Scenario }) {
+/** Dev only (?mock, ?tma): a strip that switches the demo scenario and Telegram's theme, and under
+ *  it a stand-in for Telegram's header with its «Закрыть» / «Назад» and «⋯ → Настройки», so the
+ *  Mini App can be walked through in a plain browser. No scenario: the real bot service. */
+export function DevBar({ telegram, scenario }: { telegram: FakeTelegram; scenario?: Scenario }) {
   const back = useSyncExternalStore(telegram.subscribe, () => telegram.calls.backButton);
   const settings = useSyncExternalStore(telegram.subscribe, () => telegram.calls.settingsShown);
   const scheme = useSyncExternalStore(telegram.onThemeChanged, () => telegram.colorScheme());
@@ -34,18 +34,22 @@ export function DevBar({ telegram, scenario }: { telegram: FakeTelegram; scenari
     <div className={`ss-root ${styles.top}`}>
       <div className={styles.bar} role="region" aria-label="Режим разработки">
         <Badge tone="highlight">dev</Badge>
-        <select
-          className={styles.select}
-          aria-label="Демо-данные"
-          value={scenario}
-          onChange={(e) => reload("mock", e.target.value)}
-        >
-          {Object.entries(SCENARIOS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+        {scenario ? (
+          <select
+            className={styles.select}
+            aria-label="Демо-данные"
+            value={scenario}
+            onChange={(e) => reload("mock", e.target.value)}
+          >
+            {Object.entries(SCENARIOS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className={styles.live}>настоящий сервис</span>
+        )}
         <Segmented<ColorScheme>
           label="Тема Telegram"
           items={THEMES}

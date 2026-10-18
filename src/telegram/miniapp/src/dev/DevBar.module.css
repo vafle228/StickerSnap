@@ -24,6 +24,12 @@
   font: inherit;
 }
 
+/* ?tma: no demo data to switch, the requests go to the bot service */
+.live {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 /* Telegram's header as artboard 13 draws it: 56px, «Закрыть» or «Назад», the title, «⋯» */
 .header {
   display: grid;
