@@ -45,6 +45,7 @@ const STATUS: Record<ErrorCode, number> = {
   pack_not_found: 404,
   sticker_not_found: 404,
   device_not_found: 404,
+  link_not_found: 404,
   pack_in_telegram: 409,
   rate_limited: 429,
   internal: 500,
