@@ -6,7 +6,7 @@ from stickersnap_bot.infrastructure.settings import Settings
 
 @pytest.fixture(autouse=True)
 def _clean_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("BOT_TOKEN", "BOT_MODE", "WEBHOOK_BASE_URL", "WEBHOOK_SECRET"):
+    for name in ("BOT_TOKEN", "BOT_MODE", "WEBHOOK_BASE_URL", "WEBHOOK_SECRET", "FEEDBACK_CHAT_ID"):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -43,3 +43,13 @@ def test_webhook_mode_refuses_the_empty_values_of_env_example(
 
     with pytest.raises(ValidationError, match="WEBHOOK_SECRET"):
         Settings()
+
+
+@pytest.mark.parametrize(("value", "chat_id"), [("", None), ("-1001234567890", -1001234567890)])
+def test_an_empty_feedback_chat_is_none(
+    monkeypatch: pytest.MonkeyPatch, value: str, chat_id: int | None
+) -> None:
+    monkeypatch.setenv("BOT_TOKEN", "123:secret")
+    monkeypatch.setenv("FEEDBACK_CHAT_ID", value)
+
+    assert Settings().feedback_chat_id == chat_id

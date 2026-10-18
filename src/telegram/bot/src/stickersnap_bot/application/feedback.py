@@ -86,14 +86,14 @@ class SendFeedback:
         """The new feedback's number; BadRequestError, UnauthorizedError or RateLimitedError."""
         now = self._clock()
         async with self._unit_of_work() as uow:
-            user, device = await _account(uow, caller)
+            user_id, user, device = await _account(uow, caller)
             author = Author(
                 source=(
                     FeedbackSource.MINIAPP
                     if isinstance(caller, MiniAppCaller)
                     else FeedbackSource.DESKTOP
                 ),
-                user_id=None if user is None else user.id,
+                user_id=user_id,
                 device_id=None if device is None else device.id,
                 installation_id=form.installation_id,
                 # a hash, not the address: it only has to tell callers apart for an hour
@@ -135,16 +135,19 @@ class SendFeedback:
             await uow.commit()
 
 
-async def _account(uow: UnitOfWork, caller: Caller) -> tuple[User | None, Device | None]:
+async def _account(
+    uow: UnitOfWork, caller: Caller
+) -> tuple[int | None, User | None, Device | None]:
+    """The caller's Telegram account: its id, its profile for the message, the computer."""
     match caller:
         case MiniAppCaller(user_id):
             # SignIn has just remembered the caller
-            return await uow.users.get(user_id), None
+            return user_id, await uow.users.get(user_id), None
         case DeviceCaller(key):
             device = await device_for_key(uow, key)
-            return await uow.users.get(device.user_id), device
+            return device.user_id, await uow.users.get(device.user_id), device
         case AnonymousCaller():
-            return None, None
+            return None, None, None
 
 
 async def _keep_to_limits(uow: UnitOfWork, author: Author, now: datetime) -> None:

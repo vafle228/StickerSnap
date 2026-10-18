@@ -70,17 +70,19 @@ def feedback_message(feedback: Feedback, user: User | None, device: Device | Non
 
 
 def _sender(feedback: Feedback, user: User | None, device: Device | None) -> list[str]:
-    if user is None:
+    if feedback.author.user_id is None:
         who = ["без привязки"]
         if feedback.can_reply and feedback.contact:
             return [*who, f"ответить на {escape(feedback.contact)}"]
         return [*who, "не отвечать"]
-    profile = user.profile
-    if profile.username:
+    profile = None if user is None else user.profile
+    if profile is None:
+        who = [f'<a href="tg://user?id={feedback.author.user_id}">{feedback.author.user_id}</a>']
+    elif profile.username:
         who = [f"@{escape(profile.username)}"]
     else:
         name = " ".join(part for part in (profile.first_name, profile.last_name) if part)
-        who = [f'<a href="tg://user?id={user.id}">{escape(name)}</a>']
+        who = [f'<a href="tg://user?id={feedback.author.user_id}">{escape(name)}</a>']
     if device is not None:
         who.append(escape(device.name))
     return [*who, "можно писать" if feedback.can_reply else "не писать"]

@@ -186,6 +186,12 @@ Mini App on a screen through `https://t.me/<bot>?startapp=<screen>` links, so th
 App switched on in @BotFather. The commands menu is set on every start; «Скачать» leads to
 `DOWNLOAD_URL`, the GitHub releases page by default.
 
+`POST /v1/feedback` takes «Написать отзыв» from the Mini App (`tma` launch data), a linked computer
+(`Bearer` device key) or a desktop without a link, stores it in the `feedback` table and forwards it
+to the chat in `FEEDBACK_CHAT_ID` (your private chat with the bot, or a closed group with the bot in
+it), the desktop's diagnostics as a file in reply. Without `FEEDBACK_CHAT_ID` feedback is only stored;
+a message Telegram refused stays in the table with an empty `forwarded_at`.
+
 `docker/telegram` holds the image and its compose file: `docker compose -f docker/telegram/compose.yaml up --build`
 runs the service with `.env` from the repository root and keeps SQLite in a volume. On the VPS the
 `.env` with the production token lies beside `compose.yaml` and is passed with `BOT_ENV_FILE=./.env`;

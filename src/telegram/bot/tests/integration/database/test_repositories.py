@@ -1,10 +1,18 @@
 from datetime import UTC, datetime, timedelta, timezone
+from typing import Any
 
 import pytest
 from sqlalchemy.exc import IntegrityError
 
 from stickersnap_bot.application.persistence import UnitOfWorkFactory
 from stickersnap_bot.domain.devices import Device, DeviceOs
+from stickersnap_bot.domain.feedback import (
+    Author,
+    Feedback,
+    FeedbackSource,
+    FeedbackType,
+    ReportedError,
+)
 from stickersnap_bot.domain.links import LINK_LIFETIME, LinkRequest
 from stickersnap_bot.domain.packs import Pack, PackKind
 from stickersnap_bot.domain.users import TelegramProfile, User
@@ -210,3 +218,69 @@ async def test_a_pack_is_retitled_and_deleted(unit_of_work: UnitOfWorkFactory) -
 
     async with unit_of_work() as uow:
         assert await uow.packs.get(cats.name) is None
+
+
+def feedback(created_at: datetime, **author: Any) -> Feedback:
+    return Feedback(
+        type=FeedbackType.BUG,
+        text="Экспорт падает",
+        author=Author(FeedbackSource.DESKTOP, **author),
+        can_reply=True,
+        created_at=created_at,
+        app_version="0.3.1",
+        platform="Windows 11",
+        error=ReportedError("render_failed", "7f3a-c21e"),
+        diagnostics="журнал",
+    )
+
+
+async def test_feedback_gets_a_number_and_round_trips(unit_of_work: UnitOfWorkFactory) -> None:
+    await save_users(unit_of_work, ANNA)
+    async with unit_of_work() as uow:
+        first = await uow.feedback.add(feedback(NOW, user_id=ANNA.id, device_id="pc"))
+        second = await uow.feedback.add(feedback(NOW, installation_id="i-1", ip_hash="ip"))
+        await uow.commit()
+
+    assert (first.id, second.id) == (1, 2)
+    async with unit_of_work() as uow:
+        assert await uow.feedback.get(1) == first
+        assert await uow.feedback.get(2) == second
+        assert await uow.feedback.get(3) is None
+        await uow.feedback.save(first.forwarded(NOW + HOUR))
+        await uow.commit()
+    async with unit_of_work() as uow:
+        stored = await uow.feedback.get(1)
+    assert stored is not None
+    assert stored.forwarded_at == NOW + HOUR
+
+
+async def test_feedback_is_counted_per_author_since_a_time(
+    unit_of_work: UnitOfWorkFactory,
+) -> None:
+    await save_users(unit_of_work, ANNA, BORIS)
+    async with unit_of_work() as uow:
+        authors: list[tuple[int, dict[str, Any]]] = [
+            (50, {"user_id": ANNA.id}),
+            (10, {"user_id": ANNA.id, "ip_hash": "ip"}),
+            (70, {"user_id": ANNA.id}),
+            (20, {"user_id": BORIS.id}),
+            (30, {"installation_id": "i-1", "ip_hash": "ip"}),
+        ]
+        for minutes, author in authors:
+            await uow.feedback.add(feedback(NOW - timedelta(minutes=minutes), **author))
+        await uow.commit()
+
+    async with unit_of_work() as uow:
+        since = NOW - HOUR
+        assert await uow.feedback.sent_since(since, user_id=ANNA.id) == [
+            NOW - timedelta(minutes=50),
+            NOW - timedelta(minutes=10),
+        ]
+        assert len(await uow.feedback.sent_since(since, installation_id="i-1")) == 1
+        assert len(await uow.feedback.sent_since(since, ip_hash="ip")) == 2
+
+
+async def test_feedback_of_an_unknown_user_is_refused(unit_of_work: UnitOfWorkFactory) -> None:
+    async with unit_of_work() as uow:
+        with pytest.raises(IntegrityError):
+            await uow.feedback.add(feedback(NOW, user_id=999))
