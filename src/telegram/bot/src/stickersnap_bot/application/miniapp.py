@@ -1,4 +1,4 @@
-"""The Mini App's use cases: who is calling, their packs and stickers, their computers.
+"""The Mini App's use cases: the caller's packs and stickers, their computers.
 
 A pack is the user's when the service's row says so; any other pack, someone else's included,
 is «not found». What a set holds comes from Telegram on every call.
@@ -17,13 +17,11 @@ from stickersnap_bot.application.errors import (
     PackNotFoundError,
     StickerNotFoundError,
 )
-from stickersnap_bot.application.init_data import InitDataVerifier
 from stickersnap_bot.application.media import MediaLinks
 from stickersnap_bot.application.persistence import UnitOfWork, UnitOfWorkFactory
 from stickersnap_bot.application.sticker_sets import StickerFile, StickerSet, StickerSets
 from stickersnap_bot.domain.devices import Device
 from stickersnap_bot.domain.packs import Pack, PackKind
-from stickersnap_bot.domain.users import User
 
 
 class PackState(StrEnum):
@@ -59,31 +57,13 @@ class MiniApp:
         self,
         unit_of_work: UnitOfWorkFactory,
         sticker_sets: StickerSets,
-        verifier: InitDataVerifier,
         media: MediaLinks,
         clock: Clock,
     ) -> None:
         self._unit_of_work = unit_of_work
         self._sets = sticker_sets
-        self._verifier = verifier
         self._media = media
         self._clock = clock
-
-    async def sign_in(self, init_data: str) -> int:
-        """The Telegram user the launch data was signed for; remembers them on the first visit."""
-        now = self._clock()
-        launch = self._verifier.verify(init_data, now)
-        async with self._unit_of_work() as uow:
-            known = await uow.users.get(launch.id)
-            user = (
-                User.first_seen(launch.id, launch.profile, now)
-                if known is None
-                else known.with_profile(launch.profile, now)
-            )
-            if user is not known:
-                await uow.users.save(user)
-                await uow.commit()
-        return launch.id
 
     async def list_packs(self, user_id: int) -> Sequence[PackView]:
         async with self._unit_of_work() as uow:

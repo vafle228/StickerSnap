@@ -19,7 +19,16 @@ from stickersnap_bot.application.media import MediaLinks
 from stickersnap_bot.application.sticker_sets import StickerFile
 from stickersnap_bot.domain.devices import Device, DeviceOs
 from stickersnap_bot.domain.packs import Pack, PackKind
-from tests.fakes import NOW, TOKEN, FakeStickerSets, Tables, miniapp, signed_launch, sticker_set
+from tests.fakes import (
+    NOW,
+    TOKEN,
+    FakeStickerSets,
+    Tables,
+    miniapp,
+    sign_in,
+    signed_launch,
+    sticker_set,
+)
 
 CONTRACT = Path(__file__).parents[5] / "src" / "contract" / "bot-service.yaml"
 COMPONENTS = yaml.safe_load(CONTRACT.read_text(encoding="utf-8"))["components"]
@@ -50,7 +59,7 @@ def sets() -> FakeStickerSets:
 async def client(tables: Tables, sets: FakeStickerSets) -> AsyncIterator[AsyncClient]:
     # The lifespan (polling) is not run, so nothing reaches Telegram
     bot = Bot(TOKEN)
-    app = create_app(bot, create_dispatcher(), Polling(), miniapp(tables, sets))
+    app = create_app(bot, create_dispatcher(), Polling(), sign_in(tables), miniapp(tables, sets))
     headers = {"Authorization": f"tma {signed_launch(ME)}"}
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test", headers=headers) as http:

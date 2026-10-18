@@ -9,21 +9,18 @@ from stickersnap_bot.application.errors import (
     PackNotFoundError,
     RateLimitedError,
     StickerNotFoundError,
-    UnauthorizedError,
 )
 from stickersnap_bot.application.media import MediaLinks
 from stickersnap_bot.application.miniapp import MiniApp, PackState
 from stickersnap_bot.application.sticker_sets import StickerFile
 from stickersnap_bot.domain.devices import Device, DeviceOs
 from stickersnap_bot.domain.packs import Pack, PackKind
-from stickersnap_bot.domain.users import TelegramProfile, User
 from tests.fakes import (
     NOW,
     TOKEN,
     FakeStickerSets,
     Tables,
     miniapp,
-    signed_launch,
     sticker_set,
 )
 
@@ -63,33 +60,6 @@ def device(device_id: str, owner: int = ME, hours_ago: int = 0) -> Device:
         key_hash="h" + device_id,
         linked_at=NOW - timedelta(hours=hours_ago),
     )
-
-
-def launch(first_name: str = "Дима") -> str:
-    return signed_launch(ME, first_name)
-
-
-async def test_sign_in_remembers_a_new_user(app: MiniApp, tables: Tables) -> None:
-    assert await app.sign_in(launch()) == ME
-
-    assert tables.users[ME].profile == TelegramProfile(first_name="Дима")
-
-
-async def test_sign_in_updates_a_changed_profile(app: MiniApp, tables: Tables) -> None:
-    earlier = NOW - timedelta(days=3)
-    tables.users[ME] = User.first_seen(ME, TelegramProfile(first_name="Old"), earlier)
-
-    await app.sign_in(launch("New"))
-
-    assert tables.users[ME].profile.first_name == "New"
-    assert tables.users[ME].created_at == earlier
-
-
-async def test_sign_in_refuses_unsigned_data(app: MiniApp, tables: Tables) -> None:
-    with pytest.raises(UnauthorizedError):
-        await app.sign_in("user=%7B%22id%22%3A42%7D&hash=forged")
-
-    assert tables.users == {}
 
 
 async def test_lists_only_my_packs_freshest_first(

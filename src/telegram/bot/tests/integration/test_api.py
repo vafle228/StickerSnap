@@ -6,7 +6,7 @@ from httpx import ASGITransport, AsyncClient
 
 from stickersnap_bot.api.app import Webhook, create_app
 from stickersnap_bot.api.telegram import WEBHOOK_PATH, create_dispatcher
-from tests.fakes import Tables, miniapp
+from tests.fakes import Tables, miniapp, sign_in
 
 SECRET = "webhook-secret"
 TEXT_MESSAGE = {
@@ -20,7 +20,11 @@ async def client() -> AsyncIterator[AsyncClient]:
     # The lifespan (setWebhook, polling) is not run, so nothing reaches Telegram
     bot = Bot("123:token")
     app = create_app(
-        bot, create_dispatcher(), Webhook("https://bot.example", SECRET), miniapp(Tables())
+        bot,
+        create_dispatcher(),
+        Webhook("https://bot.example", SECRET),
+        sign_in(Tables()),
+        miniapp(Tables()),
     )
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
         yield http

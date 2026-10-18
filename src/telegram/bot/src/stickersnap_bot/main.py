@@ -16,6 +16,7 @@ from stickersnap_bot.api.telegram import create_dispatcher
 from stickersnap_bot.application.init_data import InitDataVerifier, sign_init_data
 from stickersnap_bot.application.media import MediaLinks
 from stickersnap_bot.application.miniapp import MiniApp
+from stickersnap_bot.application.sign_in import SignIn
 from stickersnap_bot.infrastructure.database.migrate import migrate
 from stickersnap_bot.infrastructure.database.unit_of_work import SqlUnitOfWork, create_engine
 from stickersnap_bot.infrastructure.settings import Settings
@@ -41,14 +42,17 @@ def build_app(settings: Settings) -> FastAPI:
         assert settings.webhook_secret is not None
         delivery = Webhook(settings.webhook_base_url, settings.webhook_secret.get_secret_value())
     engine = create_engine(settings.database_path)
-    miniapp = MiniApp(
-        unit_of_work=lambda: SqlUnitOfWork(engine),
-        sticker_sets=BotStickerSets(bot),
-        verifier=InitDataVerifier(token, max_age=settings.init_data_max_age),
-        media=MediaLinks(token),
-        clock=_now,
+
+    def unit_of_work() -> SqlUnitOfWork:
+        return SqlUnitOfWork(engine)
+
+    sign_in = SignIn(
+        unit_of_work, InitDataVerifier(token, max_age=settings.init_data_max_age), clock=_now
     )
-    return create_app(bot, create_dispatcher(), delivery, miniapp, closing=[engine.dispose])
+    miniapp = MiniApp(unit_of_work, BotStickerSets(bot), MediaLinks(token), clock=_now)
+    return create_app(
+        bot, create_dispatcher(), delivery, sign_in, miniapp, closing=[engine.dispose]
+    )
 
 
 def main() -> None:

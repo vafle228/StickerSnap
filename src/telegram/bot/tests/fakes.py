@@ -12,6 +12,7 @@ from stickersnap_bot.application.init_data import InitDataVerifier, sign_init_da
 from stickersnap_bot.application.media import MediaLinks
 from stickersnap_bot.application.miniapp import MiniApp
 from stickersnap_bot.application.persistence import UnitOfWorkFactory
+from stickersnap_bot.application.sign_in import SignIn
 from stickersnap_bot.application.sticker_sets import SetSticker, StickerFile, StickerSet
 from stickersnap_bot.domain.devices import Device
 from stickersnap_bot.domain.links import LinkRequest
@@ -198,12 +199,13 @@ def sticker_set(name: str, count: int, kind: PackKind = PackKind.STICKERS) -> St
 
 def miniapp(tables: Tables, sets: FakeStickerSets | None = None, now: datetime = NOW) -> MiniApp:
     return MiniApp(
-        fake_unit_of_work(tables),
-        sets or FakeStickerSets(),
-        InitDataVerifier(TOKEN, max_age=timedelta(days=1)),
-        MediaLinks(TOKEN),
-        clock=lambda: now,
+        fake_unit_of_work(tables), sets or FakeStickerSets(), MediaLinks(TOKEN), clock=lambda: now
     )
+
+
+def sign_in(tables: Tables, now: datetime = NOW) -> SignIn:
+    verifier = InitDataVerifier(TOKEN, max_age=timedelta(days=1))
+    return SignIn(fake_unit_of_work(tables), verifier, clock=lambda: now)
 
 
 def signed_launch(user_id: int, first_name: str = "Дима", now: datetime = NOW) -> str:

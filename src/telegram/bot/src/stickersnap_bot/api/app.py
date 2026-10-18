@@ -11,6 +11,7 @@ from stickersnap_bot.api import miniapp as miniapp_api
 from stickersnap_bot.api.problems import add_problem_handlers
 from stickersnap_bot.api.telegram import WEBHOOK_PATH, create_webhook_router
 from stickersnap_bot.application.miniapp import MiniApp
+from stickersnap_bot.application.sign_in import SignIn
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ def create_app(
     bot: Bot,
     dispatcher: Dispatcher,
     delivery: UpdateDelivery,
+    sign_in: SignIn,
     miniapp: MiniApp,
     closing: Sequence[Callable[[], Awaitable[None]]] = (),
 ) -> FastAPI:
@@ -67,6 +69,7 @@ def create_app(
     app = FastAPI(title="StickerSnap bot service", lifespan=lifespan)
     add_problem_handlers(app)
     app.include_router(health.router)
+    app.state.sign_in = sign_in
     app.state.miniapp = miniapp
     # what the lifespan closes on shutdown, for a host that never ran it
     app.state.close = close

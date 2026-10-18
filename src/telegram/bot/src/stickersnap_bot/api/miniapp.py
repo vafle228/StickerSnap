@@ -1,17 +1,18 @@
 """The Mini App's API, «Облачный сервис · API Mini App» in the contract (bot-service.yaml).
 
-Every route but the media links takes the caller from `Authorization: tma <initData>`; the
-media links are signed themselves, because <img> and <video> send no header.
+Every route but the media links takes the caller from `Authorization: tma <initData>`
+(TelegramUserId); the media links are signed themselves, because <img> and <video> send no
+header.
 """
 
 from datetime import datetime
 from typing import Annotated, Literal, cast
 
-from fastapi import APIRouter, Depends, Header, Path, Request, Response, status
+from fastapi import APIRouter, Depends, Path, Request, Response, status
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
-from stickersnap_bot.application.errors import UnauthorizedError
+from stickersnap_bot.api.telegram_user import TelegramUserId
 from stickersnap_bot.application.miniapp import MiniApp, PackView, StickerView
 from stickersnap_bot.domain.devices import Device
 
@@ -102,34 +103,24 @@ def _miniapp(request: Request) -> MiniApp:
 type _MiniAppDep = Annotated[MiniApp, Depends(_miniapp)]
 
 
-async def _caller(
-    miniapp: _MiniAppDep, authorization: Annotated[str | None, Header()] = None
-) -> int:
-    scheme, _, init_data = (authorization or "").partition(" ")
-    if scheme.lower() != "tma" or not init_data:
-        raise UnauthorizedError("no tma Authorization header")
-    return await miniapp.sign_in(init_data)
-
-
-type _Caller = Annotated[int, Depends(_caller)]
 type _PackName = Annotated[str, Path(pattern=PACK_NAME)]
 
 router = APIRouter(prefix=PREFIX, tags=["miniapp"])
 
 
 @router.get("/packs", response_model_exclude_none=True, operation_id="listPacks")
-async def list_packs(miniapp: _MiniAppDep, user: _Caller) -> PackListBody:
+async def list_packs(miniapp: _MiniAppDep, user: TelegramUserId) -> PackListBody:
     return PackListBody(packs=[_pack(view) for view in await miniapp.list_packs(user)])
 
 
 @router.get("/packs/{name}", response_model_exclude_none=True, operation_id="getPack")
-async def get_pack(miniapp: _MiniAppDep, user: _Caller, name: _PackName) -> PackDetailBody:
+async def get_pack(miniapp: _MiniAppDep, user: TelegramUserId, name: _PackName) -> PackDetailBody:
     view = await miniapp.get_pack(user, name)
     return PackDetailBody(**_pack(view).model_dump(), stickers=[_sticker(s) for s in view.stickers])
 
 
 @router.delete("/packs/{name}", status_code=status.HTTP_204_NO_CONTENT, operation_id="forgetPack")
-async def forget_pack(miniapp: _MiniAppDep, user: _Caller, name: _PackName) -> None:
+async def forget_pack(miniapp: _MiniAppDep, user: TelegramUserId, name: _PackName) -> None:
     await miniapp.forget_pack(user, name)
 
 
@@ -140,7 +131,7 @@ async def forget_pack(miniapp: _MiniAppDep, user: _Caller, name: _PackName) -> N
 )
 async def delete_sticker(
     miniapp: _MiniAppDep,
-    user: _Caller,
+    user: TelegramUserId,
     name: _PackName,
     sticker_id: Annotated[str, Path(alias="stickerId")],
 ) -> None:
@@ -148,7 +139,7 @@ async def delete_sticker(
 
 
 @router.get("/devices", operation_id="listDevices")
-async def list_devices(miniapp: _MiniAppDep, user: _Caller) -> DeviceListBody:
+async def list_devices(miniapp: _MiniAppDep, user: TelegramUserId) -> DeviceListBody:
     return DeviceListBody(devices=[_device(d) for d in await miniapp.list_devices(user)])
 
 
@@ -156,7 +147,7 @@ async def list_devices(miniapp: _MiniAppDep, user: _Caller) -> DeviceListBody:
     "/devices/{deviceId}", status_code=status.HTTP_204_NO_CONTENT, operation_id="unlinkDevice"
 )
 async def unlink_device(
-    miniapp: _MiniAppDep, user: _Caller, device_id: Annotated[str, Path(alias="deviceId")]
+    miniapp: _MiniAppDep, user: TelegramUserId, device_id: Annotated[str, Path(alias="deviceId")]
 ) -> None:
     await miniapp.unlink_device(user, device_id)
 
