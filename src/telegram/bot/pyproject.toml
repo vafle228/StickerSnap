@@ -45,6 +45,11 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "N", "ASYNC", "PT"]
 
+[tool.ruff.lint.per-file-ignores]
+# the bot's Russian texts, and the tests that read them: Cyrillic letters are no confusables there
+"src/stickersnap_bot/application/chat_texts.py" = ["RUF001"]
+"tests/**" = ["RUF001"]
+
 [tool.mypy]
 strict = true
 plugins = ["pydantic.mypy"]
