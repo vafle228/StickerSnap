@@ -4,17 +4,14 @@ from collections import OrderedDict
 from pathlib import PurePosixPath
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramAPIError, TelegramBadRequest, TelegramRetryAfter
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import Sticker
 from aiohttp import ClientError
 
-from stickersnap_bot.application.errors import (
-    RateLimitedError,
-    StickerNotFoundError,
-    TelegramUnavailableError,
-)
+from stickersnap_bot.application.errors import StickerNotFoundError, TelegramUnavailableError
 from stickersnap_bot.application.sticker_sets import SetSticker, StickerFile, StickerSet
 from stickersnap_bot.domain.packs import PackKind
+from stickersnap_bot.infrastructure.telegram.errors import translate
 
 _MEDIA_TYPES = {
     ".webm": "video/webm",
@@ -42,7 +39,7 @@ class BotStickerSets:
             # STICKERSET_INVALID: Telegram does not know the set (deleted through @Stickers)
             return None
         except TelegramAPIError as error:
-            raise _translate(error) from error
+            raise translate(error) from error
         return StickerSet(
             name=found.name,
             title=found.title,
@@ -57,7 +54,7 @@ class BotStickerSets:
         except TelegramBadRequest as error:
             raise StickerNotFoundError(sticker_id) from error
         except TelegramAPIError as error:
-            raise _translate(error) from error
+            raise translate(error) from error
 
     async def download(self, file_id: str) -> StickerFile | None:
         cached = self._cache.get(file_id)
@@ -72,7 +69,7 @@ class BotStickerSets:
         except TelegramBadRequest:
             return None
         except TelegramAPIError as error:
-            raise _translate(error) from error
+            raise translate(error) from error
         except (ClientError, TimeoutError) as error:
             raise TelegramUnavailableError(str(error)) from error
         if content is None:
@@ -99,9 +96,3 @@ def _sticker(sticker: Sticker) -> SetSticker:
         thumb_file_id=sticker.thumbnail.file_id if sticker.thumbnail else None,
         video_file_id=sticker.file_id,
     )
-
-
-def _translate(error: TelegramAPIError) -> Exception:
-    if isinstance(error, TelegramRetryAfter):
-        return RateLimitedError(error.retry_after)
-    return TelegramUnavailableError(str(error))
