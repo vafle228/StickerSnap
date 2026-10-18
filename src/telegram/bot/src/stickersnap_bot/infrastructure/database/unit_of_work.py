@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import (
 
 from stickersnap_bot.infrastructure.database.repositories import (
     SqlDeviceRepository,
+    SqlFeedbackRepository,
     SqlLinkRepository,
     SqlPackRepository,
     SqlUserRepository,
@@ -42,6 +43,7 @@ class SqlUnitOfWork:
     devices: SqlDeviceRepository
     links: SqlLinkRepository
     packs: SqlPackRepository
+    feedback: SqlFeedbackRepository
 
     def __init__(self, engine: AsyncEngine) -> None:
         self._engine = engine
@@ -55,6 +57,7 @@ class SqlUnitOfWork:
         self.devices = SqlDeviceRepository(self._connection)
         self.links = SqlLinkRepository(self._connection)
         self.packs = SqlPackRepository(self._connection)
+        self.feedback = SqlFeedbackRepository(self._connection)
         return self
 
     async def __aexit__(

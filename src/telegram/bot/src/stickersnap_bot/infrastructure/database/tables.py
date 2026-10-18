@@ -12,9 +12,11 @@ from sqlalchemy import (
     Dialect,
     ForeignKey,
     Index,
+    Integer,
     MetaData,
     String,
     Table,
+    Text,
     TypeDecorator,
 )
 
@@ -105,4 +107,35 @@ packs = Table(
     Column("updated_at", UtcDateTime, nullable=False),
     CheckConstraint("kind IN ('stickers', 'emoji')", name="kind"),
     Index("ix_packs_owner_id_updated_at", "owner_id", "updated_at"),
+)
+
+feedback = Table(
+    "feedback",
+    metadata,
+    # the number the feedback chat shows («#41»)
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("type", String, nullable=False),
+    Column("source", String, nullable=False),
+    Column("text", String, nullable=False),
+    Column("can_reply", Boolean, nullable=False),
+    Column("contact", String),
+    Column("user_id", BigInteger, ForeignKey("users.id")),
+    # no foreign key: unlinking deletes the device, its feedback stays
+    Column("device_id", String),
+    Column("installation_id", String),
+    Column("ip_hash", String),
+    Column("app_version", String),
+    Column("platform", String),
+    Column("error_code", String),
+    Column("trace_id", String),
+    Column("diagnostics", Text),
+    Column("created_at", UtcDateTime, nullable=False),
+    # empty while Telegram has not taken it to the feedback chat
+    Column("forwarded_at", UtcDateTime),
+    CheckConstraint("type IN ('bug', 'idea', 'other')", name="type"),
+    CheckConstraint("source IN ('desktop', 'miniapp')", name="source"),
+    # the limits count by these over the last hour
+    Index("ix_feedback_user_id_created_at", "user_id", "created_at"),
+    Index("ix_feedback_installation_id_created_at", "installation_id", "created_at"),
+    Index("ix_feedback_ip_hash_created_at", "ip_hash", "created_at"),
 )

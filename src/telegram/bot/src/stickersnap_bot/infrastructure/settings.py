@@ -2,7 +2,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Literal, Self
 
-from pydantic import SecretStr, model_validator
+from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,10 +24,19 @@ class Settings(BaseSettings):
     # «Скачать для Windows и Linux» in the bot's messages
     download_url: str = "https://github.com/vafle228/StickerSnap/releases/latest"
     database_path: Path = Path("data/bot.sqlite3")
+    # the feedback chat: your private chat with the bot or a closed group; feedback is only
+    # stored while it is not set
+    feedback_chat_id: int | None = None
     # how long the Mini App's launch data stays good; Telegram signs it when the Mini App opens
     init_data_max_age: timedelta = timedelta(days=1)
     host: str = "127.0.0.1"
     port: int = 8080
+
+    @field_validator("feedback_chat_id", mode="before")
+    @classmethod
+    def _empty_is_none(cls, value: object) -> object:
+        # .env.example leaves it empty
+        return None if value == "" else value
 
     @model_validator(mode="after")
     def _webhook_needs_address_and_secret(self) -> Self:

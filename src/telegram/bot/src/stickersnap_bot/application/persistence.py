@@ -1,4 +1,4 @@
-"""Ports of the service's registry: users, devices, link codes and packs.
+"""Ports of the service's registry: users, devices, link codes, packs and feedback.
 
 A use case opens a unit of work, reads and saves through its repositories and commits once, so a
 claim that turns a link into a device lands together or not at all. Leaving the unit of work
@@ -11,6 +11,7 @@ from types import TracebackType
 from typing import Protocol, Self
 
 from stickersnap_bot.domain.devices import Device
+from stickersnap_bot.domain.feedback import Feedback
 from stickersnap_bot.domain.links import LinkRequest
 from stickersnap_bot.domain.packs import Pack
 from stickersnap_bot.domain.users import User
@@ -58,6 +59,28 @@ class PackRepository(Protocol):
     async def delete(self, name: str) -> None: ...
 
 
+class FeedbackRepository(Protocol):
+    async def get(self, feedback_id: int) -> Feedback | None: ...
+
+    async def add(self, feedback: Feedback) -> Feedback:
+        """Stores new feedback and returns it with the id the database gave it."""
+        ...
+
+    async def save(self, feedback: Feedback) -> None: ...
+
+    async def sent_since(
+        self,
+        since: datetime,
+        *,
+        user_id: int | None = None,
+        installation_id: str | None = None,
+        ip_hash: str | None = None,
+    ) -> Sequence[datetime]:
+        """When the feedback of one author arrived after `since`, oldest first. The author is
+        whichever one of the three is given."""
+        ...
+
+
 class UnitOfWork(Protocol):
     # read-only, so an adapter may expose its own repository types
     @property
@@ -71,6 +94,9 @@ class UnitOfWork(Protocol):
 
     @property
     def packs(self) -> PackRepository: ...
+
+    @property
+    def feedback(self) -> FeedbackRepository: ...
 
     async def __aenter__(self) -> Self: ...
 

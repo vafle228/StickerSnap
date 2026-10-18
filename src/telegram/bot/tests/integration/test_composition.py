@@ -38,3 +38,22 @@ async def test_a_signed_call_reaches_the_database(client: tuple[AsyncClient, Pat
         names = connection.execute(text("select first_name from users where id = 42")).all()
     engine.dispose()
     assert names == [("Дима",)]
+
+
+async def test_feedback_without_a_chat_is_stored(client: tuple[AsyncClient, Path]) -> None:
+    http, database = client
+    body = {
+        "type": "idea",
+        "text": "Хочу менять порядок стикеров",
+        "canReply": False,
+        "installationId": "0b9a3c1e-5d7f-4e2a-9c21-7d4e5f6a8b90",
+    }
+
+    response = await http.post("/v1/feedback", json=body)
+
+    assert response.status_code == 201
+    engine = create_engine(f"sqlite:///{database}")
+    with engine.connect() as connection:
+        rows = connection.execute(text("select id, type, forwarded_at from feedback")).all()
+    engine.dispose()
+    assert rows == [(response.json()["id"], "idea", None)]

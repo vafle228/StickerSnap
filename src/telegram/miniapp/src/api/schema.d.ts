@@ -117,6 +117,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Отправить отзыв или отчёт об ошибке
+         * @description Сервис сохраняет отзыв в таблицу `feedback` и пересылает в чат отзывов (`FEEDBACK_CHAT_ID`),
+         *     сведения — файлом `diagnostics-<id>.txt` ответом на это сообщение. 201 приходит, когда
+         *     отзыв сохранён: если Telegram не принял пересылку, отзыв остаётся в базе неотправленным.
+         *
+         *     Доступ, один из трёх: Mini App — `tma <initData>`; привязанный десктоп — `Bearer <ключ
+         *     устройства>`; непривязанный десктоп — без заголовка, тогда `installationId` обязателен.
+         *     С `tma` отзыв из Mini App, иначе с десктопа.
+         *
+         *     Лимит: 5 отзывов в час на аккаунт Telegram (Mini App и его компьютеры вместе) или на
+         *     установку без привязки; без привязки ещё 10 в час с одного IP. Сверх — 429 `rate_limited`.
+         *
+         *     Правила тела сверх схемы (иначе 400 `bad_request`): `text` пустой только у `bug` с `error`;
+         *     `error` и `diagnostics` только у `bug`, `diagnostics` только с десктопа и не больше
+         *     204 800 байт в UTF-8; `contact` только без привязки и при `canReply`.
+         */
+        post: operations["sendFeedback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -181,6 +214,56 @@ export interface components {
             /** Format: date-time */
             linkedAt: string;
         };
+        FeedbackRequest: {
+            type: components["schemas"]["FeedbackType"];
+            /**
+             * @description Пустой только у `bug` с `error`
+             * @example После публикации пак в «Моих паках» показывает 0 стикеров
+             */
+            text: string;
+            /** @description «Можно ответить мне» */
+            canReply: boolean;
+            /**
+             * @description Только без привязки и при `canReply`; e-mail или @username
+             * @example me@example.com
+             */
+            contact?: string;
+            /**
+             * Format: uuid
+             * @description Установка десктопа; без привязки обязателен
+             */
+            installationId?: string;
+            /** @example 0.3.1 */
+            appVersion?: string;
+            /**
+             * @description Система десктопа или `Telegram.WebApp.platform`
+             * @example Windows 11
+             * @example ios
+             */
+            platform?: string;
+            error?: components["schemas"]["FeedbackError"];
+            /** @description Пакет сведений десктопа (F4), до 204 800 байт в UTF-8; только у `bug` */
+            diagnostics?: string;
+        };
+        /**
+         * @description `bug` — «Ошибка», `idea` — «Идея», `other` — «Другое»
+         * @enum {string}
+         */
+        FeedbackType: "bug" | "idea" | "other";
+        /** @description Ошибка, из которой открыли окно «Написать отзыв» */
+        FeedbackError: {
+            /**
+             * @description `ErrorCode` десктопа
+             * @example render_failed
+             */
+            code: string;
+            /** @example 7f3a-c21e */
+            traceId?: string;
+        };
+        FeedbackCreated: {
+            /** @description Номер отзыва, «#41» в чате отзывов */
+            id: number;
+        };
         /** @description RFC 9457 Problem Details. `title` и `detail` — английский для журнала, в интерфейс не попадают. */
         Problem: {
             /** @example https://stickersnap.app/problems/unauthorized */
@@ -209,7 +292,16 @@ export interface components {
         ErrorCode: "bad_request" | "unauthorized" | "pack_not_found" | "sticker_not_found" | "device_not_found" | "pack_in_telegram" | "rate_limited" | "internal" | "telegram_error";
     };
     responses: {
-        /** @description `unauthorized` — нет подписи initData, она чужая или устарела */
+        /** @description `bad_request` — тело не по контракту */
+        BadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description `unauthorized` — нет подписи initData, она чужая или устарела; ключ устройства отозван */
         Unauthorized: {
             headers: {
                 [name: string]: unknown;
@@ -236,7 +328,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description `rate_limited` — Telegram просит подождать, `params.retryAfterSec` */
+        /** @description `rate_limited` — Telegram или лимит сервиса просят подождать, `params.retryAfterSec` */
         RateLimited: {
             headers: {
                 "Retry-After"?: number;
@@ -406,6 +498,33 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    sendFeedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Сохранён */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackCreated"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            429: components["responses"]["RateLimited"];
         };
     };
 }

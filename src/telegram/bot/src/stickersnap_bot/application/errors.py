@@ -5,8 +5,13 @@ class ApplicationError(Exception):
     pass
 
 
+class BadRequestError(ApplicationError):
+    """The request breaks a rule of the contract its schema cannot say."""
+
+
 class UnauthorizedError(ApplicationError):
-    """The launch data is not signed with the bot's token, or it is too old."""
+    """The launch data is not signed with the bot's token or is too old; the device key is
+    unknown or revoked."""
 
 
 class PackNotFoundError(ApplicationError):
@@ -26,7 +31,7 @@ class PackInTelegramError(ApplicationError):
 
 
 class RateLimitedError(ApplicationError):
-    """Telegram asks to wait; the caller waits as long as Telegram said."""
+    """Telegram, or the service's own limit, asks to wait; the caller waits as long as said."""
 
     def __init__(self, retry_after_sec: int) -> None:
         super().__init__(f"retry after {retry_after_sec} s")

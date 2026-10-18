@@ -10,6 +10,7 @@ from typing import Self
 from stickersnap_bot.application.chat import BotChat, ChatHistory, Notifications
 from stickersnap_bot.application.chat_messages import ChatMessage
 from stickersnap_bot.application.errors import ApplicationError
+from stickersnap_bot.application.feedback import SendFeedback
 from stickersnap_bot.application.init_data import InitDataVerifier, sign_init_data
 from stickersnap_bot.application.media import MediaLinks
 from stickersnap_bot.application.miniapp import MiniApp
@@ -17,6 +18,7 @@ from stickersnap_bot.application.persistence import UnitOfWorkFactory
 from stickersnap_bot.application.sign_in import SignIn
 from stickersnap_bot.application.sticker_sets import SetSticker, StickerFile, StickerSet
 from stickersnap_bot.domain.devices import Device
+from stickersnap_bot.domain.feedback import Feedback
 from stickersnap_bot.domain.links import LinkRequest
 from stickersnap_bot.domain.packs import Pack, PackKind
 from stickersnap_bot.domain.users import User
@@ -32,6 +34,7 @@ class Tables:
     devices: dict[str, Device] = field(default_factory=dict)
     links: dict[str, LinkRequest] = field(default_factory=dict)
     packs: dict[str, Pack] = field(default_factory=dict)
+    feedback: dict[int, Feedback] = field(default_factory=dict)
 
 
 class _Users:
@@ -101,6 +104,43 @@ class _Packs:
         self._t.packs.pop(name, None)
 
 
+class _Feedback:
+    def __init__(self, tables: Tables) -> None:
+        self._t = tables
+
+    async def get(self, feedback_id: int) -> Feedback | None:
+        return self._t.feedback.get(feedback_id)
+
+    async def add(self, feedback: Feedback) -> Feedback:
+        added = replace(feedback, id=max(self._t.feedback, default=0) + 1)
+        self._t.feedback[added.id or 0] = added
+        return added
+
+    async def save(self, feedback: Feedback) -> None:
+        assert feedback.id is not None
+        self._t.feedback[feedback.id] = feedback
+
+    async def sent_since(
+        self,
+        since: datetime,
+        *,
+        user_id: int | None = None,
+        installation_id: str | None = None,
+        ip_hash: str | None = None,
+    ) -> Sequence[datetime]:
+        def by(item: Feedback) -> bool:
+            author = item.author
+            if user_id is not None:
+                return author.user_id == user_id
+            if installation_id is not None:
+                return author.installation_id == installation_id
+            return author.ip_hash == ip_hash
+
+        return sorted(
+            f.created_at for f in self._t.feedback.values() if by(f) and f.created_at > since
+        )
+
+
 class FakeUnitOfWork:
     """Works on a copy of the tables and puts it back on commit, like a transaction."""
 
@@ -124,6 +164,10 @@ class FakeUnitOfWork:
     def packs(self) -> _Packs:
         return _Packs(self._work)
 
+    @property
+    def feedback(self) -> _Feedback:
+        return _Feedback(self._work)
+
     async def __aenter__(self) -> Self:
         self._work = _copy(self._committed)
         return self
@@ -137,7 +181,7 @@ class FakeUnitOfWork:
         pass
 
     async def commit(self) -> None:
-        for name in ("users", "devices", "links", "packs"):
+        for name in ("users", "devices", "links", "packs", "feedback"):
             setattr(self._committed, name, dict(getattr(self._work, name)))
 
 
@@ -148,6 +192,7 @@ def _copy(tables: Tables) -> Tables:
         devices=dict(tables.devices),
         links=dict(tables.links),
         packs=dict(tables.packs),
+        feedback=dict(tables.feedback),
     )
 
 
@@ -204,6 +249,25 @@ def miniapp(tables: Tables, sets: FakeStickerSets | None = None, now: datetime =
     return MiniApp(
         fake_unit_of_work(tables), sets or FakeStickerSets(), MediaLinks(TOKEN), clock=lambda: now
     )
+
+
+class FakeFeedbackInbox:
+    """Keeps what it was handed; `failure` makes delivery raise it."""
+
+    def __init__(self) -> None:
+        self.delivered: list[tuple[Feedback, User | None, Device | None]] = []
+        self.failure: ApplicationError | None = None
+
+    async def deliver(self, feedback: Feedback, user: User | None, device: Device | None) -> None:
+        if self.failure is not None:
+            raise self.failure
+        self.delivered.append((feedback, user, device))
+
+
+def send_feedback(
+    tables: Tables, inbox: FakeFeedbackInbox | None = None, now: datetime = NOW
+) -> SendFeedback:
+    return SendFeedback(fake_unit_of_work(tables), inbox or FakeFeedbackInbox(), clock=lambda: now)
 
 
 def sign_in(tables: Tables, now: datetime = NOW) -> SignIn:

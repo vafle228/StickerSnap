@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from stickersnap_bot.application.errors import (
     ApplicationError,
+    BadRequestError,
     DeviceNotFoundError,
     PackInTelegramError,
     PackNotFoundError,
@@ -18,12 +19,13 @@ from stickersnap_bot.application.errors import (
 )
 
 _CODES: dict[type[ApplicationError], tuple[str, int, str]] = {
+    BadRequestError: ("bad_request", 400, "Bad request"),
     UnauthorizedError: ("unauthorized", 401, "Unauthorized"),
     PackNotFoundError: ("pack_not_found", 404, "Pack not found"),
     StickerNotFoundError: ("sticker_not_found", 404, "Sticker not found"),
     DeviceNotFoundError: ("device_not_found", 404, "Device not found"),
     PackInTelegramError: ("pack_in_telegram", 409, "The pack is still in Telegram"),
-    RateLimitedError: ("rate_limited", 429, "Telegram asks to wait"),
+    RateLimitedError: ("rate_limited", 429, "Asked to wait"),
     TelegramUnavailableError: ("telegram_error", 502, "Telegram did not answer"),
 }
 

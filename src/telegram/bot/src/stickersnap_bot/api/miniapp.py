@@ -9,9 +9,8 @@ from datetime import datetime
 from typing import Annotated, Literal, cast
 
 from fastapi import APIRouter, Depends, Path, Request, Response, status
-from pydantic import BaseModel, ConfigDict
-from pydantic.alias_generators import to_camel
 
+from stickersnap_bot.api.bodies import Body
 from stickersnap_bot.api.telegram_user import TelegramUserId
 from stickersnap_bot.application.miniapp import MiniApp, PackView, StickerView
 from stickersnap_bot.domain.devices import Device
@@ -22,18 +21,14 @@ MEDIA_PATH = "/media/{token}"
 PACK_NAME = r"^[A-Za-z][A-Za-z0-9_]{0,63}$"
 
 
-class _Body(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-
-class StickerBody(_Body):
+class StickerBody(Body):
     id: str
     emoji: list[str]
     thumb_url: str
     video_url: str
 
 
-class PackBody(_Body):
+class PackBody(Body):
     name: str
     title: str
     kind: Literal["stickers", "emoji"]
@@ -48,18 +43,18 @@ class PackDetailBody(PackBody):
     stickers: list[StickerBody]
 
 
-class PackListBody(_Body):
+class PackListBody(Body):
     packs: list[PackBody]
 
 
-class DeviceBody(_Body):
+class DeviceBody(Body):
     id: str
     name: str
     os: Literal["windows", "macos", "linux"]
     linked_at: datetime
 
 
-class DeviceListBody(_Body):
+class DeviceListBody(Body):
     devices: list[DeviceBody]
 
 
