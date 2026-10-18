@@ -179,6 +179,13 @@ each call (`TelegramUserId` in `api/telegram_user.py`, for any route Telegram si
 sets from the Bot API and serves sticker files through short-lived signed links, so the token never
 reaches the browser. `INIT_DATA_MAX_AGE` (a day by default) is how long the launch data stays good.
 
+The bot's chat asks nothing: `/start`, `/help` and `/feedback` answer with text and buttons, anything
+else gets one phrase, and the bot writes by itself when a computer is linked, a pack is created or
+stickers are added (`application/chat.py`, texts in `application/chat_texts.py`). Buttons open the
+Mini App on a screen through `https://t.me/<bot>?startapp=<screen>` links, so they need the Main Mini
+App switched on in @BotFather. The commands menu is set on every start; «Скачать» leads to
+`DOWNLOAD_URL`, the GitHub releases page by default.
+
 `docker/telegram` holds the image and its compose file: `docker compose -f docker/telegram/compose.yaml up --build`
 runs the service with `.env` from the repository root and keeps SQLite in a volume. On the VPS the
 `.env` with the production token lies beside `compose.yaml` and is passed with `BOT_ENV_FILE=./.env`;
