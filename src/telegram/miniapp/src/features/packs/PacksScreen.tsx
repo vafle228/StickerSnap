@@ -9,10 +9,11 @@ import layout from "../../shared/layout.module.css";
 import { useDelayed } from "../../shared/useDelayed";
 import { useTelegram } from "../../telegram/context";
 import { devicesLabel } from "../devices/format";
+import { FeedbackIcon } from "../feedback/FeedbackIcon";
 import { countLabel, isFull } from "./format";
 
 /** «Мои паки», the first screen (artboard 13, section 2): only the packs our bot made for this
- *  Telegram account, fresh first, and the card of the linked computers. */
+ *  Telegram account, fresh first, the card of the linked computers and «Написать отзыв» (18·5). */
 export function PacksScreen() {
   const telegram = useTelegram();
   const packs = usePacks();
@@ -78,6 +79,20 @@ export function PacksScreen() {
               <span className={layout.meta}>
                 {devices.isSuccess ? devicesLabel(devices.data.length) : "Привязанные компьютеры"}
               </span>
+            </span>
+            <Icon name="chevron-right" size={18} strokeWidth={2} className={layout.chevron} />
+          </button>
+          <button
+            type="button"
+            className={`${layout.row} ${layout.solo}`}
+            onClick={() => push({ kind: "feedback" })}
+          >
+            <span className={layout.deviceIcon}>
+              <FeedbackIcon />
+            </span>
+            <span className={layout.text}>
+              <span className={layout.title}>Написать отзыв</span>
+              <span className={layout.meta}>Ошибка, идея или вопрос</span>
             </span>
             <Icon name="chevron-right" size={18} strokeWidth={2} className={layout.chevron} />
           </button>
