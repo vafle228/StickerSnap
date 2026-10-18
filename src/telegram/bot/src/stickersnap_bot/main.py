@@ -19,6 +19,7 @@ from stickersnap_bot.application.init_data import InitDataVerifier, sign_init_da
 from stickersnap_bot.application.linking import Linking, LinkSignals
 from stickersnap_bot.application.media import MediaLinks
 from stickersnap_bot.application.miniapp import MiniApp
+from stickersnap_bot.application.publishing import Publishing
 from stickersnap_bot.application.sign_in import SignIn
 from stickersnap_bot.infrastructure.database.migrate import migrate
 from stickersnap_bot.infrastructure.database.unit_of_work import SqlUnitOfWork, create_engine
@@ -55,7 +56,9 @@ def build_app(settings: Settings) -> FastAPI:
     sign_in = SignIn(
         unit_of_work, InitDataVerifier(token, max_age=settings.init_data_max_age), clock=_now
     )
-    miniapp = MiniApp(unit_of_work, BotStickerSets(bot), MediaLinks(token), clock=_now)
+    # one adapter: the Mini App and the desktop share its file cache
+    sticker_sets = BotStickerSets(bot)
+    miniapp = MiniApp(unit_of_work, sticker_sets, MediaLinks(token), clock=_now)
     messages = BotChatMessages(bot)
     # one history: an answer in the chat ends the editing of the last notice
     history = ChatHistory()
@@ -68,6 +71,7 @@ def build_app(settings: Settings) -> FastAPI:
     )
     send_feedback = SendFeedback(unit_of_work, inbox, clock=_now)
     linking = Linking(unit_of_work, BotAppLinks(bot), notifications, LinkSignals(), clock=_now)
+    publishing = Publishing(unit_of_work, sticker_sets, notifications, clock=_now)
     return create_app(
         bot,
         create_dispatcher(chat),
@@ -77,6 +81,7 @@ def build_app(settings: Settings) -> FastAPI:
         notifications,
         send_feedback,
         linking,
+        publishing,
         closing=[engine.dispose],
     )
 

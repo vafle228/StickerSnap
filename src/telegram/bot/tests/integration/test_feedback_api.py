@@ -23,6 +23,7 @@ from tests.fakes import (
     linking,
     miniapp,
     notifications,
+    publishing,
     send_feedback,
     sign_in,
     signed_launch,
@@ -61,6 +62,7 @@ async def client(tables: Tables, inbox: FakeFeedbackInbox) -> AsyncIterator[Asyn
         notifications(tables),
         send_feedback(tables, inbox),
         linking(tables),
+        publishing(tables),
     )
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
         yield http

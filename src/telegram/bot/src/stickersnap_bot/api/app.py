@@ -10,12 +10,14 @@ from stickersnap_bot.api import feedback as feedback_api
 from stickersnap_bot.api import health
 from stickersnap_bot.api import links as links_api
 from stickersnap_bot.api import miniapp as miniapp_api
+from stickersnap_bot.api import publishing as publishing_api
 from stickersnap_bot.api.problems import add_problem_handlers
 from stickersnap_bot.api.telegram import COMMANDS, WEBHOOK_PATH, create_webhook_router
 from stickersnap_bot.application.chat import Notifications
 from stickersnap_bot.application.feedback import SendFeedback
 from stickersnap_bot.application.linking import Linking
 from stickersnap_bot.application.miniapp import MiniApp
+from stickersnap_bot.application.publishing import Publishing
 from stickersnap_bot.application.sign_in import SignIn
 
 
@@ -44,6 +46,7 @@ def create_app(
     notifications: Notifications,
     send_feedback: SendFeedback,
     linking: Linking,
+    publishing: Publishing,
     closing: Sequence[Callable[[], Awaitable[None]]] = (),
 ) -> FastAPI:
     """`closing` runs on shutdown after the bot stops: the database engine and the like."""
@@ -80,16 +83,18 @@ def create_app(
     app.include_router(health.router)
     app.state.sign_in = sign_in
     app.state.miniapp = miniapp
-    # what the bot writes by itself; linking calls it now, the publishing routes (S5) next
+    # what the bot writes by itself, when linking and publishing
     app.state.notifications = notifications
     app.state.send_feedback = send_feedback
     app.state.linking = linking
+    app.state.publishing = publishing
     # what the lifespan closes on shutdown, for a host that never ran it
     app.state.close = close
     app.include_router(miniapp_api.router)
     app.include_router(feedback_api.router)
     app.include_router(links_api.router)
     app.include_router(links_api.miniapp_router)
+    app.include_router(publishing_api.router)
     if isinstance(delivery, Webhook):
         app.include_router(create_webhook_router(bot, dispatcher, delivery.secret))
     return app

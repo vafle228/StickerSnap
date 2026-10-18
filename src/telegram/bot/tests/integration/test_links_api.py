@@ -20,6 +20,7 @@ from tests.fakes import (
     linking,
     miniapp,
     notifications,
+    publishing,
     send_feedback,
     sign_in,
     signed_launch,
@@ -76,6 +77,7 @@ async def client(clock: FakeClock) -> AsyncIterator[AsyncClient]:
         notifications(tables),
         send_feedback(tables),
         linking(tables, clock=clock),
+        publishing(tables),
     )
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
         yield http

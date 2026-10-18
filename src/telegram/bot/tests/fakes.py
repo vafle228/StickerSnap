@@ -9,15 +9,26 @@ from typing import Self
 
 from stickersnap_bot.application.chat import BotChat, ChatHistory, Notifications
 from stickersnap_bot.application.chat_messages import ChatMessage
-from stickersnap_bot.application.errors import ApplicationError
+from stickersnap_bot.application.errors import (
+    ApplicationError,
+    PackFullError,
+    PackNameTakenError,
+    PackNotFoundError,
+)
 from stickersnap_bot.application.feedback import SendFeedback
 from stickersnap_bot.application.init_data import InitDataVerifier, sign_init_data
 from stickersnap_bot.application.linking import Linking, LinkSignals
 from stickersnap_bot.application.media import MediaLinks
 from stickersnap_bot.application.miniapp import MiniApp
 from stickersnap_bot.application.persistence import UnitOfWorkFactory
+from stickersnap_bot.application.publishing import Publishing
 from stickersnap_bot.application.sign_in import SignIn
-from stickersnap_bot.application.sticker_sets import SetSticker, StickerFile, StickerSet
+from stickersnap_bot.application.sticker_sets import (
+    NewSticker,
+    SetSticker,
+    StickerFile,
+    StickerSet,
+)
 from stickersnap_bot.domain.devices import Device
 from stickersnap_bot.domain.feedback import Feedback
 from stickersnap_bot.domain.links import LinkRequest
@@ -225,13 +236,21 @@ def fake_unit_of_work(tables: Tables) -> UnitOfWorkFactory:
     return lambda: FakeUnitOfWork(tables)
 
 
+BOT = "StickerSnapAppBot"
+
+
 class FakeStickerSets:
-    """Telegram's sets by name; `failure` makes every call raise it."""
+    """Telegram's sets by name, as @StickerSnapAppBot's; `failure` makes every call raise it.
+
+    `uploaded` and `calls` record what the owner's calls sent: (method, owner, ...).
+    """
 
     def __init__(self) -> None:
         self.sets: dict[str, StickerSet] = {}
         self.files: dict[str, StickerFile] = {}
         self.deleted: list[str] = []
+        self.uploaded: list[tuple[int, bytes]] = []
+        self.calls: list[tuple[object, ...]] = []
         self.failure: ApplicationError | None = None
 
     async def get(self, name: str) -> StickerSet | None:
@@ -250,6 +269,53 @@ class FakeStickerSets:
         self._fail()
         return self.files.get(file_id)
 
+    async def bot_username(self) -> str:
+        return BOT
+
+    async def upload(self, owner_id: int, webm: bytes) -> str:
+        self._fail()
+        self.uploaded.append((owner_id, webm))
+        return f"file{len(self.uploaded)}"
+
+    async def create(
+        self,
+        owner_id: int,
+        name: str,
+        title: str,
+        kind: PackKind,
+        stickers: Sequence[NewSticker],
+    ) -> None:
+        self._fail()
+        if name in self.sets:
+            raise PackNameTakenError(name)
+        self.calls.append(("create", owner_id, name, tuple(stickers)))
+        self.sets[name] = StickerSet(name, title, kind, tuple(map(_from_file, stickers)))
+
+    async def add(self, owner_id: int, name: str, sticker: NewSticker) -> None:
+        self._fail()
+        found = self._set(name)
+        if len(found.stickers) >= found.kind.limit:
+            raise PackFullError(name)
+        self.calls.append(("add", owner_id, name, sticker))
+        self.sets[name] = replace(found, stickers=(*found.stickers, _from_file(sticker)))
+
+    async def replace(
+        self, owner_id: int, name: str, old_sticker_id: str, sticker: NewSticker
+    ) -> None:
+        self._fail()
+        found = self._set(name)
+        self.calls.append(("replace", owner_id, name, old_sticker_id, sticker))
+        stickers = tuple(
+            _from_file(sticker) if s.id == old_sticker_id else s for s in found.stickers
+        )
+        self.sets[name] = replace(found, stickers=stickers)
+
+    def _set(self, name: str) -> StickerSet:
+        found = self.sets.get(name)
+        if found is None:
+            raise PackNotFoundError(name)
+        return found
+
     def _fail(self) -> None:
         if self.failure is not None:
             raise self.failure
@@ -257,7 +323,22 @@ class FakeStickerSets:
 
 def sticker(n: int) -> SetSticker:
     return SetSticker(
-        id=f"sticker{n}", emoji=("😴",), thumb_file_id=f"thumb{n}", video_file_id=f"video{n}"
+        id=f"sticker{n}",
+        emoji=("😴",),
+        thumb_file_id=f"thumb{n}",
+        video_file_id=f"video{n}",
+        unique_id=f"unique{n}",
+    )
+
+
+def _from_file(sticker: NewSticker) -> SetSticker:
+    """What Telegram makes of an uploaded file: a sticker with ids of its own."""
+    return SetSticker(
+        id=f"sticker-{sticker.file_id}",
+        emoji=sticker.emoji,
+        thumb_file_id=None,
+        video_file_id=f"sticker-{sticker.file_id}",
+        unique_id=f"unique-{sticker.file_id}",
     )
 
 
@@ -407,5 +488,20 @@ def linking(
         FakeAppLinks(),
         notifications(tables, messages, clock=clock),
         signals or LinkSignals(),
+        clock=clock,
+    )
+
+
+def publishing(
+    tables: Tables,
+    sets: FakeStickerSets | None = None,
+    messages: FakeChatMessages | None = None,
+    clock: FakeClock | None = None,
+) -> Publishing:
+    clock = clock or FakeClock()
+    return Publishing(
+        fake_unit_of_work(tables),
+        sets or FakeStickerSets(),
+        notifications(tables, messages, clock=clock),
         clock=clock,
     )

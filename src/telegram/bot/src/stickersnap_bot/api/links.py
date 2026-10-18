@@ -9,14 +9,14 @@ from datetime import datetime, timedelta
 from typing import Annotated, Literal, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Path, Query, Request, status
+from fastapi import APIRouter, Depends, Path, Query, Request, status
 from pydantic import ConfigDict, Field
 
 from stickersnap_bot.api.bodies import Body
+from stickersnap_bot.api.device_key import DeviceKey, bearer
 from stickersnap_bot.api.miniapp import PREFIX as MINIAPP_PREFIX
 from stickersnap_bot.api.miniapp import DeviceBody, device_body
 from stickersnap_bot.api.telegram_user import TelegramUserId
-from stickersnap_bot.application.errors import UnauthorizedError
 from stickersnap_bot.application.linking import (
     MAX_WAIT,
     Computer,
@@ -125,23 +125,10 @@ def _linking(request: Request) -> Linking:
     return cast(Linking, request.app.state.linking)
 
 
-def _bearer(authorization: Annotated[str | None, Header()] = None) -> str:
-    """The secret after `Bearer`, empty without one."""
-    scheme, _, secret = (authorization or "").partition(" ")
-    return secret if scheme.lower() == "bearer" else ""
-
-
-def _device_key(secret: Annotated[str, Depends(_bearer)]) -> str:
-    if not secret:
-        raise UnauthorizedError("no Bearer device key")
-    return secret
-
-
 type _LinkingDep = Annotated[Linking, Depends(_linking)]
 type _LinkCode = Annotated[str, Path(pattern=LINK_CODE)]
 # a missing or foreign poll token is link_not_found, as for an unknown code
-type _PollToken = Annotated[str, Depends(_bearer)]
-type _DeviceKey = Annotated[str, Depends(_device_key)]
+type _PollToken = Annotated[str, Depends(bearer)]
 
 router = APIRouter(prefix="/v1", tags=["link"])
 
@@ -176,12 +163,12 @@ async def cancel_link(linking: _LinkingDep, code: _LinkCode, poll_token: _PollTo
 
 
 @router.get("/device", response_model_exclude_none=True, operation_id="getDevice")
-async def get_device(linking: _LinkingDep, key: _DeviceKey) -> LinkedDeviceBody:
+async def get_device(linking: _LinkingDep, key: DeviceKey) -> LinkedDeviceBody:
     return _linked(await linking.linked(key))
 
 
 @router.delete("/device", status_code=status.HTTP_204_NO_CONTENT, operation_id="unlinkThisDevice")
-async def unlink_this_device(linking: _LinkingDep, key: _DeviceKey) -> None:
+async def unlink_this_device(linking: _LinkingDep, key: DeviceKey) -> None:
     await linking.unlink(key)
 
 
