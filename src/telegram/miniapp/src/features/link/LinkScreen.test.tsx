@@ -96,7 +96,10 @@ describe("«Привязать этот компьютер?»", () => {
   it("links a computer that is this person's already without asking", async () => {
     const { db } = launch({ startParam: "link_again" });
     expect(await screen.findByRole("heading", { name: "Компьютер привязан" })).toBeTruthy();
-    expect(db.links.find((l) => l.code === "again")?.answer).toBe("confirmed");
+    const again = db.links.find((l) => l.code === "again");
+    expect(again?.answer).toBe("confirmed");
+    // Without the switch: notifications muted before stay muted
+    expect(again && "notifications" in again && again.notifications !== undefined).toBe(false);
   });
 
   it("keeps the question when the service does not answer, and «Повторить» tries again", async () => {

@@ -177,7 +177,8 @@ function LinkQuestion({ link, onDone }: { link: LinkRequest; onDone: (o: Outcome
 }
 
 /** The same computer of the same person: 18·2 without asking (artboard 18, «Уже привязан»).
- *  The service still has to hear it, or the desktop keeps waiting. */
+ *  The service still has to hear it, or the desktop keeps waiting; without the switch, so
+ *  notifications muted before stay muted. */
 function AlreadyLinked({ link, onDone }: { link: LinkRequest; onDone: (o: Outcome) => void }) {
   const telegram = useTelegram();
   const confirm = useConfirmLink(link.code);
@@ -185,7 +186,7 @@ function AlreadyLinked({ link, onDone }: { link: LinkRequest; onDone: (o: Outcom
   const slow = useDelayed(!confirm.isError);
 
   const send = () =>
-    confirm.mutate(true, {
+    confirm.mutate(undefined, {
       onSuccess: () => {
         telegram.haptic("done");
         onDone({ kind: "linked", name: link.name });

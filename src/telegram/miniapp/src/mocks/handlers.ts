@@ -97,7 +97,10 @@ export function handlers(db: MockDb, latency = true) {
       const link = pendingLink(params.code);
       if (!link) return problem("link_not_found");
       const body = (await request.json()) as { notifications?: unknown };
-      if (typeof body.notifications !== "boolean") return problem("bad_request");
+      // Optional: no switch keeps the account's (contract)
+      if (body.notifications !== undefined && typeof body.notifications !== "boolean") {
+        return problem("bad_request");
+      }
       link.answer = "confirmed";
       link.notifications = body.notifications;
       if (!link.linkedHere) {

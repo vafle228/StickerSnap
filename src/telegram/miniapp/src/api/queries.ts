@@ -109,11 +109,12 @@ export function useConfirmLink(code: string) {
   const api = useApi();
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (notifications: boolean) =>
+    /** `undefined` keeps the account's switch as it is (a computer that is linked already) */
+    mutationFn: (notifications: boolean | undefined) =>
       call(
         api.POST("/v1/miniapp/links/{code}/confirm", {
           params: { path: { code } },
-          body: { notifications },
+          body: notifications === undefined ? {} : { notifications },
         }),
       ),
     // «Устройства» gains the computer
