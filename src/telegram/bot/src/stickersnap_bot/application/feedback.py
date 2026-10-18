@@ -5,15 +5,14 @@ database unforwarded, and the caller still hears «отправлено».
 """
 
 import logging
-import math
-from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from stickersnap_bot.application.clock import Clock
 from stickersnap_bot.application.device_keys import device_for_key
-from stickersnap_bot.application.errors import ApplicationError, BadRequestError, RateLimitedError
+from stickersnap_bot.application.errors import ApplicationError, BadRequestError
 from stickersnap_bot.application.feedback_inbox import FeedbackInbox
+from stickersnap_bot.application.limits import keep_to_limit
 from stickersnap_bot.application.persistence import UnitOfWork, UnitOfWorkFactory
 from stickersnap_bot.domain.devices import Device
 from stickersnap_bot.domain.errors import InvalidValueError
@@ -153,25 +152,20 @@ async def _account(
 async def _keep_to_limits(uow: UnitOfWork, author: Author, now: datetime) -> None:
     since = now - _HOUR
     if author.user_id is not None:
-        _check(await uow.feedback.sent_since(since, user_id=author.user_id), FEEDBACK_PER_HOUR, now)
+        sent = await uow.feedback.sent_since(since, user_id=author.user_id)
+        keep_to_limit(sent, FEEDBACK_PER_HOUR, _HOUR, now)
         return
     assert author.installation_id is not None, "Feedback.create asks for it"
-    _check(
+    keep_to_limit(
         await uow.feedback.sent_since(since, installation_id=author.installation_id),
         FEEDBACK_PER_HOUR,
+        _HOUR,
         now,
     )
     if author.ip_hash is not None:
-        _check(
+        keep_to_limit(
             await uow.feedback.sent_since(since, ip_hash=author.ip_hash),
             ANONYMOUS_FEEDBACK_PER_IP_PER_HOUR,
+            _HOUR,
             now,
         )
-
-
-def _check(sent: Sequence[datetime], limit: int, now: datetime) -> None:
-    if len(sent) < limit:
-        return
-    # one more is allowed once this one is an hour old
-    frees_at = sent[len(sent) - limit] + _HOUR
-    raise RateLimitedError(max(1, math.ceil((frees_at - now).total_seconds())))
