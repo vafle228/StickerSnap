@@ -4,13 +4,14 @@ info:
   version: 1.0.0
   summary: Контракт облачного сервиса @StickerSnapAppBot (src/telegram/bot).
   description: |
-    Машиночитаемая копия раздела «Облачный сервис · API Mini App» документа «StickerSnap — API-контракт»
+    Машиночитаемая копия разделов «Облачный сервис · API Mini App» и «Облачный сервис · Отзывы»
+    документа «StickerSnap — API-контракт»
     (https://claude.ai/code/artifact/27a215ce-d7a8-4824-a719-5c52df747dd6). Документ — единственный
     источник правды: любое изменение сначала закрепляется в нём, затем здесь.
 
     API облачного сервиса, единственного владельца токена бота (план бота, docs/bot-plan.md).
-    Пока здесь только API Mini App (задача S6); API десктопа (привязка и публикация, S4–S5)
-    ляжет в этот же файл. После изменения: `npm run gen:api`.
+    Здесь API Mini App (задача S6) и приём отзывов (F1); API десктопа (привязка и публикация,
+    S4–S5) ляжет в этот же файл. После изменения: `npm run gen:api`.
 
     Транспорт: HTTPS, все пути под `/v1`. Mini App отдаётся с того же адреса, поэтому
     ходит на относительные пути, без CORS.
@@ -42,6 +43,8 @@ security:
 tags:
   - name: miniapp
     description: Mini App — паки и устройства пользователя Telegram
+  - name: feedback
+    description: Отзывы с десктопа и из Mini App
 
 paths:
   /v1/miniapp/packs:
@@ -163,6 +166,50 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /v1/feedback:
+    post:
+      tags: [feedback]
+      operationId: sendFeedback
+      summary: Отправить отзыв или отчёт об ошибке
+      description: |
+        Сервис сохраняет отзыв в таблицу `feedback` и пересылает в чат отзывов (`FEEDBACK_CHAT_ID`),
+        сведения — файлом `diagnostics-<id>.txt` ответом на это сообщение. 201 приходит, когда
+        отзыв сохранён: если Telegram не принял пересылку, отзыв остаётся в базе неотправленным.
+
+        Доступ, один из трёх: Mini App — `tma <initData>`; привязанный десктоп — `Bearer <ключ
+        устройства>`; непривязанный десктоп — без заголовка, тогда `installationId` обязателен.
+        С `tma` отзыв из Mini App, иначе с десктопа.
+
+        Лимит: 5 отзывов в час на аккаунт Telegram (Mini App и его компьютеры вместе) или на
+        установку без привязки; без привязки ещё 10 в час с одного IP. Сверх — 429 `rate_limited`.
+
+        Правила тела сверх схемы (иначе 400 `bad_request`): `text` пустой только у `bug` с `error`;
+        `error` и `diagnostics` только у `bug`, `diagnostics` только с десктопа и не больше
+        204 800 байт в UTF-8; `contact` только без привязки и при `canReply`.
+      security:
+        - telegramInitData: []
+        - deviceKey: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackRequest"
+      responses:
+        "201":
+          description: Сохранён
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
 components:
   securitySchemes:
     telegramInitData:
@@ -170,6 +217,10 @@ components:
       in: header
       name: Authorization
       description: "`tma <Telegram.WebApp.initData>`"
+    deviceKey:
+      type: http
+      scheme: bearer
+      description: Ключ устройства, который десктоп получил при привязке (S4)
 
   parameters:
     PackName:
@@ -182,8 +233,14 @@ components:
         pattern: "^[A-Za-z][A-Za-z0-9_]{0,63}$"
 
   responses:
+    BadRequest:
+      description: "`bad_request` — тело не по контракту"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
     Unauthorized:
-      description: "`unauthorized` — нет подписи initData, она чужая или устарела"
+      description: "`unauthorized` — нет подписи initData, она чужая или устарела; ключ устройства отозван"
       content:
         application/problem+json:
           schema:
@@ -201,7 +258,7 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
     RateLimited:
-      description: "`rate_limited` — Telegram просит подождать, `params.retryAfterSec`"
+      description: "`rate_limited` — Telegram или лимит сервиса просят подождать, `params.retryAfterSec`"
       headers:
         Retry-After:
           schema:
@@ -322,6 +379,77 @@ components:
         linkedAt:
           type: string
           format: date-time
+
+    FeedbackRequest:
+      type: object
+      required: [type, text, canReply]
+      additionalProperties: false
+      properties:
+        type:
+          $ref: "#/components/schemas/FeedbackType"
+        text:
+          type: string
+          maxLength: 2000
+          description: Пустой только у `bug` с `error`
+          examples: [После публикации пак в «Моих паках» показывает 0 стикеров]
+        canReply:
+          type: boolean
+          description: «Можно ответить мне»
+        contact:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Только без привязки и при `canReply`; e-mail или @username
+          examples: [me@example.com]
+        installationId:
+          type: string
+          format: uuid
+          description: Установка десктопа; без привязки обязателен
+        appVersion:
+          type: string
+          maxLength: 32
+          examples: [0.3.1]
+        platform:
+          type: string
+          maxLength: 64
+          description: Система десктопа или `Telegram.WebApp.platform`
+          examples: [Windows 11, ios]
+        error:
+          $ref: "#/components/schemas/FeedbackError"
+        diagnostics:
+          type: string
+          description: Пакет сведений десктопа (F4), до 204 800 байт в UTF-8; только у `bug`
+
+    FeedbackType:
+      type: string
+      description: "`bug` — «Ошибка», `idea` — «Идея», `other` — «Другое»"
+      enum: [bug, idea, other]
+
+    FeedbackError:
+      type: object
+      description: Ошибка, из которой открыли окно «Написать отзыв»
+      required: [code]
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: "`ErrorCode` десктопа"
+          examples: [render_failed]
+        traceId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          examples: [7f3a-c21e]
+
+    FeedbackCreated:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: integer
+          description: Номер отзыва, «#41» в чате отзывов
 
     Problem:
       type: object
