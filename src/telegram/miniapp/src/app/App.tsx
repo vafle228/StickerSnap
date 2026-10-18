@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { hasModalLayer } from "@stickersnap/ds/layers";
 import { DevicesScreen } from "../features/devices/DevicesScreen";
+import { FeedbackScreen } from "../features/feedback/FeedbackScreen";
+import { FeedbackSent } from "../features/feedback/FeedbackSent";
 import { LinkScreen } from "../features/link/LinkScreen";
 import { PackScreen } from "../features/packs/PackScreen";
 import { PacksScreen } from "../features/packs/PacksScreen";
@@ -8,7 +10,7 @@ import { ToastHost } from "../shared/ToastHost";
 import type { Telegram } from "../telegram/bridge";
 import { useTelegram } from "../telegram/context";
 import { useTelegramTheme } from "../telegram/theme";
-import { currentScreen, useNav, type Screen } from "./nav";
+import { backOrAsk, currentScreen, useNav, type Screen } from "./nav";
 import { useSession } from "./session";
 import { SignedOut } from "./SignedOut";
 
@@ -18,7 +20,7 @@ function goBack() {
   if (hasModalLayer()) {
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   } else {
-    useNav.getState().back();
+    backOrAsk();
   }
 }
 
@@ -57,6 +59,10 @@ function ScreenView({ screen }: { screen: Screen }) {
       return <DevicesScreen />;
     case "link":
       return <LinkScreen key={screen.code} code={screen.code} />;
+    case "feedback":
+      return <FeedbackScreen />;
+    case "feedbackSent":
+      return <FeedbackSent />;
   }
 }
 
