@@ -88,6 +88,33 @@ describe("demo bot service", () => {
     expect(await failure(unlink())).toBe("device_not_found");
   });
 
+  it("answers a link code once: confirm or decline, then link_not_found", async () => {
+    use("ok");
+    const byCode = (code: string) => ({ params: { path: { code } } });
+    const link = await call(api.GET("/v1/miniapp/links/{code}", byCode("demo")));
+    expect(link).toMatchObject({ name: "DESKTOP-7F3K2Q", os: "windows", linkedHere: false });
+    const confirm = () =>
+      call(
+        api.POST("/v1/miniapp/links/{code}/confirm", {
+          ...byCode("demo"),
+          body: { notifications: true },
+        }),
+      );
+    await confirm();
+    // The same person again: nothing changes (contract)
+    await confirm();
+    expect(db.devices.filter((d) => d.name === "DESKTOP-7F3K2Q")).toHaveLength(2);
+    expect(await failure(call(api.GET("/v1/miniapp/links/{code}", byCode("demo"))))).toBe(
+      "link_not_found",
+    );
+    expect(await failure(call(api.POST("/v1/miniapp/links/{code}/decline", byCode("demo"))))).toBe(
+      "link_not_found",
+    );
+    expect(await failure(call(api.GET("/v1/miniapp/links/{code}", byCode("nope"))))).toBe(
+      "link_not_found",
+    );
+  });
+
   it("fails without an answer in «Нет связи», and with telegram_error in «Не удаляется»", async () => {
     use("offline");
     expect(await failure(packs())).toBe(0);
