@@ -4,14 +4,14 @@ info:
   version: 1.0.0
   summary: Контракт облачного сервиса @StickerSnapAppBot (src/telegram/bot).
   description: |
-    Машиночитаемая копия разделов «Облачный сервис · API Mini App» и «Облачный сервис · Отзывы»
-    документа «StickerSnap — API-контракт»
+    Машиночитаемая копия разделов «Облачный сервис · API Mini App», «Облачный сервис · Отзывы» и
+    «Облачный сервис · Привязка» документа «StickerSnap — API-контракт»
     (https://claude.ai/code/artifact/27a215ce-d7a8-4824-a719-5c52df747dd6). Документ — единственный
     источник правды: любое изменение сначала закрепляется в нём, затем здесь.
 
     API облачного сервиса, единственного владельца токена бота (план бота, docs/bot-plan.md).
-    Здесь API Mini App (задача S6) и приём отзывов (F1); API десктопа (привязка и публикация,
-    S4–S5) ляжет в этот же файл. После изменения: `npm run gen:api`.
+    Здесь API Mini App (задача S6), приём отзывов (F1) и привязка десктопа (S4); публикация (S5)
+    ляжет в этот же файл. После изменения: `npm run gen:api`.
 
     Транспорт: HTTPS, все пути под `/v1`. Mini App отдаётся с того же адреса, поэтому
     ходит на относительные пути, без CORS.
@@ -45,6 +45,8 @@ tags:
     description: Mini App — паки и устройства пользователя Telegram
   - name: feedback
     description: Отзывы с десктопа и из Mini App
+  - name: link
+    description: Привязка десктопа к аккаунту Telegram и его ключ устройства
 
 paths:
   /v1/miniapp/packs:
@@ -210,6 +212,179 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
+  /v1/links:
+    post:
+      tags: [link]
+      operationId: createLink
+      summary: Выдать код привязки
+      description: |
+        Десктоп нажал «Привязать»: код живёт 10 минут, `deepLink` открывает Mini App на экране
+        «Привязать этот компьютер?» (артборд 18·1), тот же адрес — в QR. `pollToken` — секрет для
+        ожидания и отмены; сервис хранит только его хеш.
+
+        Лимит: 10 кодов в час на установку (`installationId`) и 30 в час с одного IP, сверх —
+        429 `rate_limited`.
+      security:
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkRequestBody"
+      responses:
+        "201":
+          description: Код выдан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/links/{code}:
+    parameters:
+      - $ref: "#/components/parameters/LinkCode"
+    get:
+      tags: [link]
+      operationId: getLinkState
+      summary: Ждать ответа на код привязки
+      description: |
+        Долгий запрос: пока код ждёт ответа, сервис держит запрос до `wait` секунд и отвечает,
+        как только человек ответил в Mini App. После «Привязать» отдаёт ключ устройства — один
+        раз, дальше код `expired`. Чужой `pollToken` и неизвестный код — 404 `link_not_found`.
+      security:
+        - pollToken: []
+      parameters:
+        - name: wait
+          in: query
+          required: false
+          description: Сколько секунд ждать ответа, 0–25
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 25
+            default: 0
+      responses:
+        "200":
+          description: Состояние кода
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkState"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [link]
+      operationId: cancelLink
+      summary: Отменить код привязки
+      description: «Отмена» на десктопе. Код сгорает, Mini App покажет «Ссылка устарела».
+      security:
+        - pollToken: []
+      responses:
+        "204":
+          description: Отменён
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/device:
+    get:
+      tags: [link]
+      operationId: getDevice
+      summary: Этот компьютер и его аккаунт Telegram
+      description: Проверка ключа при запуске десктопа. Отозванный ключ — 401 `unauthorized`.
+      security:
+        - deviceKey: []
+      responses:
+        "200":
+          description: Привязан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkedDevice"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [link]
+      operationId: unlinkThisDevice
+      summary: Отвязать этот компьютер
+      description: Ключ отзывается, компьютер пропадает из «Устройств» в Mini App.
+      security:
+        - deviceKey: []
+      responses:
+        "204":
+          description: Отвязан
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/miniapp/links/{code}:
+    parameters:
+      - $ref: "#/components/parameters/LinkCode"
+    get:
+      tags: [miniapp]
+      operationId: getLinkRequest
+      summary: Запрос на привязку компьютера
+      description: |
+        Экран 18·1. Код, который истёк, уже использован, отменён или не найден, — 404
+        `link_not_found` (экран 18·3).
+      responses:
+        "200":
+          description: Запрос ждёт ответа
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/miniapp/links/{code}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/LinkCode"
+    post:
+      tags: [miniapp]
+      operationId: confirmLink
+      summary: Привязать компьютер
+      description: |
+        «Привязать» от имени того, кто открыл Mini App. Повтор тем же человеком — снова 204.
+        `notifications` запоминается за аккаунтом: выключенные уведомления бот не шлёт.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkConfirmBody"
+      responses:
+        "204":
+          description: Подтверждено
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/miniapp/links/{code}/decline:
+    parameters:
+      - $ref: "#/components/parameters/LinkCode"
+    post:
+      tags: [miniapp]
+      operationId: declineLink
+      summary: Это не я
+      description: Код сгорает, десктоп получает `declined` (экран 18·4).
+      responses:
+        "204":
+          description: Отклонено
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     telegramInitData:
@@ -221,6 +396,10 @@ components:
       type: http
       scheme: bearer
       description: Ключ устройства, который десктоп получил при привязке (S4)
+    pollToken:
+      type: http
+      scheme: bearer
+      description: "`pollToken` из ответа на `POST /v1/links`"
 
   parameters:
     PackName:
@@ -231,6 +410,14 @@ components:
       schema:
         type: string
         pattern: "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+    LinkCode:
+      name: code
+      in: path
+      required: true
+      description: Код привязки, `startapp=link_<code>`
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9_-]{1,64}$"
 
   responses:
     BadRequest:
@@ -246,7 +433,7 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
     NotFound:
-      description: "`pack_not_found`, `sticker_not_found`, `device_not_found`"
+      description: "`pack_not_found`, `sticker_not_found`, `device_not_found`, `link_not_found`"
       content:
         application/problem+json:
           schema:
@@ -374,8 +561,7 @@ components:
           description: Имя компьютера, как его прислал десктоп при привязке
           examples: [DESKTOP-7F3K2Q]
         os:
-          type: string
-          enum: [windows, macos, linux]
+          $ref: "#/components/schemas/DeviceOs"
         linkedAt:
           type: string
           format: date-time
@@ -451,6 +637,143 @@ components:
           type: integer
           description: Номер отзыва, «#41» в чате отзывов
 
+    LinkRequestBody:
+      type: object
+      required: [name, os, installationId]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Имя компьютера, строка «Компьютер» на 18·1
+          examples: [DESKTOP-7F3K2Q]
+        os:
+          $ref: "#/components/schemas/DeviceOs"
+        installationId:
+          type: string
+          format: uuid
+          description: Установка десктопа; по нему тот же компьютер узнаётся при повторной привязке
+        platform:
+          type: string
+          maxLength: 64
+          description: Строка «Система» на 18·1
+          examples: [Windows 11]
+        appVersion:
+          type: string
+          maxLength: 32
+          description: Строка «Приложение» на 18·1
+          examples: [0.3.1]
+
+    LinkCreated:
+      type: object
+      required: [code, deepLink, pollToken, expiresAt]
+      properties:
+        code:
+          type: string
+          examples: [q2X9vKp4TfM8bR1cWz7nYA]
+        deepLink:
+          type: string
+          description: Ссылка для кнопки «Открыть Telegram» и QR
+          examples: ["https://t.me/StickerSnapAppBot?startapp=link_q2X9vKp4TfM8bR1cWz7nYA"]
+        pollToken:
+          type: string
+          description: Секрет для `GET` и `DELETE /v1/links/{code}`
+        expiresAt:
+          type: string
+          format: date-time
+
+    LinkState:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          description: |
+            `pending` — ждёт ответа; `linked` — «Привязать», ключ в этом ответе; `declined` —
+            «Это не я»; `expired` — истёк или ключ уже выдан
+          enum: [pending, linked, declined, expired]
+        expiresAt:
+          type: string
+          format: date-time
+          description: Только у `pending`
+        deviceKey:
+          type: string
+          description: "Только у `linked`, приходит один раз; дальше `Authorization: Bearer <deviceKey>`"
+        device:
+          $ref: "#/components/schemas/Device"
+        user:
+          $ref: "#/components/schemas/LinkedUser"
+
+    LinkedDevice:
+      type: object
+      required: [device, user]
+      properties:
+        device:
+          $ref: "#/components/schemas/Device"
+        user:
+          $ref: "#/components/schemas/LinkedUser"
+
+    LinkedUser:
+      type: object
+      required: [id, firstName, botBlocked]
+      properties:
+        id:
+          type: integer
+          description: id пользователя Telegram
+        firstName:
+          type: string
+        lastName:
+          type: string
+        username:
+          type: string
+          description: Без @
+          examples: [dmitriu]
+        botBlocked:
+          type: boolean
+          description: Человек остановил бота, уведомлений в чат не будет
+
+    LinkRequest:
+      type: object
+      required: [code, name, os, requestedAt, expiresAt, linkedHere]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+          examples: [DESKTOP-7F3K2Q]
+        os:
+          $ref: "#/components/schemas/DeviceOs"
+        platform:
+          type: string
+          examples: [Windows 11]
+        appVersion:
+          type: string
+          examples: [0.3.1]
+        requestedAt:
+          type: string
+          format: date-time
+          description: Когда на десктопе нажали «Привязать»
+        expiresAt:
+          type: string
+          format: date-time
+        linkedHere:
+          type: boolean
+          description: Этот компьютер уже привязан к вам — Mini App подтверждает без вопроса
+
+    LinkConfirmBody:
+      type: object
+      required: [notifications]
+      additionalProperties: false
+      properties:
+        notifications:
+          type: boolean
+          description: Переключатель «Уведомления в чат»
+
+    DeviceOs:
+      type: string
+      enum: [windows, macos, linux]
+
     Problem:
       type: object
       description: |
@@ -481,7 +804,7 @@ components:
         | --- | --- |
         | `bad_request` | 400 |
         | `unauthorized` | 401 |
-        | `pack_not_found`, `sticker_not_found`, `device_not_found` | 404 |
+        | `pack_not_found`, `sticker_not_found`, `device_not_found`, `link_not_found` | 404 |
         | `pack_in_telegram` | 409 |
         | `rate_limited` | 429 |
         | `internal` | 500 |
@@ -492,6 +815,7 @@ components:
         - pack_not_found
         - sticker_not_found
         - device_not_found
+        - link_not_found
         - pack_in_telegram
         - rate_limited
         - internal
