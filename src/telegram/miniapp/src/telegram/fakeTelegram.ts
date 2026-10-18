@@ -12,6 +12,8 @@ export interface FakeTelegram extends Telegram {
     telegramLinks: string[];
     links: string[];
     verticalSwipes: boolean;
+    /** How many times Telegram's «Разрешить боту писать?» came up */
+    writeAccessAsked: number;
     closed: boolean;
     ready: boolean;
   };
@@ -26,6 +28,11 @@ export interface FakeTelegramOptions {
   initData?: string;
   startParam?: string;
   colorScheme?: ColorScheme;
+  /** allows_write_to_pm of the launch data; true by default */
+  canWrite?: boolean;
+  /** What the user answers Telegram's «Разрешить боту писать?»: each ask takes the next
+   *  answer, the last one repeats; «да» by default */
+  writeAnswers?: boolean[];
 }
 
 export function createFakeTelegram(options: FakeTelegramOptions = {}): FakeTelegram {
@@ -42,9 +49,12 @@ export function createFakeTelegram(options: FakeTelegramOptions = {}): FakeTeleg
     telegramLinks: [],
     links: [],
     verticalSwipes: true,
+    writeAccessAsked: 0,
     closed: false,
     ready: false,
   };
+  let canWrite = options.canWrite ?? true;
+  const answers = [...(options.writeAnswers ?? [true])];
   const changed = () => stateListeners.forEach((listener) => listener());
   const listen = (set: Set<() => void>, callback: () => void) => {
     set.add(callback);
@@ -73,6 +83,13 @@ export function createFakeTelegram(options: FakeTelegramOptions = {}): FakeTeleg
     haptic: (kind) => void calls.haptics.push(kind),
     openTelegramLink: (url) => void calls.telegramLinks.push(url),
     openLink: (url) => void calls.links.push(url),
+    canWrite: () => canWrite,
+    askWriteAccess() {
+      calls.writeAccessAsked += 1;
+      const granted = (answers.length > 1 ? answers.shift() : answers[0]) ?? true;
+      canWrite ||= granted;
+      return Promise.resolve(granted);
+    },
     setVerticalSwipes: (enabled) => void (calls.verticalSwipes = enabled),
     setColorScheme(next) {
       scheme = next;
