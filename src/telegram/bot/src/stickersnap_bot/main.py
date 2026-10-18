@@ -1,6 +1,9 @@
 """The only composition root: the one module that knows every layer."""
 
+import json
+import sys
 from datetime import UTC, datetime
+from urllib.parse import quote
 
 import uvicorn
 from aiogram import Bot
@@ -10,7 +13,7 @@ from fastapi import FastAPI
 
 from stickersnap_bot.api.app import Polling, UpdateDelivery, Webhook, create_app
 from stickersnap_bot.api.telegram import create_dispatcher
-from stickersnap_bot.application.init_data import InitDataVerifier
+from stickersnap_bot.application.init_data import InitDataVerifier, sign_init_data
 from stickersnap_bot.application.media import MediaLinks
 from stickersnap_bot.application.miniapp import MiniApp
 from stickersnap_bot.infrastructure.database.migrate import migrate
@@ -53,6 +56,21 @@ def main() -> None:
     # before the app: the schema is ready when the first update or request arrives
     migrate(settings.database_path)
     uvicorn.run(build_app(settings), host=settings.host, port=settings.port)
+
+
+def print_launch_data() -> None:
+    """`stickersnap-bot-launch-data <user id> [first name]`: launch data signed with the configured
+    token, to open the Mini App in a plain browser against this service: /?tma=<printed>.
+    Printed URL-encoded, ready for the query string."""
+    if len(sys.argv) < 2 or not sys.argv[1].isdigit():
+        sys.exit("usage: stickersnap-bot-launch-data <telegram user id> [first name]")
+    user = {"id": int(sys.argv[1]), "first_name": sys.argv[2] if len(sys.argv) > 2 else "Dev"}
+    token = Settings().bot_token.get_secret_value()
+    fields = {
+        "user": json.dumps(user, ensure_ascii=False),
+        "auth_date": str(int(_now().timestamp())),
+    }
+    print(quote(sign_init_data(token, fields), safe=""))
 
 
 if __name__ == "__main__":
