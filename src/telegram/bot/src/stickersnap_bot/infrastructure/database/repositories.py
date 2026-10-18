@@ -64,6 +64,7 @@ class SqlUserRepository:
                 "username": user.profile.username,
                 "language_code": user.profile.language_code,
                 "bot_blocked": user.bot_blocked,
+                "notifications": user.notifications,
                 "created_at": user.created_at,
                 "updated_at": user.updated_at,
             },
@@ -79,6 +80,12 @@ class SqlDeviceRepository:
 
     async def find_by_key_hash(self, key_hash: str) -> Device | None:
         return await self._one(devices.c.key_hash == key_hash)
+
+    async def list_for_installation(self, installation_id: str) -> Sequence[Device]:
+        result = await self._connection.execute(
+            select(devices).where(devices.c.installation_id == installation_id)
+        )
+        return [_device(row) for row in result.mappings()]
 
     async def list_for_user(self, user_id: int) -> Sequence[Device]:
         result = await self._connection.execute(
@@ -99,6 +106,7 @@ class SqlDeviceRepository:
                 "os": device.os.value,
                 "key_hash": device.key_hash,
                 "linked_at": device.linked_at,
+                "installation_id": device.installation_id,
             },
         )
 
@@ -136,14 +144,42 @@ class SqlLinkRepository:
                 "device_id": link.device_id,
                 "created_at": link.created_at,
                 "expires_at": link.expires_at,
+                "installation_id": link.installation_id,
+                "platform": link.platform,
+                "app_version": link.app_version,
+                "ip_hash": link.ip_hash,
             },
         )
+
+    async def delete(self, code: str) -> None:
+        await self._connection.execute(delete(link_requests).where(link_requests.c.code == code))
 
     async def delete_expired(self, now: datetime) -> int:
         result = await self._connection.execute(
             delete(link_requests).where(link_requests.c.expires_at <= now)
         )
         return result.rowcount
+
+    async def created_since(
+        self,
+        since: datetime,
+        *,
+        installation_id: str | None = None,
+        ip_hash: str | None = None,
+    ) -> Sequence[datetime]:
+        given = [
+            (link_requests.c[name], value)
+            for name, value in (("installation_id", installation_id), ("ip_hash", ip_hash))
+            if value is not None
+        ]
+        assert len(given) == 1, "one desktop at a time"
+        column, value = given[0]
+        result = await self._connection.execute(
+            select(link_requests.c.created_at)
+            .where(column == value, link_requests.c.created_at > since)
+            .order_by(link_requests.c.created_at)
+        )
+        return list(result.scalars())
 
 
 class SqlPackRepository:
@@ -264,6 +300,7 @@ def _user(row: RowMapping) -> User:
             language_code=row["language_code"],
         ),
         bot_blocked=row["bot_blocked"],
+        notifications=row["notifications"],
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )
@@ -277,6 +314,7 @@ def _device(row: RowMapping) -> Device:
         os=DeviceOs(row["os"]),
         key_hash=row["key_hash"],
         linked_at=row["linked_at"],
+        installation_id=row["installation_id"],
     )
 
 
@@ -291,6 +329,10 @@ def _link(row: RowMapping) -> LinkRequest:
         device_id=row["device_id"],
         created_at=row["created_at"],
         expires_at=row["expires_at"],
+        installation_id=row["installation_id"],
+        platform=row["platform"],
+        app_version=row["app_version"],
+        ip_hash=row["ip_hash"],
     )
 
 

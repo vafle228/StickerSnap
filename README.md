@@ -186,6 +186,14 @@ Mini App on a screen through `https://t.me/<bot>?startapp=<screen>` links, so th
 App switched on in @BotFather. The commands menu is set on every start; «Скачать» leads to
 `DOWNLOAD_URL`, the GitHub releases page by default.
 
+A desktop links itself without the chat (`application/linking.py`): `POST /v1/links` gives a code
+for ten minutes, a `https://t.me/<bot>?startapp=link_<code>` link and a poll token; the link opens
+the Mini App on «Привязать этот компьютер?», which confirms or declines through
+`/v1/miniapp/links/{code}`; the desktop waits with `GET /v1/links/{code}?wait=25` and gets its
+device key once, and from then on calls with `Bearer <device key>` (`GET` and `DELETE /v1/device`).
+The service stores only hashes of keys and poll tokens. Linking the same installation again replaces
+its device, whoever it belonged to.
+
 `POST /v1/feedback` takes «Написать отзыв» from the Mini App (`tma` launch data), a linked computer
 (`Bearer` device key) or a desktop without a link, stores it in the `feedback` table and forwards it
 to the chat in `FEEDBACK_CHAT_ID` (your private chat with the bot, or a closed group with the bot in

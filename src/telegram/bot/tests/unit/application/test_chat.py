@@ -76,6 +76,15 @@ async def test_starting_the_bot_again_brings_them_back(chat: Chat) -> None:
     assert len(chat.texts()) == 1
 
 
+async def test_notifications_switched_off_are_not_sent(chat: Chat) -> None:
+    chat.tables.users[ME] = chat.tables.users[ME].with_notifications(False, NOW)
+
+    await chat.notifications.pack_created(CATS, 1)
+    await chat.notifications.stickers_added(CATS, 1, 2)
+
+    assert chat.texts() == []
+
+
 async def test_a_user_the_service_never_saw_gets_no_notifications() -> None:
     chat = Chat()
 

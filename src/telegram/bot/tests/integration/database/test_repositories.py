@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
@@ -144,9 +145,44 @@ async def test_two_devices_cannot_share_a_key(unit_of_work: UnitOfWorkFactory) -
             await uow.devices.save(twin)
 
 
+async def test_notifications_off_are_remembered(unit_of_work: UnitOfWorkFactory) -> None:
+    quiet = ANNA.with_notifications(False, NOW + HOUR)
+    await save_users(unit_of_work, quiet)
+
+    async with unit_of_work() as uow:
+        assert await uow.users.get(42) == quiet
+
+
+async def test_devices_are_found_by_installation(unit_of_work: UnitOfWorkFactory) -> None:
+    await save_users(unit_of_work, ANNA, BORIS)
+    async with unit_of_work() as uow:
+        await uow.devices.save(replace(device("a", ANNA, NOW), installation_id="inst-1"))
+        await uow.devices.save(replace(device("b", BORIS, NOW), installation_id="inst-1"))
+        await uow.devices.save(replace(device("c", ANNA, NOW), installation_id="inst-2"))
+        await uow.devices.save(device("d", ANNA, NOW))
+        await uow.commit()
+
+    async with unit_of_work() as uow:
+        found = await uow.devices.list_for_installation("inst-1")
+        assert sorted(d.id for d in found) == ["a", "b"]
+        assert (await uow.devices.get("c")) == replace(
+            device("c", ANNA, NOW), installation_id="inst-2"
+        )
+
+
 async def test_a_link_goes_through_its_states(unit_of_work: UnitOfWorkFactory) -> None:
     await save_users(unit_of_work, ANNA)
-    link = LinkRequest.open("code", "poll-hash", "DESKTOP-ABC", DeviceOs.WINDOWS, NOW)
+    link = LinkRequest.open(
+        "code",
+        "poll-hash",
+        "DESKTOP-ABC",
+        DeviceOs.WINDOWS,
+        NOW,
+        installation_id="inst-1",
+        platform="Windows 11",
+        app_version="0.3.1",
+        ip_hash="ip-hash",
+    )
     async with unit_of_work() as uow:
         await uow.links.save(link)
         await uow.commit()
@@ -175,6 +211,40 @@ async def test_expired_links_are_forgotten(unit_of_work: UnitOfWorkFactory) -> N
     async with unit_of_work() as uow:
         assert await uow.links.get("old") is None
         assert await uow.links.get("fresh") is not None
+
+
+async def test_a_cancelled_link_is_deleted(unit_of_work: UnitOfWorkFactory) -> None:
+    async with unit_of_work() as uow:
+        await uow.links.save(LinkRequest.open("code", "h", "PC", DeviceOs.LINUX, NOW))
+        await uow.commit()
+
+    async with unit_of_work() as uow:
+        await uow.links.delete("code")
+        await uow.commit()
+
+    async with unit_of_work() as uow:
+        assert await uow.links.get("code") is None
+
+
+async def test_links_are_counted_per_installation_and_address(
+    unit_of_work: UnitOfWorkFactory,
+) -> None:
+    def link(code: str, at: datetime, installation: str, ip: str) -> LinkRequest:
+        return LinkRequest.open(
+            code, "h", "PC", DeviceOs.LINUX, at, installation_id=installation, ip_hash=ip
+        )
+
+    async with unit_of_work() as uow:
+        await uow.links.save(link("old", NOW - HOUR, "inst-1", "ip-1"))
+        await uow.links.save(link("b", NOW + HOUR, "inst-1", "ip-2"))
+        await uow.links.save(link("a", NOW, "inst-1", "ip-1"))
+        await uow.links.save(link("other", NOW, "inst-2", "ip-1"))
+        await uow.commit()
+
+    async with unit_of_work() as uow:
+        since = NOW - timedelta(minutes=1)
+        assert await uow.links.created_since(since, installation_id="inst-1") == [NOW, NOW + HOUR]
+        assert await uow.links.created_since(since, ip_hash="ip-1") == [NOW, NOW]
 
 
 async def test_packs_are_listed_freshest_first_per_owner(unit_of_work: UnitOfWorkFactory) -> None:

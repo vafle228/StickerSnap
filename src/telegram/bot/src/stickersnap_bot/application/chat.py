@@ -169,8 +169,9 @@ class BotChat:
 class Notifications:
     """What the bot writes by itself: S4 calls device_linked, S5 pack_created and stickers_added.
 
-    Nothing is sent to a user who stopped the bot or is unknown to the service. A notification
-    never fails the linking or the publication that caused it.
+    Nothing is sent to a user who stopped the bot, turned notifications off when linking a
+    computer, or is unknown to the service. A notification never fails the linking or the
+    publication that caused it.
     """
 
     def __init__(
@@ -225,7 +226,7 @@ class Notifications:
     async def _may_write(self, user_id: int) -> bool:
         async with self._unit_of_work() as uow:
             user = await uow.users.get(user_id)
-        return user is not None and not user.bot_blocked
+        return user is not None and not user.bot_blocked and user.notifications
 
     async def _edit(self, user_id: int, message_id: int, message: ChatMessage) -> bool:
         try:

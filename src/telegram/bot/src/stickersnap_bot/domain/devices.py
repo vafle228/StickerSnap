@@ -25,7 +25,8 @@ def device_name(name: str) -> str:
 class Device:
     """A computer linked to a user. It calls the service with its key; only the hash is stored.
 
-    Unlinking deletes the device, so its key stops working at once.
+    Unlinking deletes the device, so its key stops working at once. Linking the same installation
+    again replaces the device, whoever had it.
     """
 
     id: str
@@ -34,3 +35,4 @@ class Device:
     os: DeviceOs
     key_hash: str
     linked_at: datetime
+    installation_id: str | None = None

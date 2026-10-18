@@ -9,7 +9,16 @@ from aiogram import Bot
 
 from stickersnap_bot.api.app import Polling, create_app
 from stickersnap_bot.api.telegram import create_dispatcher
-from tests.fakes import TOKEN, Tables, bot_chat, miniapp, notifications, send_feedback, sign_in
+from tests.fakes import (
+    TOKEN,
+    Tables,
+    bot_chat,
+    linking,
+    miniapp,
+    notifications,
+    send_feedback,
+    sign_in,
+)
 
 CONTRACT = Path(__file__).parents[5] / "src" / "contract" / "bot-service.yaml"
 # the service's own routes, outside the contract
@@ -38,6 +47,7 @@ async def test_serves_exactly_the_contracts_operations() -> None:
         miniapp(tables),
         notifications(tables),
         send_feedback(tables),
+        linking(tables),
     ).openapi()
     await bot.session.close()
     contract = yaml.safe_load(CONTRACT.read_text(encoding="utf-8"))

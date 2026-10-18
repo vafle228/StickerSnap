@@ -150,6 +150,155 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Выдать код привязки
+         * @description Десктоп нажал «Привязать»: код живёт 10 минут, `deepLink` открывает Mini App на экране
+         *     «Привязать этот компьютер?» (артборд 18·1), тот же адрес — в QR. `pollToken` — секрет для
+         *     ожидания и отмены; сервис хранит только его хеш.
+         *
+         *     Лимит: 10 кодов в час на установку (`installationId`) и 30 в час с одного IP, сверх —
+         *     429 `rate_limited`.
+         */
+        post: operations["createLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/links/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Код привязки, `startapp=link_<code>` */
+                code: components["parameters"]["LinkCode"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Ждать ответа на код привязки
+         * @description Долгий запрос: пока код ждёт ответа, сервис держит запрос до `wait` секунд и отвечает,
+         *     как только человек ответил в Mini App. После «Привязать» отдаёт ключ устройства — один
+         *     раз, дальше код `expired`. Чужой `pollToken` и неизвестный код — 404 `link_not_found`.
+         */
+        get: operations["getLinkState"];
+        put?: never;
+        post?: never;
+        /**
+         * Отменить код привязки
+         * @description «Отмена» на десктопе. Код сгорает, Mini App покажет «Ссылка устарела».
+         */
+        delete: operations["cancelLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Этот компьютер и его аккаунт Telegram
+         * @description Проверка ключа при запуске десктопа. Отозванный ключ — 401 `unauthorized`.
+         */
+        get: operations["getDevice"];
+        put?: never;
+        post?: never;
+        /**
+         * Отвязать этот компьютер
+         * @description Ключ отзывается, компьютер пропадает из «Устройств» в Mini App.
+         */
+        delete: operations["unlinkThisDevice"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/miniapp/links/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Код привязки, `startapp=link_<code>` */
+                code: components["parameters"]["LinkCode"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Запрос на привязку компьютера
+         * @description Экран 18·1. Код, который истёк, уже использован, отменён или не найден, — 404
+         *     `link_not_found` (экран 18·3).
+         */
+        get: operations["getLinkRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/miniapp/links/{code}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Код привязки, `startapp=link_<code>` */
+                code: components["parameters"]["LinkCode"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Привязать компьютер
+         * @description «Привязать» от имени того, кто открыл Mini App. Повтор тем же человеком — снова 204.
+         *     `notifications` запоминается за аккаунтом: выключенные уведомления бот не шлёт.
+         */
+        post: operations["confirmLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/miniapp/links/{code}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Код привязки, `startapp=link_<code>` */
+                code: components["parameters"]["LinkCode"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Это не я
+         * @description Код сгорает, десктоп получает `declined` (экран 18·4).
+         */
+        post: operations["declineLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -209,8 +358,7 @@ export interface components {
              * @example DESKTOP-7F3K2Q
              */
             name: string;
-            /** @enum {string} */
-            os: "windows" | "macos" | "linux";
+            os: components["schemas"]["DeviceOs"];
             /** Format: date-time */
             linkedAt: string;
         };
@@ -264,6 +412,101 @@ export interface components {
             /** @description Номер отзыва, «#41» в чате отзывов */
             id: number;
         };
+        LinkRequestBody: {
+            /**
+             * @description Имя компьютера, строка «Компьютер» на 18·1
+             * @example DESKTOP-7F3K2Q
+             */
+            name: string;
+            os: components["schemas"]["DeviceOs"];
+            /**
+             * Format: uuid
+             * @description Установка десктопа; по нему тот же компьютер узнаётся при повторной привязке
+             */
+            installationId: string;
+            /**
+             * @description Строка «Система» на 18·1
+             * @example Windows 11
+             */
+            platform?: string;
+            /**
+             * @description Строка «Приложение» на 18·1
+             * @example 0.3.1
+             */
+            appVersion?: string;
+        };
+        LinkCreated: {
+            /** @example q2X9vKp4TfM8bR1cWz7nYA */
+            code: string;
+            /**
+             * @description Ссылка для кнопки «Открыть Telegram» и QR
+             * @example https://t.me/StickerSnapAppBot?startapp=link_q2X9vKp4TfM8bR1cWz7nYA
+             */
+            deepLink: string;
+            /** @description Секрет для `GET` и `DELETE /v1/links/{code}` */
+            pollToken: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        LinkState: {
+            /**
+             * @description `pending` — ждёт ответа; `linked` — «Привязать», ключ в этом ответе; `declined` —
+             *     «Это не я»; `expired` — истёк или ключ уже выдан
+             * @enum {string}
+             */
+            status: "pending" | "linked" | "declined" | "expired";
+            /**
+             * Format: date-time
+             * @description Только у `pending`
+             */
+            expiresAt?: string;
+            /** @description Только у `linked`, приходит один раз; дальше `Authorization: Bearer <deviceKey>` */
+            deviceKey?: string;
+            device?: components["schemas"]["Device"];
+            user?: components["schemas"]["LinkedUser"];
+        };
+        LinkedDevice: {
+            device: components["schemas"]["Device"];
+            user: components["schemas"]["LinkedUser"];
+        };
+        LinkedUser: {
+            /** @description id пользователя Telegram */
+            id: number;
+            firstName: string;
+            lastName?: string;
+            /**
+             * @description Без @
+             * @example dmitriu
+             */
+            username?: string;
+            /** @description Человек остановил бота, уведомлений в чат не будет */
+            botBlocked: boolean;
+        };
+        LinkRequest: {
+            code: string;
+            /** @example DESKTOP-7F3K2Q */
+            name: string;
+            os: components["schemas"]["DeviceOs"];
+            /** @example Windows 11 */
+            platform?: string;
+            /** @example 0.3.1 */
+            appVersion?: string;
+            /**
+             * Format: date-time
+             * @description Когда на десктопе нажали «Привязать»
+             */
+            requestedAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** @description Этот компьютер уже привязан к вам — Mini App подтверждает без вопроса */
+            linkedHere: boolean;
+        };
+        LinkConfirmBody: {
+            /** @description Переключатель «Уведомления в чат» */
+            notifications: boolean;
+        };
+        /** @enum {string} */
+        DeviceOs: "windows" | "macos" | "linux";
         /** @description RFC 9457 Problem Details. `title` и `detail` — английский для журнала, в интерфейс не попадают. */
         Problem: {
             /** @example https://stickersnap.app/problems/unauthorized */
@@ -282,14 +525,14 @@ export interface components {
          *     | --- | --- |
          *     | `bad_request` | 400 |
          *     | `unauthorized` | 401 |
-         *     | `pack_not_found`, `sticker_not_found`, `device_not_found` | 404 |
+         *     | `pack_not_found`, `sticker_not_found`, `device_not_found`, `link_not_found` | 404 |
          *     | `pack_in_telegram` | 409 |
          *     | `rate_limited` | 429 |
          *     | `internal` | 500 |
          *     | `telegram_error` | 502 |
          * @enum {string}
          */
-        ErrorCode: "bad_request" | "unauthorized" | "pack_not_found" | "sticker_not_found" | "device_not_found" | "pack_in_telegram" | "rate_limited" | "internal" | "telegram_error";
+        ErrorCode: "bad_request" | "unauthorized" | "pack_not_found" | "sticker_not_found" | "device_not_found" | "link_not_found" | "pack_in_telegram" | "rate_limited" | "internal" | "telegram_error";
     };
     responses: {
         /** @description `bad_request` — тело не по контракту */
@@ -310,7 +553,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description `pack_not_found`, `sticker_not_found`, `device_not_found` */
+        /** @description `pack_not_found`, `sticker_not_found`, `device_not_found`, `link_not_found` */
         NotFound: {
             headers: {
                 [name: string]: unknown;
@@ -351,6 +594,8 @@ export interface components {
     parameters: {
         /** @description Имя набора в Telegram, с суффиксом `_by_<бот>` */
         PackName: string;
+        /** @description Код привязки, `startapp=link_<code>` */
+        LinkCode: string;
     };
     requestBodies: never;
     headers: never;
@@ -525,6 +770,198 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             429: components["responses"]["RateLimited"];
+        };
+    };
+    createLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Код выдан */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkCreated"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            429: components["responses"]["RateLimited"];
+        };
+    };
+    getLinkState: {
+        parameters: {
+            query?: {
+                /** @description Сколько секунд ждать ответа, 0–25 */
+                wait?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Код привязки, `startapp=link_<code>` */
+                code: components["parameters"]["LinkCode"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Состояние кода */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkState"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    cancelLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Код привязки, `startapp=link_<code>` */
+                code: components["parameters"]["LinkCode"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Отменён */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Привязан */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkedDevice"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    unlinkThisDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Отвязан */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getLinkRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Код привязки, `startapp=link_<code>` */
+                code: components["parameters"]["LinkCode"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Запрос ждёт ответа */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkRequest"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    confirmLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Код привязки, `startapp=link_<code>` */
+                code: components["parameters"]["LinkCode"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkConfirmBody"];
+            };
+        };
+        responses: {
+            /** @description Подтверждено */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    declineLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Код привязки, `startapp=link_<code>` */
+                code: components["parameters"]["LinkCode"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Отклонено */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
 }
