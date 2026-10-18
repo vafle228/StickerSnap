@@ -27,25 +27,27 @@ function realTelegram(): Telegram {
   return webApp ? createTelegram(webApp) : createFakeTelegram();
 }
 
-// Dev tools, dropped from the production build (vite.config.ts): /?mock runs the Mini App in a
-// plain browser on demo data (/?mock=offline and the other scenarios of mocks/scenarios.ts),
-// with a dev bar that plays Telegram's header and switches the theme and the scenario.
+// Dev tools, dropped from the production build (vite.config.ts). /?mock runs the Mini App in a
+// plain browser on demo data (/?mock=offline and the other scenarios of mocks/scenarios.ts);
+// /?tma=<launch data> runs it against the real bot service that Vite proxies /v1 to, with launch
+// data the service signed (`uv run stickersnap-bot-launch-data <user id>` in src/telegram/bot).
+// Both get a dev bar that plays Telegram's header and switches the theme.
 async function startDev() {
   const params = new URLSearchParams(location.search);
-  if (!params.has("mock")) {
+  const launchData = params.get("tma");
+  if (!params.has("mock") && launchData === null) {
     render(realTelegram(), <App />);
     return;
   }
-  const [{ isScenario }, { startMocks }, { DevBar }] = await Promise.all([
+  const [{ isScenario }, { DevBar }] = await Promise.all([
     import("./mocks/scenarios"),
-    import("./mocks/start"),
     import("./dev/DevBar"),
   ]);
   const asked = params.get("mock");
-  const scenario = isScenario(asked) ? asked : "ok";
-  await startMocks(scenario);
+  const scenario = launchData !== null ? undefined : isScenario(asked) ? asked : "ok";
+  if (scenario) await (await import("./mocks/start")).startMocks(scenario);
   const telegram = createFakeTelegram({
-    initData: "query_id=mock&user=%7B%22id%22%3A1%7D&hash=mock",
+    initData: launchData ?? "query_id=mock&user=%7B%22id%22%3A1%7D&hash=mock",
     startParam: params.get("startapp") ?? undefined,
     colorScheme: params.get("theme") === "dark" ? "dark" : "light",
   });

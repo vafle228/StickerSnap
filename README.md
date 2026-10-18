@@ -174,6 +174,11 @@ The service keeps users, linked computers, link codes and its packs in SQLite (`
 `data/bot.sqlite3` by default) and brings the file to the latest Alembic migration itself on every
 start, so a deploy needs no separate migration step.
 
+The Mini App's API (`/v1/miniapp/...`, `src/contract/bot-service.yaml`) checks Telegram's signature on
+each call (`TelegramUserId` in `api/telegram_user.py`, for any route Telegram signs), reads the user's
+sets from the Bot API and serves sticker files through short-lived signed links, so the token never
+reaches the browser. `INIT_DATA_MAX_AGE` (a day by default) is how long the launch data stays good.
+
 `docker/telegram` holds the image and its compose file: `docker compose -f docker/telegram/compose.yaml up --build`
 runs the service with `.env` from the repository root and keeps SQLite in a volume. On the VPS the
 `.env` with the production token lies beside `compose.yaml` and is passed with `BOT_ENV_FILE=./.env`;
@@ -199,6 +204,11 @@ Outside Telegram, http://127.0.0.1:5174/?mock runs it on demo data (MSW by the c
 bar that switches the scenario (`?mock=offline`, `?mock=no-packs`…) and Telegram's theme
 (`&theme=dark`) and plays Telegram's header: «Закрыть» / «Назад» and «⋯ → Настройки».
 `&startapp=pack-<name>` opens a pack the way a bot link does. Production builds have none of it.
+
+`/?tma=<launch data>` runs the dev Mini App against the real bot service instead, behind the same dev
+bar. `uv run --env-file ../../../.env stickersnap-bot-launch-data <your Telegram id>` in
+`src/telegram/bot` prints the launch data, signed with the service's token and URL-encoded for the
+query string.
 
 ## Roadmap
 
