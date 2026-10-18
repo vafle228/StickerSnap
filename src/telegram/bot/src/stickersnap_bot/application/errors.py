@@ -35,6 +35,26 @@ class PackInTelegramError(ApplicationError):
     """Only a pack Telegram no longer knows may be forgotten."""
 
 
+class PackNameInvalidError(ApplicationError):
+    """A new pack's name breaks Telegram's rule or lacks the bot's `_by_<bot>` suffix."""
+
+
+class PackNameTakenError(ApplicationError):
+    """The service or Telegram already has a set of that name."""
+
+
+class PackFullError(ApplicationError):
+    """The set holds as many stickers as Telegram takes."""
+
+
+class ValidationFailedError(ApplicationError):
+    """A sticker file Telegram would refuse: not a WebM, or larger than it takes."""
+
+
+class BotBlockedError(ApplicationError):
+    """The user stopped the bot or never started it, so the bot cannot act for them."""
+
+
 class RateLimitedError(ApplicationError):
     """Telegram, or the service's own limit, asks to wait; the caller waits as long as said."""
 

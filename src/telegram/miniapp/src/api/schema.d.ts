@@ -299,6 +299,152 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/stickers/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Загрузить .webm стикера
+         * @description uploadStickerFile от имени владельца ключа. `id` годится для создания пака, добавления
+         *     и замены, так что повтор не грузит файл снова. Больше 262 144 байт или не WebM
+         *     (нет заголовка EBML) — 422 `validation_failed`, пустое тело — 400 `bad_request`.
+         */
+        post: operations["uploadSticker"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/packs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Создать пак
+         * @description createNewStickerSet с 1–50 стикерами; пак записывается за владельцем ключа, бот пишет
+         *     «Пак создан». Имя без суффикса `_by_<бот>` — 422 `pack_name_invalid` без запроса
+         *     в Telegram; имя занято — 409 `pack_name_taken`.
+         */
+        post: operations["createPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/packs/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя набора в Telegram, с суффиксом `_by_<бот>` */
+                name: components["parameters"]["PackName"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Пак, как его видит Telegram сейчас
+         * @description Чужой пак, пак не из реестра сервиса и пак, которого Telegram не знает, — 404
+         *     `pack_not_found`.
+         */
+        get: operations["getPublishedPack"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/packs/{name}/stickers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя набора в Telegram, с суффиксом `_by_<бот>` */
+                name: components["parameters"]["PackName"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Добавить стикер в конец пака
+         * @description addStickerToSet; бот пишет «В пак добавлено N стикеров», подряд идущие добавления
+         *     в один пак правят это сообщение. Полный пак — 409 `pack_full`.
+         */
+        post: operations["addSticker"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/packs/{name}/stickers/{stickerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя набора в Telegram, с суффиксом `_by_<бот>` */
+                name: components["parameters"]["PackName"];
+                /** @description `PublishedSticker.id` */
+                stickerId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Заменить стикер на том же месте
+         * @description replaceStickerInSet, без уведомления. Стикера нет в паке — 404 `sticker_not_found`.
+         */
+        put: operations["replaceSticker"];
+        post?: never;
+        /**
+         * Удалить стикер из пака
+         * @description Как `deleteSticker` в Mini App, без уведомления: последний стикер уносит с собой пак,
+         *     и сервис забывает его.
+         */
+        delete: operations["removeSticker"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stickers/{stickerId}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description `PublishedSticker.id` */
+                stickerId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Файл стикера
+         * @description .webm стикера, чтобы десктоп показывал его со своего диска. Нет такого файла — 404
+         *     `sticker_not_found`.
+         */
+        get: operations["downloadSticker"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -502,11 +648,57 @@ export interface components {
             linkedHere: boolean;
         };
         LinkConfirmBody: {
-            /** @description Переключатель «Уведомления в чат» */
-            notifications: boolean;
+            /**
+             * @description Переключатель «Уведомления в чат». Нет поля — прежнее значение аккаунта: так Mini App
+             *     подтверждает уже привязанный здесь компьютер, не включая заглушённые уведомления
+             */
+            notifications?: boolean;
         };
         /** @enum {string} */
         DeviceOs: "windows" | "macos" | "linux";
+        UploadedSticker: {
+            /** @description `file_id` загруженного .webm, для `InputSticker.file` */
+            id: string;
+        };
+        InputSticker: {
+            /** @description `id` из `POST /v1/stickers/upload` */
+            file: string;
+            /**
+             * @example [
+             *       "😴",
+             *       "💤"
+             *     ]
+             */
+            emoji: string[];
+        };
+        NewPackBody: {
+            /**
+             * @description С суффиксом `_by_<бот>`
+             * @example reactions_call_by_StickerSnapAppBot
+             */
+            name: string;
+            /** @example Реакции с созвона */
+            title: string;
+            kind: components["schemas"]["PackKind"];
+            stickers: components["schemas"]["InputSticker"][];
+        };
+        PublishedPack: {
+            /** @example reactions_call_by_StickerSnapAppBot */
+            name: string;
+            /** @description Как в Telegram, пак могли переименовать через @Stickers */
+            title: string;
+            kind: components["schemas"]["PackKind"];
+            /** @description В порядке Telegram */
+            stickers: components["schemas"]["PublishedSticker"][];
+        };
+        PublishedSticker: {
+            /** @description `file_id`: для замены, удаления и файла */
+            id: string;
+            /** @description `file_unique_id`: один для всех ботов и во времени, его хранит packs.json десктопа */
+            uniqueId: string;
+            /** @description Пусто, если Telegram не сказал */
+            emoji: string[];
+        };
         /** @description RFC 9457 Problem Details. `title` и `detail` — английский для журнала, в интерфейс не попадают. */
         Problem: {
             /** @example https://stickersnap.app/problems/unauthorized */
@@ -525,14 +717,16 @@ export interface components {
          *     | --- | --- |
          *     | `bad_request` | 400 |
          *     | `unauthorized` | 401 |
+         *     | `bot_blocked` | 403 |
          *     | `pack_not_found`, `sticker_not_found`, `device_not_found`, `link_not_found` | 404 |
-         *     | `pack_in_telegram` | 409 |
+         *     | `pack_in_telegram`, `pack_name_taken`, `pack_full` | 409 |
+         *     | `pack_name_invalid`, `validation_failed` | 422 |
          *     | `rate_limited` | 429 |
          *     | `internal` | 500 |
          *     | `telegram_error` | 502 |
          * @enum {string}
          */
-        ErrorCode: "bad_request" | "unauthorized" | "pack_not_found" | "sticker_not_found" | "device_not_found" | "link_not_found" | "pack_in_telegram" | "rate_limited" | "internal" | "telegram_error";
+        ErrorCode: "bad_request" | "unauthorized" | "pack_not_found" | "sticker_not_found" | "device_not_found" | "link_not_found" | "pack_in_telegram" | "bot_blocked" | "pack_name_taken" | "pack_full" | "pack_name_invalid" | "validation_failed" | "rate_limited" | "internal" | "telegram_error";
     };
     responses: {
         /** @description `bad_request` — тело не по контракту */
@@ -562,8 +756,26 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description `pack_in_telegram` */
+        /** @description `bot_blocked` — человек остановил бота или не нажимал Start: бот не может действовать за него */
+        BotBlocked: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description `pack_in_telegram`, `pack_name_taken`, `pack_full` */
         Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description `validation_failed` — файл не WebM или больше 262 144 байт; `pack_name_invalid` — имя без `_by_<бот>` или не по правилам Telegram */
+        Unprocessable: {
             headers: {
                 [name: string]: unknown;
             };
@@ -962,6 +1174,217 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    uploadSticker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "video/webm": string;
+            };
+        };
+        responses: {
+            /** @description Загружен */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadedSticker"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["BotBlocked"];
+            422: components["responses"]["Unprocessable"];
+            429: components["responses"]["RateLimited"];
+            502: components["responses"]["TelegramError"];
+        };
+    };
+    createPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewPackBody"];
+            };
+        };
+        responses: {
+            /** @description Создан, пак после создания */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishedPack"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["BotBlocked"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+            429: components["responses"]["RateLimited"];
+            502: components["responses"]["TelegramError"];
+        };
+    };
+    getPublishedPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя набора в Telegram, с суффиксом `_by_<бот>` */
+                name: components["parameters"]["PackName"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Пак */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishedPack"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["RateLimited"];
+            502: components["responses"]["TelegramError"];
+        };
+    };
+    addSticker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя набора в Telegram, с суффиксом `_by_<бот>` */
+                name: components["parameters"]["PackName"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InputSticker"];
+            };
+        };
+        responses: {
+            /** @description Добавлен, пак после добавления */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishedPack"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["BotBlocked"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            429: components["responses"]["RateLimited"];
+            502: components["responses"]["TelegramError"];
+        };
+    };
+    replaceSticker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя набора в Telegram, с суффиксом `_by_<бот>` */
+                name: components["parameters"]["PackName"];
+                /** @description `PublishedSticker.id` */
+                stickerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InputSticker"];
+            };
+        };
+        responses: {
+            /** @description Заменён, пак после замены */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishedPack"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["BotBlocked"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["RateLimited"];
+            502: components["responses"]["TelegramError"];
+        };
+    };
+    removeSticker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя набора в Telegram, с суффиксом `_by_<бот>` */
+                name: components["parameters"]["PackName"];
+                /** @description `PublishedSticker.id` */
+                stickerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Удалён */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["RateLimited"];
+            502: components["responses"]["TelegramError"];
+        };
+    };
+    downloadSticker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description `PublishedSticker.id` */
+                stickerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Файл */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/webm": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["RateLimited"];
+            502: components["responses"]["TelegramError"];
         };
     };
 }

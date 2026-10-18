@@ -20,6 +20,7 @@ from tests.fakes import (
     linking,
     miniapp,
     notifications,
+    publishing,
     send_feedback,
     sign_in,
     signed_launch,
@@ -76,6 +77,7 @@ async def client(clock: FakeClock) -> AsyncIterator[AsyncClient]:
         notifications(tables),
         send_feedback(tables),
         linking(tables, clock=clock),
+        publishing(tables),
     )
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
         yield http
@@ -248,14 +250,15 @@ async def test_a_wait_out_of_range_is_a_bad_request(client: AsyncClient, query: 
     assert problem(response, 400) == "bad_request"
 
 
-async def test_confirm_needs_the_notifications_switch(client: AsyncClient) -> None:
+async def test_confirm_may_leave_the_notifications_switch_out(client: AsyncClient) -> None:
     link = await new_link(client)
+    confirm = f"/v1/miniapp/links/{link['code']}/confirm"
 
-    response = await client.post(
-        f"/v1/miniapp/links/{link['code']}/confirm", headers=tma(ME), json={}
-    )
+    unknown = await client.post(confirm, headers=tma(ME), json={"notify": True})
+    confirmed = await client.post(confirm, headers=tma(ME), json=is_schema("LinkConfirmBody", {}))
 
-    assert problem(response, 400) == "bad_request"
+    assert problem(unknown, 400) == "bad_request"
+    assert confirmed.status_code == 204
 
 
 async def test_too_many_codes_are_rate_limited(client: AsyncClient) -> None:

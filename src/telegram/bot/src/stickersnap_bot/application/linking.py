@@ -215,9 +215,10 @@ class Linking:
             )
         return LinkQuestion(link, any(device.user_id == user_id for device in here))
 
-    async def confirm(self, user_id: int, code: str, notifications: bool) -> None:
+    async def confirm(self, user_id: int, code: str, notifications: bool | None = None) -> None:
         """«Привязать»; pressing it again changes nothing. `notifications` is the switch
-        «Уведомления в чат», remembered for every notification of the bot."""
+        «Уведомления в чат», remembered for every notification of the bot; None keeps what the
+        user chose before (the Mini App confirms a computer linked here without asking)."""
         now = self._clock()
         async with self._unit_of_work() as uow:
             link = await uow.links.get(code)
@@ -225,8 +226,9 @@ class Linking:
                 return
             confirmed = _answer(link, code, lambda found: found.confirm(user_id, now))
             await uow.links.save(confirmed)
-            user = await _user(uow, user_id)
-            await uow.users.save(user.with_notifications(notifications, now))
+            if notifications is not None:
+                user = await _user(uow, user_id)
+                await uow.users.save(user.with_notifications(notifications, now))
             await uow.commit()
         self._signals.answered(code)
 

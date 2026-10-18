@@ -28,6 +28,7 @@ from tests.fakes import (
     linking,
     miniapp,
     notifications,
+    publishing,
     send_feedback,
     sign_in,
     signed_launch,
@@ -72,6 +73,7 @@ async def client(tables: Tables, sets: FakeStickerSets) -> AsyncIterator[AsyncCl
         notifications(tables),
         send_feedback(tables),
         linking(tables),
+        publishing(tables),
     )
     headers = {"Authorization": f"tma {signed_launch(ME)}"}
     transport = ASGITransport(app=app)

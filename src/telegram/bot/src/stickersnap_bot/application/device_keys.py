@@ -1,6 +1,6 @@
 """`Authorization: Bearer <device key>`: the linked computer behind a call from the desktop.
 
-Feedback (F1) uses it now, publishing (S5) next; the link (S4) hands the key out.
+Feedback (F1) and publishing (S5) use it; the link (S4) hands the key out.
 """
 
 from stickersnap_bot.application.errors import UnauthorizedError
