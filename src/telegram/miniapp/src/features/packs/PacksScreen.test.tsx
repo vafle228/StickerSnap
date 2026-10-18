@@ -87,7 +87,7 @@ describe("Telegram's frame", () => {
   });
 
   it("opens the pack of a startapp link, and «Назад» from it leads to «Мои паки»", async () => {
-    const { telegram } = launch({ startParam: "pack-cat_sofa_by_StickerSnapAppBot" });
+    const { telegram } = launch({ startParam: "pack_cat_sofa_by_StickerSnapAppBot" });
     expect(await screen.findByRole("heading", { name: "Кот и диван" })).toBeTruthy();
     telegram.pressBack();
     expect(await screen.findByRole("heading", { name: "Мои паки" })).toBeTruthy();

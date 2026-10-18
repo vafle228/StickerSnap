@@ -9,16 +9,31 @@ describe("screens", () => {
   });
 
   it("open the pack of a startapp link on top of «Мои паки», so «Назад» leads there", () => {
-    const stack = startStack("pack-reactions_call_by_StickerSnapAppBot");
+    const stack = startStack("pack_reactions_call_by_StickerSnapAppBot");
     expect(stack).toEqual([
       { kind: "packs" },
       { kind: "pack", name: "reactions_call_by_StickerSnapAppBot" },
     ]);
   });
 
+  it("open «Устройства» on top of «Мои паки» from the bot's «Устройства»", () => {
+    expect(startStack("devices")).toEqual([{ kind: "packs" }, { kind: "devices" }]);
+  });
+
+  it("open «Привязать компьютер?» alone, so Telegram shows «Закрыть» on it", () => {
+    expect(startStack("link_Ab-9_x")).toEqual([{ kind: "link", code: "Ab-9_x" }]);
+  });
+
+  it("open «Мои паки» for the feedback form until the Mini App has it", () => {
+    expect(startStack("feedback")).toEqual([{ kind: "packs" }]);
+  });
+
   it("ignore a startapp they do not know", () => {
     expect(startStack("hello")).toEqual([{ kind: "packs" }]);
-    expect(startStack("pack-")).toEqual([{ kind: "packs" }]);
+    expect(startStack("pack_")).toEqual([{ kind: "packs" }]);
+    expect(startStack("link_")).toEqual([{ kind: "packs" }]);
+    // the old form, before the bot settled on pack_<name>
+    expect(startStack("pack-cat_by_StickerSnapAppBot")).toEqual([{ kind: "packs" }]);
   });
 
   it("go one level deeper at a time and back one level", () => {

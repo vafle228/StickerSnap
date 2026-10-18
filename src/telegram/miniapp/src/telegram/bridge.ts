@@ -28,6 +28,11 @@ export interface Telegram {
   openTelegramLink(url: string): void;
   /** Leaves Telegram for the browser: only «Скачать StickerSnap» */
   openLink(url: string): void;
+  /** The bot may write to the user (launch data's allows_write_to_pm, or a «Разрешить» since) */
+  canWrite(): boolean;
+  /** Telegram asks the user to let the bot write to them; resolves whether they agreed.
+   *  A client too old to ask resolves true: there is nothing to wait for. */
+  askWriteAccess(): Promise<boolean>;
   /** Off while a sheet is open: a downward swipe closes the sheet, not the Mini App */
   setVerticalSwipes(enabled: boolean): void;
 }
@@ -41,6 +46,7 @@ function subscribe(webApp: WebApp, event: WebAppEvent, callback: () => void) {
  *  an old client keeps working, just without them. */
 export function createTelegram(webApp: WebApp): Telegram {
   const since = (version: string) => webApp.isVersionAtLeast(version);
+  let canWrite = webApp.initDataUnsafe.user?.allows_write_to_pm === true;
   return {
     initData: webApp.initData,
     startParam: webApp.initDataUnsafe.start_param,
@@ -78,6 +84,16 @@ export function createTelegram(webApp: WebApp): Telegram {
     },
     openTelegramLink: (url) => webApp.openTelegramLink(url),
     openLink: (url) => webApp.openLink(url),
+    canWrite: () => canWrite,
+    askWriteAccess() {
+      if (!since("6.9")) return Promise.resolve(true);
+      return new Promise((resolve) =>
+        webApp.requestWriteAccess((granted) => {
+          canWrite ||= granted;
+          resolve(granted);
+        }),
+      );
+    },
     setVerticalSwipes(enabled) {
       if (!since("7.7")) return;
       if (enabled) webApp.enableVerticalSwipes();

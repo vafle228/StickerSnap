@@ -10,6 +10,9 @@ export function handlers(db: MockDb, latency = true) {
   const wait = () =>
     latency ? delay(db.scenario === "slow" ? LATENCY_MS.slow : LATENCY_MS.normal) : undefined;
   const findPack = (name: string) => db.packs.find((p) => p.name === name);
+  /** A code still waiting for an answer: an answered or expired one is link_not_found */
+  const pendingLink = (code: string) =>
+    db.links.find((l) => l.code === code && !l.answer && Date.parse(l.expiresAt) > Date.now());
   /** Whether the request goes through at all: «Нет связи» and «Не вошли» stop it here */
   const gate = async (request: Request): Promise<Response | undefined> => {
     await wait();
@@ -75,6 +78,48 @@ export function handlers(db: MockDb, latency = true) {
       const before = db.devices.length;
       db.devices = db.devices.filter((d) => d.id !== params.deviceId);
       return db.devices.length < before ? noContent() : problem("device_not_found");
+    }),
+    route("get", "/v1/miniapp/links/{code}", async ({ request, params }) => {
+      const stop = await gate(request);
+      if (stop) return stop;
+      const link = pendingLink(params.code);
+      if (!link) return problem("link_not_found");
+      const { code, name, os, platform, appVersion, requestedAt, expiresAt, linkedHere } = link;
+      const question = { code, name, os, platform, appVersion, requestedAt, expiresAt, linkedHere };
+      return { status: 200, body: question };
+    }),
+    route("post", "/v1/miniapp/links/{code}/confirm", async ({ request, params }) => {
+      const stop = await gate(request);
+      if (stop) return stop;
+      const answered = db.links.find((l) => l.code === params.code && l.answer === "confirmed");
+      // The same person pressing «Привязать» again changes nothing (contract)
+      if (answered) return noContent();
+      const link = pendingLink(params.code);
+      if (!link) return problem("link_not_found");
+      const body = (await request.json()) as { notifications?: unknown };
+      // Optional: no switch keeps the account's (contract)
+      if (body.notifications !== undefined && typeof body.notifications !== "boolean") {
+        return problem("bad_request");
+      }
+      link.answer = "confirmed";
+      link.notifications = body.notifications;
+      if (!link.linkedHere) {
+        db.devices.push({
+          id: `dev-${db.devices.length + 1}`,
+          name: link.name,
+          os: link.os,
+          linkedAt: new Date().toISOString(),
+        });
+      }
+      return noContent();
+    }),
+    route("post", "/v1/miniapp/links/{code}/decline", async ({ request, params }) => {
+      const stop = await gate(request);
+      if (stop) return stop;
+      const link = pendingLink(params.code);
+      if (!link) return problem("link_not_found");
+      link.answer = "declined";
+      return noContent();
     }),
   ];
 }

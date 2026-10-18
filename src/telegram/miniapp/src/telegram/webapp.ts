@@ -17,7 +17,11 @@ interface WebAppButton {
 export interface WebApp {
   /** The signed launch data, sent as is in `Authorization: tma …`; empty outside Telegram */
   readonly initData: string;
-  readonly initDataUnsafe: { start_param?: string };
+  readonly initDataUnsafe: {
+    start_param?: string;
+    /** Whether the bot may write to the user: they pressed Start or allowed it before */
+    user?: { allows_write_to_pm?: boolean };
+  };
   readonly colorScheme: ColorScheme;
   readonly version: string;
   readonly platform: string;
@@ -32,6 +36,8 @@ export interface WebApp {
   offEvent(event: WebAppEvent, callback: () => void): void;
   openLink(url: string): void;
   openTelegramLink(url: string): void;
+  /** Telegram's own «Разрешить боту писать вам?» (Bot API 6.9) */
+  requestWriteAccess(callback?: (granted: boolean) => void): void;
   disableVerticalSwipes(): void;
   enableVerticalSwipes(): void;
   readonly BackButton: WebAppButton;

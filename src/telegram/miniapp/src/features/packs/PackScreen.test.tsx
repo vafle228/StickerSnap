@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { BOT } from "../../mocks/data";
 
-const CALL = `pack-reactions_call_by_${BOT}`;
+const CALL = `pack_reactions_call_by_${BOT}`;
 const CALL_LINK = `t.me/addstickers/reactions_call_by_${BOT}`;
 
 async function openSticker(n: number) {
@@ -51,7 +51,7 @@ describe("a pack", () => {
   });
 
   it("says a full pack takes nothing more", async () => {
-    launch({ startParam: `pack-best_2025_by_${BOT}` });
+    launch({ startParam: `pack_best_2025_by_${BOT}` });
     expect(await screen.findByText("120 стикеров · больше Telegram не примет")).toBeTruthy();
     expect(screen.getByText("Заполнен")).toBeTruthy();
   });
@@ -109,7 +109,7 @@ describe("deleting a sticker", () => {
   });
 
   it("warns that the last sticker takes the pack, and returns to «Мои паки» after", async () => {
-    const { db } = launch({ startParam: `pack-summer_2026_by_${BOT}` });
+    const { db } = launch({ startParam: `pack_summer_2026_by_${BOT}` });
     const summer = db.packs.find((p) => p.title === "Лето 2026");
     if (!summer) throw new Error("no demo pack");
     summer.stickers = summer.stickers.slice(0, 1);
@@ -138,7 +138,7 @@ describe("deleting a sticker", () => {
 
 describe("a pack Telegram no longer knows", () => {
   it("can only leave the list", async () => {
-    launch({ scenario: "pack-missing", startParam: `pack-first_test_by_${BOT}` });
+    launch({ scenario: "pack-missing", startParam: `pack_first_test_by_${BOT}` });
     expect(await screen.findByText("Пака нет в Telegram")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Добавить в Telegram" })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Убрать из списка" }));
@@ -147,7 +147,7 @@ describe("a pack Telegram no longer knows", () => {
   });
 
   it("is not found when a link names a pack that is not this user's", async () => {
-    launch({ startParam: "pack-nobody_by_StickerSnapAppBot" });
+    launch({ startParam: "pack_nobody_by_StickerSnapAppBot" });
     expect(await screen.findByText("Пак не найден")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "К моим пакам" }));
     expect(await screen.findByRole("heading", { name: "Мои паки" })).toBeTruthy();

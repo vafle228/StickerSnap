@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { hasModalLayer } from "@stickersnap/ds/layers";
 import { DevicesScreen } from "../features/devices/DevicesScreen";
+import { LinkScreen } from "../features/link/LinkScreen";
 import { PackScreen } from "../features/packs/PackScreen";
 import { PacksScreen } from "../features/packs/PacksScreen";
 import { ToastHost } from "../shared/ToastHost";
@@ -54,6 +55,8 @@ function ScreenView({ screen }: { screen: Screen }) {
       return <PackScreen key={screen.name} name={screen.name} />;
     case "devices":
       return <DevicesScreen />;
+    case "link":
+      return <LinkScreen key={screen.code} code={screen.code} />;
   }
 }
 
