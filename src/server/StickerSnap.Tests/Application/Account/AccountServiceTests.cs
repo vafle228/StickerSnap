@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Time.Testing;
 using StickerSnap.Application.Account;
 using StickerSnap.Application.Events;
 using StickerSnap.Core.Account;
@@ -15,7 +14,7 @@ public sealed class AccountServiceTests : IDisposable
 {
     private static readonly LinkedUser Dima = new(42, "Дима", "dima");
 
-    private readonly FakeTimeProvider _clock = new(new DateTimeOffset(2026, 10, 14, 12, 0, 0, TimeSpan.Zero));
+    private readonly WatchedClock _clock = new(new DateTimeOffset(2026, 10, 14, 12, 0, 0, TimeSpan.Zero));
     private readonly IAccountRepository _repository = Substitute.For<IAccountRepository>();
     private readonly IEventPublisher _events = Substitute.For<IEventPublisher>();
     private readonly FakeBotChat _chat;
@@ -159,15 +158,14 @@ public sealed class AccountServiceTests : IDisposable
         _chat.FailNextRead(new AppException(ErrorCode.NetworkUnavailable, "offline"));
         await _service.StartLinkAsync(Cancel);
 
-        // A second at a time: the pause may start after any of them
-        await WaitUntilAsync(() =>
-        {
-            _clock.Advance(TimeSpan.FromSeconds(1));
-            return _chat.Reads.Count == 2;
-        });
+        // Only once the pause has begun: an advance before it would let the code expire instead
+        await _clock.TimerStartedAsync(AccountService.RetryDelay);
+        _chat.Reads.Should().ContainSingle();
 
+        _clock.Advance(AccountService.RetryDelay);
         await _chat.ParkedAsync();
-        _clock.GetUtcNow().Should().BeOnOrAfter(_clock.Start + AccountService.RetryDelay);
+
+        _chat.Reads.Should().Equal(new long?[] { null, null });
     }
 
     [Fact]
@@ -286,14 +284,4 @@ public sealed class AccountServiceTests : IDisposable
         new(++_sequence, Dima.Id, new ChatUser(Dima.Id, Dima.FirstName, "Дмитриев", Dima.Username), text, _clock.GetUtcNow());
 
     private static string CodeOf(AccountLink link) => ((AccountLink.Pending)link).DeepLink.Split("start=")[1];
-
-    private static async Task WaitUntilAsync(Func<bool> condition)
-    {
-        using var guard = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        while (!condition())
-        {
-            guard.Token.ThrowIfCancellationRequested();
-            await Task.Yield();
-        }
-    }
 }
