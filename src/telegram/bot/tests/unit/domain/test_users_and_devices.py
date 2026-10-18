@@ -40,6 +40,16 @@ def test_blocking_the_bot_is_remembered() -> None:
     assert user.with_bot_blocked(True, LATER) is user
 
 
+def test_notifications_are_on_until_turned_off() -> None:
+    user = User.first_seen(42, ANNA, NOW)
+    quiet = user.with_notifications(False, LATER)
+
+    assert user.notifications
+    assert not quiet.notifications
+    assert quiet.updated_at == LATER
+    assert quiet.with_notifications(False, LATER) is quiet
+
+
 def test_device_name_is_trimmed_and_limited() -> None:
     assert device_name(" MacBook ") == "MacBook"
     assert device_name("x" * DEVICE_NAME_MAX_LENGTH) == "x" * DEVICE_NAME_MAX_LENGTH

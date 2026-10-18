@@ -18,6 +18,7 @@ from sqlalchemy import (
     Table,
     Text,
     TypeDecorator,
+    true,
 )
 
 
@@ -62,6 +63,8 @@ users = Table(
     Column("username", String),
     Column("language_code", String),
     Column("bot_blocked", Boolean, nullable=False),
+    # the users before migration 0003 keep the default: notifications on
+    Column("notifications", Boolean, nullable=False, server_default=true()),
     Column("created_at", UtcDateTime, nullable=False),
     Column("updated_at", UtcDateTime, nullable=False),
 )
@@ -75,6 +78,8 @@ devices = Table(
     Column("os", String, nullable=False),
     Column("key_hash", String, nullable=False, unique=True),
     Column("linked_at", UtcDateTime, nullable=False),
+    # the same computer linking again replaces its device
+    Column("installation_id", String, index=True),
     CheckConstraint("os IN ('windows', 'macos', 'linux')", name="os"),
 )
 
@@ -91,8 +96,15 @@ link_requests = Table(
     Column("device_id", String),
     Column("created_at", UtcDateTime, nullable=False),
     Column("expires_at", UtcDateTime, nullable=False, index=True),
+    Column("installation_id", String),
+    Column("platform", String),
+    Column("app_version", String),
+    Column("ip_hash", String),
     CheckConstraint("device_os IN ('windows', 'macos', 'linux')", name="device_os"),
     CheckConstraint("status IN ('pending', 'confirmed', 'declined', 'claimed')", name="status"),
+    # the limit on new codes counts by these over the last hour
+    Index("ix_link_requests_installation_id_created_at", "installation_id", "created_at"),
+    Index("ix_link_requests_ip_hash_created_at", "ip_hash", "created_at"),
 )
 
 packs = Table(

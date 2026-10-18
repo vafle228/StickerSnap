@@ -28,6 +28,10 @@ class DeviceRepository(Protocol):
 
     async def find_by_key_hash(self, key_hash: str) -> Device | None: ...
 
+    async def list_for_installation(self, installation_id: str) -> Sequence[Device]:
+        """The devices of one desktop installation, whoever they are linked to."""
+        ...
+
     async def list_for_user(self, user_id: int) -> Sequence[Device]:
         """Newest first (by linked_at), as «Устройства» shows them."""
         ...
@@ -42,8 +46,21 @@ class LinkRepository(Protocol):
 
     async def save(self, link: LinkRequest) -> None: ...
 
+    async def delete(self, code: str) -> None: ...
+
     async def delete_expired(self, now: datetime) -> int:
-        """Forgets the codes whose time is up, answered or not; returns how many."""
+        """Forgets the codes whose time is up by `now`, answered or not; returns how many."""
+        ...
+
+    async def created_since(
+        self,
+        since: datetime,
+        *,
+        installation_id: str | None = None,
+        ip_hash: str | None = None,
+    ) -> Sequence[datetime]:
+        """When the codes of one desktop were asked for after `since`, oldest first. The desktop
+        is whichever one of the two is given."""
         ...
 
 

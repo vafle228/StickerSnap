@@ -58,6 +58,9 @@ class _Devices:
     async def find_by_key_hash(self, key_hash: str) -> Device | None:
         return next((d for d in self._t.devices.values() if d.key_hash == key_hash), None)
 
+    async def list_for_installation(self, installation_id: str) -> Sequence[Device]:
+        return [d for d in self._t.devices.values() if d.installation_id == installation_id]
+
     async def list_for_user(self, user_id: int) -> Sequence[Device]:
         found = [d for d in self._t.devices.values() if d.user_id == user_id]
         return sorted(found, key=lambda d: d.linked_at, reverse=True)
@@ -79,11 +82,32 @@ class _Links:
     async def save(self, link: LinkRequest) -> None:
         self._t.links[link.code] = link
 
+    async def delete(self, code: str) -> None:
+        self._t.links.pop(code, None)
+
     async def delete_expired(self, now: datetime) -> int:
         expired = [code for code, link in self._t.links.items() if link.is_expired(now)]
         for code in expired:
             del self._t.links[code]
         return len(expired)
+
+    async def created_since(
+        self,
+        since: datetime,
+        *,
+        installation_id: str | None = None,
+        ip_hash: str | None = None,
+    ) -> Sequence[datetime]:
+        def by(link: LinkRequest) -> bool:
+            if installation_id is not None:
+                return link.installation_id == installation_id
+            return link.ip_hash == ip_hash
+
+        return sorted(
+            link.created_at
+            for link in self._t.links.values()
+            if by(link) and link.created_at > since
+        )
 
 
 class _Packs:

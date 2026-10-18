@@ -22,6 +22,8 @@ class User:
     updated_at: datetime
     # the user stopped the bot (my_chat_member): desktops get bot_blocked with no Bot API call
     bot_blocked: bool = False
+    # «Уведомления в чат» when confirming a link: off, the bot writes nothing by itself
+    notifications: bool = True
 
     @classmethod
     def first_seen(cls, user_id: int, profile: TelegramProfile, now: datetime) -> "User":
@@ -36,3 +38,8 @@ class User:
         if blocked == self.bot_blocked:
             return self
         return replace(self, bot_blocked=blocked, updated_at=now)
+
+    def with_notifications(self, on: bool, now: datetime) -> "User":
+        if on == self.notifications:
+            return self
+        return replace(self, notifications=on, updated_at=now)

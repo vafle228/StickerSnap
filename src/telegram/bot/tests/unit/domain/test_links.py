@@ -28,6 +28,27 @@ def test_opens_pending_for_ten_minutes_with_the_name_trimmed() -> None:
     assert link.device_name == "DESKTOP-ABC"
 
 
+def test_keeps_what_the_desktop_told_about_itself() -> None:
+    link = LinkRequest.open(
+        "code",
+        "poll-hash",
+        "PC",
+        DeviceOs.WINDOWS,
+        NOW,
+        installation_id="inst-1",
+        platform="Windows 11",
+        app_version="0.3.1",
+        ip_hash="ip-hash",
+    )
+
+    assert (link.installation_id, link.platform, link.app_version, link.ip_hash) == (
+        "inst-1",
+        "Windows 11",
+        "0.3.1",
+        "ip-hash",
+    )
+
+
 def test_refuses_an_empty_device_name() -> None:
     with pytest.raises(InvalidValueError):
         LinkRequest.open("code", "poll-hash", "   ", DeviceOs.LINUX, NOW)
@@ -86,3 +107,13 @@ def test_a_code_is_claimed_only_once() -> None:
 def test_a_confirmed_code_left_unclaimed_expires() -> None:
     with pytest.raises(LinkExpiredError):
         open_link().confirm(42, LATER).claim("device-1", TOO_LATE)
+
+
+def test_answered_by_the_user_who_confirmed_until_claimed_and_after() -> None:
+    confirmed = open_link().confirm(42, LATER)
+
+    assert not open_link().is_answered_by(42)
+    assert confirmed.is_answered_by(42)
+    assert confirmed.claim("device-1", LATER).is_answered_by(42)
+    assert not confirmed.is_answered_by(13)
+    assert not open_link().decline(42, LATER).is_answered_by(42)
