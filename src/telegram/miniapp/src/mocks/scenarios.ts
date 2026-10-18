@@ -7,6 +7,7 @@ export const SCENARIOS = {
   "pack-missing": "Пак пропал",
   "delete-fails": "Не удаляется",
   "no-video": "Без анимации",
+  "feedback-limit": "Лимит отзывов",
   offline: "Нет связи",
   unauthorized: "Не вошли",
 } as const;

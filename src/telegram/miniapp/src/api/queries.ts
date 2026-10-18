@@ -1,7 +1,7 @@
 import { createContext, useContext } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { call, type Api } from "./client";
-import type { PackDetail } from "./types";
+import type { FeedbackRequest, PackDetail } from "./types";
 
 export const ApiContext = createContext<Api | null>(null);
 
@@ -127,5 +127,14 @@ export function useDeclineLink(code: string) {
   return useMutation({
     mutationFn: () =>
       call(api.POST("/v1/miniapp/links/{code}/decline", { params: { path: { code } } })),
+  });
+}
+
+/** «Отправить» on «Отзыв» (18·6): the same POST /v1/feedback as the desktop's, signed with
+ *  `tma`, so the service knows the Telegram account and needs no installation */
+export function useSendFeedback() {
+  const api = useApi();
+  return useMutation({
+    mutationFn: (body: FeedbackRequest) => call(api.POST("/v1/feedback", { body })),
   });
 }

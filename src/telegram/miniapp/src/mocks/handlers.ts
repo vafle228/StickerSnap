@@ -1,5 +1,6 @@
 import { delay, HttpResponse } from "msw";
-import { detailOf, summaryOf, type MockDb } from "./data";
+import type { FeedbackRequest } from "../api/types";
+import { detailOf, FEEDBACK_PER_HOUR, summaryOf, type MockDb } from "./data";
 import { noContent, problem, route } from "./route";
 
 /* The demo bot service. Lists come back fresh first, as the contract says. */
@@ -121,5 +122,32 @@ export function handlers(db: MockDb, latency = true) {
       link.answer = "declined";
       return noContent();
     }),
+    route("post", "/v1/feedback", async ({ request }) => {
+      const stop = await gate(request);
+      if (stop) return stop;
+      const body = (await request.json()) as FeedbackRequest;
+      if (!feedbackAllowed(body)) return problem("bad_request");
+      if (db.feedback.length >= FEEDBACK_PER_HOUR) return problem("rate_limited");
+      db.feedback.push(body);
+      return { status: 201, body: { id: 40 + db.feedback.length } };
+    }),
   ];
+}
+
+const FEEDBACK_TYPES: ReadonlySet<unknown> = new Set(["bug", "idea", "other"]);
+
+/** The body rules of POST /v1/feedback for a `tma` caller: the account is known, so no
+ *  contact or installation; no error or diagnostics, those come from the desktop */
+function feedbackAllowed(body: FeedbackRequest): boolean {
+  const text = typeof body.text === "string" ? body.text.trim() : "";
+  return (
+    FEEDBACK_TYPES.has(body.type) &&
+    typeof body.canReply === "boolean" &&
+    text.length > 0 &&
+    body.text.length <= 2000 &&
+    body.contact === undefined &&
+    body.installationId === undefined &&
+    body.error === undefined &&
+    body.diagnostics === undefined
+  );
 }
