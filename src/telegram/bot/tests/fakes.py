@@ -1,12 +1,16 @@
 """In-memory stand-ins for the application's ports, for fast tests of use cases and routes."""
 
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import TracebackType
 from typing import Self
 
 from stickersnap_bot.application.errors import ApplicationError
+from stickersnap_bot.application.init_data import InitDataVerifier, sign_init_data
+from stickersnap_bot.application.media import MediaLinks
+from stickersnap_bot.application.miniapp import MiniApp
 from stickersnap_bot.application.persistence import UnitOfWorkFactory
 from stickersnap_bot.application.sticker_sets import SetSticker, StickerFile, StickerSet
 from stickersnap_bot.domain.devices import Device
@@ -15,6 +19,7 @@ from stickersnap_bot.domain.packs import Pack, PackKind
 from stickersnap_bot.domain.users import User
 
 NOW = datetime(2026, 10, 18, 9, 0, tzinfo=UTC)
+TOKEN = "123:secret"
 
 
 @dataclass
@@ -189,3 +194,19 @@ def sticker_set(name: str, count: int, kind: PackKind = PackKind.STICKERS) -> St
         kind=kind,
         stickers=tuple(sticker(n) for n in range(1, count + 1)),
     )
+
+
+def miniapp(tables: Tables, sets: FakeStickerSets | None = None, now: datetime = NOW) -> MiniApp:
+    return MiniApp(
+        fake_unit_of_work(tables),
+        sets or FakeStickerSets(),
+        InitDataVerifier(TOKEN, max_age=timedelta(days=1)),
+        MediaLinks(TOKEN),
+        clock=lambda: now,
+    )
+
+
+def signed_launch(user_id: int, first_name: str = "Дима", now: datetime = NOW) -> str:
+    """initData as Telegram signs it for the bot with TOKEN."""
+    user = json.dumps({"id": user_id, "first_name": first_name}, ensure_ascii=False)
+    return sign_init_data(TOKEN, {"user": user, "auth_date": str(int(now.timestamp()))})

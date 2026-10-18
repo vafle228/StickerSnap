@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 from typing import Literal, Self
 
@@ -21,6 +22,8 @@ class Settings(BaseSettings):
     # another Bot API server, for a fake one in tests; the real Telegram when not set
     telegram_api_url: str | None = None
     database_path: Path = Path("data/bot.sqlite3")
+    # how long the Mini App's launch data stays good; Telegram signs it when the Mini App opens
+    init_data_max_age: timedelta = timedelta(days=1)
     host: str = "127.0.0.1"
     port: int = 8080
 

@@ -139,14 +139,16 @@ class MiniApp:
             await uow.devices.delete(device.id)
             await uow.commit()
 
-    async def open_media(self, token: str) -> tuple[StickerFile, datetime] | None:
-        """A signed link's file and when the link expires; None for a bad link or a lost file."""
-        opened = self._media.open(token, self._clock())
+    async def open_media(self, token: str) -> tuple[StickerFile, int] | None:
+        """A signed link's file and the seconds the link has left; None for a bad link or a lost
+        file."""
+        now = self._clock()
+        opened = self._media.open(token, now)
         if opened is None:
             return None
         file_id, expires_at = opened
         found = await self._sets.download(file_id)
-        return None if found is None else (found, expires_at)
+        return None if found is None else (found, int((expires_at - now).total_seconds()))
 
     def _view(
         self, pack: Pack, found: StickerSet | None, now: datetime, *, with_stickers: bool

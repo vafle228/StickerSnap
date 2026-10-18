@@ -1,4 +1,3 @@
-import json
 from dataclasses import replace
 from datetime import timedelta
 
@@ -12,16 +11,22 @@ from stickersnap_bot.application.errors import (
     StickerNotFoundError,
     UnauthorizedError,
 )
-from stickersnap_bot.application.init_data import InitDataVerifier, sign_init_data
 from stickersnap_bot.application.media import MediaLinks
 from stickersnap_bot.application.miniapp import MiniApp, PackState
 from stickersnap_bot.application.sticker_sets import StickerFile
 from stickersnap_bot.domain.devices import Device, DeviceOs
 from stickersnap_bot.domain.packs import Pack, PackKind
 from stickersnap_bot.domain.users import TelegramProfile, User
-from tests.fakes import NOW, FakeStickerSets, Tables, fake_unit_of_work, sticker_set
+from tests.fakes import (
+    NOW,
+    TOKEN,
+    FakeStickerSets,
+    Tables,
+    miniapp,
+    signed_launch,
+    sticker_set,
+)
 
-TOKEN = "123:secret"
 ME, SOMEONE = 42, 7
 CATS = "cats_by_StickerSnapAppBot"
 DOGS = "dogs_by_StickerSnapAppBot"
@@ -40,8 +45,7 @@ def sets() -> FakeStickerSets:
 
 @pytest.fixture
 def app(tables: Tables, sets: FakeStickerSets) -> MiniApp:
-    verifier = InitDataVerifier(TOKEN, max_age=timedelta(days=1))
-    return MiniApp(fake_unit_of_work(tables), sets, verifier, media, clock=lambda: NOW)
+    return miniapp(tables, sets)
 
 
 def pack(name: str, owner: int = ME, hours_ago: int = 0) -> Pack:
@@ -62,8 +66,7 @@ def device(device_id: str, owner: int = ME, hours_ago: int = 0) -> Device:
 
 
 def launch(first_name: str = "Дима") -> str:
-    user = json.dumps({"id": ME, "first_name": first_name})
-    return sign_init_data(TOKEN, {"user": user, "auth_date": str(int(NOW.timestamp()))})
+    return signed_launch(ME, first_name)
 
 
 async def test_sign_in_remembers_a_new_user(app: MiniApp, tables: Tables) -> None:

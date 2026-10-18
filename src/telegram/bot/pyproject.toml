@@ -27,10 +27,14 @@ build-backend = "uv_build"
 dev = [
     "httpx>=0.28.1",
     "import-linter>=2.15",
+    "jsonschema>=4.26.0",
     "mypy>=2.4.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "pyyaml>=6.0.3",
     "ruff>=0.17.1",
+    "types-jsonschema>=4.26.0.20261006",
+    "types-pyyaml>=6.0.12.20260906",
 ]
 
 [tool.ruff]
