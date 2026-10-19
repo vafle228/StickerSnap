@@ -569,11 +569,19 @@ export const ru = {
   "feedback.count": "Необходимо · {count} / {max}",
   "feedback.empty": "Напишите хотя бы пару слов",
   "feedback.report":
-    "К ошибке приложим сведения для разработчика: версии программы и системы. Видео и проекты не уходят.",
+    "К ошибке приложим сведения для разработчика: версии, журнал, последние действия. Видео и проекты не уходят.",
   "feedback.reportWhat": "Что отправится",
-  "feedback.report.versions": "Версии: StickerSnap, FFmpeg, .NET, ОС",
-  "feedback.report.mode": "Режим: приложение или браузер",
-  "feedback.report.time": "Время отправки",
+  "feedback.reportTitle": "Что уйдёт вместе с отзывом",
+  "feedback.report.versions": "Версии: StickerSnap, FFmpeg, Electron, ОС",
+  "feedback.report.error": "Ошибка: код, текст, номер, время и что делалось",
+  "feedback.report.actions": "Последние 30 действий в интерфейсе",
+  "feedback.report.log": "Журнал сервера за 15 минут до ошибки",
+  "feedback.report.project": "Параметры проекта без самого видео",
+  "feedback.label.fromError": "Что вы делали перед этим",
+  "feedback.placeholder.fromError": "Например: нажал «Экспорт» у второго отрезка",
+  "feedback.optional": "Можно не писать: главное мы уже собрали",
+  "feedback.errorWhen": "сегодня {time}",
+  "feedback.errorTimes": "×{count} за 10 мин",
   "feedback.reportHint":
     "Пути к файлам и имя пользователя ОС не уходят. Видео, кадры и проекты не уходят никогда.",
   "feedback.canReply": "Можно ответить мне в Telegram",
@@ -662,6 +670,25 @@ export const ru = {
   "error.bad_request.text": "Повторите действие. Если не поможет, перезапустите приложение.",
   "error.internal.title": "Что-то пошло не так",
   "error.internal.text": "Повторите действие. Если не поможет, перезапустите приложение.",
+
+  // «Сообщить об ошибке» (artboard 19)
+  "report.short": "Сообщить",
+  "report.full": "Сообщить об ошибке",
+  "report.uncaught.text": "Ошибка в интерфейсе. Работа сохранена, о ней можно сообщить.",
+  "report.crash.title": "Что-то сломалось",
+  "report.crash.text":
+    "Экран не смог отрисоваться. Проект сохранён автоматически, ничего не потеряно.",
+  "report.crash.restart": "Перезапустить экран",
+  "report.crash.code": "Код {code} · {time}",
+  "report.crash.server": "Прошлый запуск завершился ошибкой",
+  "report.crash.server.text":
+    "Сервер приложения остановился сам (код {code}). Можно сообщить, сведения уже собраны.",
+  "report.crash.shell": "Прошлый запуск завершился ошибкой",
+  "report.crash.shell.text":
+    "Приложение закрылось, не завершив работу. Можно сообщить, сведения уже собраны.",
+  "report.crash.window": "Окно перезапустилось после сбоя",
+  "report.crash.window.text":
+    "Проект сохранён автоматически. Можно сообщить, сведения уже собраны.",
 } as const;
 
 export type StringKey = keyof typeof ru;

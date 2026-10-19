@@ -37,5 +37,6 @@ export function electronPlatform(bridge: DesktopBridge, baseUrl: string): Platfo
     openFolder: (path) => void bridge.openFolder(path),
     showInFolder: (path) => void bridge.showInFolder(path),
     themeChanged: (mode) => bridge.setTheme(mode),
+    lastCrash: () => bridge.lastCrash(),
   };
 }
