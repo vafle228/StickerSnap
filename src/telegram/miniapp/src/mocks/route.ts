@@ -11,7 +11,7 @@ type Op<P extends keyof paths, M extends Method> = NonNullable<paths[P][M]>;
 type Responses<P extends keyof paths, M extends Method> =
   Op<P, M> extends { responses: infer R } ? R : never;
 type Json<C> = C extends { content: { "application/json": infer B } } ? B : never;
-type Success = 200;
+type Success = 200 | 201;
 
 type Reply<P extends keyof paths, M extends Method> = {
   [S in Success & keyof Responses<P, M>]: { status: S; body: Json<Responses<P, M>[S]> };

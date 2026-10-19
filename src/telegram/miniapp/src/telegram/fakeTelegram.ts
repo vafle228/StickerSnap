@@ -12,6 +12,7 @@ export interface FakeTelegram extends Telegram {
     telegramLinks: string[];
     links: string[];
     verticalSwipes: boolean;
+    closingConfirmation: boolean;
     /** How many times Telegram's «Разрешить боту писать?» came up */
     writeAccessAsked: number;
     closed: boolean;
@@ -27,6 +28,8 @@ export interface FakeTelegram extends Telegram {
 export interface FakeTelegramOptions {
   initData?: string;
   startParam?: string;
+  /** «tdesktop» by default */
+  platform?: string;
   colorScheme?: ColorScheme;
   /** allows_write_to_pm of the launch data; true by default */
   canWrite?: boolean;
@@ -49,6 +52,7 @@ export function createFakeTelegram(options: FakeTelegramOptions = {}): FakeTeleg
     telegramLinks: [],
     links: [],
     verticalSwipes: true,
+    closingConfirmation: false,
     writeAccessAsked: 0,
     closed: false,
     ready: false,
@@ -64,6 +68,7 @@ export function createFakeTelegram(options: FakeTelegramOptions = {}): FakeTeleg
   return {
     initData: options.initData ?? "",
     startParam: options.startParam,
+    platform: options.platform ?? "tdesktop",
     calls,
     colorScheme: () => scheme,
     onThemeChanged: (callback) => listen(themeListeners, callback),
@@ -91,6 +96,7 @@ export function createFakeTelegram(options: FakeTelegramOptions = {}): FakeTeleg
       return Promise.resolve(granted);
     },
     setVerticalSwipes: (enabled) => void (calls.verticalSwipes = enabled),
+    setClosingConfirmation: (enabled) => void (calls.closingConfirmation = enabled),
     setColorScheme(next) {
       scheme = next;
       themeListeners.forEach((listener) => listener());

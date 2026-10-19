@@ -1,4 +1,12 @@
-import type { Device, LinkRequest, Pack, PackDetail, PackKind, Sticker } from "../api/types";
+import type {
+  Device,
+  FeedbackRequest,
+  LinkRequest,
+  Pack,
+  PackDetail,
+  PackKind,
+  Sticker,
+} from "../api/types";
 import type { Scenario } from "./scenarios";
 
 /* The demo data of the Mini App: the packs and computers of artboard 13, as the bot service
@@ -35,7 +43,12 @@ export interface MockDb {
    *  ?mock&startapp=link_demo, link_again for a computer that is already yours, or any
    *  other code for «Ссылка устарела» */
   links: MockLink[];
+  /** What «Отзыв» sent in the last hour; «Лимит отзывов» starts with five already */
+  feedback: FeedbackRequest[];
 }
+
+/** The service's limit: five feedbacks an hour per Telegram account (contract) */
+export const FEEDBACK_PER_HOUR = 5;
 
 const LINK_MINUTES = 10;
 
@@ -175,7 +188,15 @@ export function createDb(scenario: Scenario): MockDb {
           { id: "dev-2", name: "ubuntu-laptop", os: "linux", linkedAt: "2026-10-03T17:10:00Z" },
         ];
   const links = [mockLink("demo", 2, false), mockLink("again", 1, true)];
-  return { scenario, packs, devices, links };
+  const feedback: FeedbackRequest[] =
+    scenario === "feedback-limit"
+      ? Array.from({ length: FEEDBACK_PER_HOUR }, () => ({
+          type: "idea",
+          text: "Ещё одна идея",
+          canReply: false,
+        }))
+      : [];
+  return { scenario, packs, devices, links, feedback };
 }
 
 function strip(sticker: MockSticker): Sticker {

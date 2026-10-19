@@ -1,5 +1,6 @@
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import type { FeedbackRequest } from "../api/types";
 import { createDb, type MockDb } from "./data";
 import { handlers } from "./handlers";
 import type { Scenario } from "./scenarios";
@@ -112,6 +113,27 @@ describe("demo bot service", () => {
     );
     expect(await failure(call(api.GET("/v1/miniapp/links/{code}", byCode("nope"))))).toBe(
       "link_not_found",
+    );
+  });
+
+  it("takes feedback by the contract's rules, five an hour", async () => {
+    use("ok");
+    const send = (body: FeedbackRequest) => call(api.POST("/v1/feedback", { body }));
+    expect(await send({ type: "bug", text: "Пак пустой", canReply: true })).toEqual({ id: 41 });
+    expect(await failure(send({ type: "idea", text: "   ", canReply: false }))).toBe("bad_request");
+    // the Mini App's caller is known: a contact is the desktop's, for a computer without a link
+    expect(
+      await failure(send({ type: "other", text: "Привет", canReply: true, contact: "@me" })),
+    ).toBe("bad_request");
+    for (let i = 0; i < 4; i += 1) await send({ type: "idea", text: "Ещё", canReply: false });
+    expect(await failure(send({ type: "idea", text: "Шестой", canReply: false }))).toBe(
+      "rate_limited",
+    );
+    expect(db.feedback).toHaveLength(5);
+
+    use("feedback-limit");
+    expect(await failure(send({ type: "idea", text: "Первый", canReply: false }))).toBe(
+      "rate_limited",
     );
   });
 
