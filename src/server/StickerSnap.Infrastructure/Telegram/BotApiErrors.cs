@@ -31,6 +31,7 @@ internal static class BotApiErrors
             {
                 Params = new Dictionary<string, object> { ["retryAfterSec"] = Math.Max(retryAfter ?? 1, 1) },
                 Log = description,
+                Context = ContextOf(method, status, description),
             };
         }
 
@@ -38,17 +39,27 @@ internal static class BotApiErrors
             .Where(entry => description?.Contains(entry.Words, StringComparison.OrdinalIgnoreCase) == true)
             .Select(entry => (ErrorCode?)entry.Code)
             .FirstOrDefault() ?? ErrorCode.TelegramError;
-        return new AppException(code, message) { Log = description ?? $"HTTP {status}" };
+        return new AppException(code, message) { Log = description ?? $"HTTP {status}", Context = ContextOf(method, status, description) };
+    }
+
+    /// <summary>What a report says of a call: its method, never its address, which holds the token.</summary>
+    private static Dictionary<string, string> ContextOf(string method, int? status, string? answer)
+    {
+        var context = new Dictionary<string, string>(StringComparer.Ordinal) { ["method"] = method };
+        if (status is { } code) context["status"] = code.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (answer is not null) context["answer"] = answer;
+        return context;
     }
 
     /// <param name="why">Already free of the token</param>
     public static AppException Unreachable(string method, string why) =>
-        new(ErrorCode.NetworkUnavailable, $"Bot API {method} is out of reach: {why}") { Log = why };
+        new(ErrorCode.NetworkUnavailable, $"Bot API {method} is out of reach: {why}") { Log = why, Context = ContextOf(method, null, why) };
 
     /// <summary>An answer that is not the Bot API's JSON, such as a proxy's error page.</summary>
     public static AppException Garbled(string method, int status) =>
         new(ErrorCode.TelegramError, $"Bot API {method} answered HTTP {status} without its JSON")
         {
             Log = $"HTTP {status} without the Bot API's JSON",
+            Context = ContextOf(method, status, null),
         };
 }

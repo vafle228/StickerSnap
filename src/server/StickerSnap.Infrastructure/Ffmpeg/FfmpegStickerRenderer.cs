@@ -91,14 +91,8 @@ internal sealed class FfmpegStickerRenderer(IFfmpeg ffmpeg) : IStickerRenderer
         IEnumerable<IReadOnlyList<string>> runs = render.Rate is RateControl.TwoPass
             ? [Vp9StickerArguments.For(render, 1, render.OutputPath + ".vp9"), Vp9StickerArguments.For(render, 2, render.OutputPath + ".vp9")]
             : [Vp9StickerArguments.For(render, 0, null)];
-        return string.Join(Environment.NewLine, runs.Select(arguments => string.Join(' ', ["ffmpeg", .. arguments.Select(Quote)])));
+        return string.Join(Environment.NewLine, runs.Select(arguments => string.Join(' ', ["ffmpeg", .. arguments.Select(FfmpegProcess.Quote)])));
     }
-
-    /// <summary>An argument as a shell reads it back whole: in double quotes when it holds more than letters and signs.</summary>
-    private static string Quote(string argument) =>
-        argument.Length > 0 && argument.All(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.' or '/' or '\\' or ':' or '=' or ',')
-            ? argument
-            : $"\"{argument.Replace("\"", "\\\"")}\"";
 
     private async Task RunAsync(
         IReadOnlyList<string> arguments,
@@ -119,12 +113,13 @@ internal sealed class FfmpegStickerRenderer(IFfmpeg ffmpeg) : IStickerRenderer
 
         var step = passes == 1 ? "the render" : $"pass {pass}";
         throw result.Log.Contains(NoSpace, StringComparison.OrdinalIgnoreCase)
-            ? new AppException(ErrorCode.DiskFull, $"No space left for {step} of {Path.GetFileName(render.SourcePath)}") { Log = result.Log }
+            ? new AppException(ErrorCode.DiskFull, $"No space left for {step} of {Path.GetFileName(render.SourcePath)}") { Log = result.Log, Context = result.Context }
             : new AppException(
                 ErrorCode.RenderFailed,
                 $"ffmpeg failed {step} of {Path.GetFileName(render.SourcePath)} (exit code {result.ExitCode})")
             {
                 Log = result.Log,
+                Context = result.Context,
             };
     }
 

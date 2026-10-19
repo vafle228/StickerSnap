@@ -32,13 +32,23 @@ internal static class FfmpegProcess
         {
             // CliWrap kills the whole process tree when the token is cancelled
             var result = await command.ExecuteAsync(cancellationToken);
-            return new FfmpegResult(result.ExitCode, output.ToString(), log.ToString());
+            return new FfmpegResult(result.ExitCode, output.ToString(), log.ToString(), CommandLine(executable, arguments));
         }
         catch (Win32Exception e)
         {
             throw new AppException(ErrorCode.FfmpegMissing, $"{executable} would not start: {e.Message}", e);
         }
     }
+
+    /// <summary>`ffmpeg -i "a b.mp4" …`: the file's name and the arguments as a shell reads them back.</summary>
+    internal static string CommandLine(string executable, IEnumerable<string> arguments) =>
+        string.Join(' ', [Path.GetFileNameWithoutExtension(executable), .. arguments.Select(Quote)]);
+
+    /// <summary>An argument as a shell reads it back whole: in double quotes when it holds more than letters and signs.</summary>
+    internal static string Quote(string argument) =>
+        argument.Length > 0 && argument.All(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.' or '/' or '\\' or ':' or '=' or ',')
+            ? argument
+            : $"\"{argument.Replace("\"", "\\\"")}\"";
 
     /// <summary>The last lines written, oldest first.</summary>
     internal sealed class LogTail(int capacity)
