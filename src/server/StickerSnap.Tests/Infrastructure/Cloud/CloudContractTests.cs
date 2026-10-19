@@ -41,6 +41,7 @@ public sealed class CloudContractTests : IDisposable
         { typeof(NewPackBody), "NewPackBody" },
         { typeof(CloudPack), "PublishedPack" },
         { typeof(CloudSticker), "PublishedSticker" },
+        { typeof(PackNameState), "PackNameState" },
         { typeof(CloudProblem), "Problem" },
     };
 
@@ -130,6 +131,7 @@ public sealed class CloudContractTests : IDisposable
             .Answer("POST /v1/stickers/upload", """{"id":"f"}""", HttpStatusCode.Created)
             .Answer("POST /v1/packs", PackJson, HttpStatusCode.Created)
             .Answer($"GET /v1/packs/{Pack}", PackJson)
+            .Answer($"GET /v1/pack-names/{Pack}", $$"""{"name":"{{Pack}}","taken":true}""")
             .Answer($"POST /v1/packs/{Pack}/stickers", PackJson)
             .Answer($"PUT /v1/packs/{Pack}/stickers/s", PackJson)
             .Answer("GET /v1/stickers/s/file", () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1]) });
@@ -145,6 +147,7 @@ public sealed class CloudContractTests : IDisposable
         using (var webm = new MemoryStream([0x1A, 0x45, 0xDF, 0xA3])) await client.UploadStickerAsync(webm, Cancel);
         await client.CreatePackAsync(new NewPackBody(Pack, "T", CloudPackKind.Stickers, [sticker]), Cancel);
         await client.GetPackAsync(Pack, Cancel);
+        await client.IsPackNameTakenAsync(Pack, Cancel);
         await client.AddStickerAsync(Pack, sticker, Cancel);
         await client.ReplaceStickerAsync(Pack, "s", sticker, Cancel);
         await client.RemoveStickerAsync(Pack, "s", Cancel);

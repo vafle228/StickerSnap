@@ -44,6 +44,9 @@ public sealed class PackServiceTests : IDisposable
 
     private void Telegram(string name, PublishedPack? pack) => _telegram.GetPackAsync(name, Arg.Any<CancellationToken>()).Returns(pack);
 
+    /// <summary>Whether the service says a pack of that name exists, whoever made it.</summary>
+    private void Taken(string name, bool taken) => _telegram.IsNameTakenAsync(name, Arg.Any<CancellationToken>()).Returns(taken);
+
     private async Task WithKnownAsync()
     {
         await _packs.SaveAsync(Known(), Cancel);
@@ -217,7 +220,7 @@ public sealed class PackServiceTests : IDisposable
 
         await Service.DeleteStickerAsync(Cats, "U1", Cancel);
 
-        await _telegram.Received(1).DeleteStickerAsync("F1new", Arg.Any<CancellationToken>());
+        await _telegram.Received(1).DeleteStickerAsync(Cats, "F1new", Arg.Any<CancellationToken>());
         _packs.Packs.Single().Stickers.Select(sticker => sticker.Id).Should().Equal("U2", "U3");
         PackEvents.Sent(_events).Single().Count.Should().Be(2);
     }
@@ -230,7 +233,7 @@ public sealed class PackServiceTests : IDisposable
 
         await Service.DeleteStickerAsync(Cats, "U1", Cancel);
 
-        await _telegram.DidNotReceive().DeleteStickerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _telegram.DidNotReceive().DeleteStickerAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _packs.Packs.Single().Stickers.Select(sticker => sticker.Id).Should().Equal("U2");
     }
 
@@ -277,7 +280,7 @@ public sealed class PackServiceTests : IDisposable
     [Fact]
     public async Task Makes_a_free_link_from_the_title()
     {
-        Telegram("kot_i_divan_by_StickerSnapAppBot", null);
+        Taken("kot_i_divan_by_StickerSnapAppBot", false);
 
         var check = await Service.CheckNameAsync("Кот и диван", null, Cancel);
 
@@ -287,9 +290,9 @@ public sealed class PackServiceTests : IDisposable
     [Fact]
     public async Task Offers_the_first_free_variant_of_a_name_taken_in_telegram()
     {
-        Telegram(Cats, InTelegram());
-        Telegram("kot_divan_2_by_StickerSnapAppBot", InTelegram());
-        Telegram("kot_divan_3_by_StickerSnapAppBot", null);
+        Taken(Cats, true);
+        Taken("kot_divan_2_by_StickerSnapAppBot", true);
+        Taken("kot_divan_3_by_StickerSnapAppBot", false);
 
         var check = await Service.CheckNameAsync("Кот и диван", "kot_divan", Cancel);
 
@@ -297,18 +300,17 @@ public sealed class PackServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Takes_a_name_on_the_list_or_of_masks_as_taken()
+    public async Task Takes_a_name_on_the_list_as_taken_without_asking_the_service()
     {
         await WithKnownAsync();
-        _telegram.GetPackAsync("kot_divan_2_by_StickerSnapAppBot", Arg.Any<CancellationToken>())
-            .Returns<PublishedPack?>(_ => throw new AppException(ErrorCode.NotOurPack, "masks"));
-        Telegram("kot_divan_3_by_StickerSnapAppBot", null);
+        Taken("kot_divan_2_by_StickerSnapAppBot", true);
+        Taken("kot_divan_3_by_StickerSnapAppBot", false);
 
         var check = await Service.CheckNameAsync("Кот", "kot_divan", Cancel);
 
         check.Problems.Should().Equal(PackNameProblem.Taken);
         check.Suggestion.Should().Be("kot_divan_3");
-        await _telegram.DidNotReceive().GetPackAsync(Cats, Arg.Any<CancellationToken>());
+        await _telegram.DidNotReceive().IsNameTakenAsync(Cats, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -324,12 +326,12 @@ public sealed class PackServiceTests : IDisposable
     [Fact]
     public async Task Offers_nothing_when_every_variant_is_taken()
     {
-        _telegram.GetPackAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(InTelegram());
+        _telegram.IsNameTakenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
         var check = await Service.CheckNameAsync("Кот", "kot", Cancel);
 
         check.Suggestion.Should().BeNull();
-        await _telegram.Received(PackService.MaxVariant).GetPackAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _telegram.Received(PackService.MaxVariant).IsNameTakenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

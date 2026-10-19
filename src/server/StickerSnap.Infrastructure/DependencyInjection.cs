@@ -20,7 +20,6 @@ using StickerSnap.Infrastructure.Projects;
 using StickerSnap.Infrastructure.Settings;
 using StickerSnap.Infrastructure.Sources;
 using StickerSnap.Infrastructure.Storage;
-using StickerSnap.Infrastructure.Telegram;
 using StickerSnap.Infrastructure.Webm;
 
 namespace StickerSnap.Infrastructure;
@@ -29,7 +28,7 @@ public static class DependencyInjection
 {
     /// <summary>
     /// The adapters behind the Application's ports: JSON-file repositories in the data directory,
-    /// the media engine (FFmpeg and ffprobe processes), the Telegram Bot API client, the cloud service's client. Each binds its
+    /// the media engine (FFmpeg and ffprobe processes), the cloud service's client. Each binds its
     /// options from <paramref name="configuration"/>.
     /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
@@ -65,20 +64,14 @@ public static class DependencyInjection
         services.AddSingleton<IEditorMedia, FfmpegEditorMedia>();
         services.AddSingleton<IStickerHeader, WebmStickerHeader>();
 
-        services.Configure<BotOptions>(configuration.GetSection(BotOptions.Section));
-        services.AddSingleton<BotToken>();
-        services.AddHttpClient<BotApiClient>(client => client.Timeout = BotApiClient.Timeout)
-            // Every address of the Bot API holds the token, and the request log writes addresses out
-            .RemoveAllLoggers();
-        // The messenger of the Application's ports is Telegram, with the one product bot
-        services.AddTransient<IStickerPublisher, TelegramStickerPublisher>();
-
-        // The cloud service holds the bot's token; this computer holds only its own key
+        // The cloud service holds the bot's token; this computer holds only its own key. Linking,
+        // publishing and feedback all go through it: the desktop never calls the Bot API
         services.Configure<CloudOptions>(configuration.GetSection(CloudOptions.Section));
         services.AddSingleton<DeviceCredentials>();
         services.AddSingleton<ThisComputer>();
         services.AddHttpClient<CloudClient>(client => client.Timeout = CloudClient.Timeout);
         services.AddTransient<IDeviceLinking, CloudDeviceLinking>();
+        services.AddTransient<IStickerPublisher, CloudStickerPublisher>();
         services.AddTransient<IFeedbackInbox, CloudFeedbackInbox>();
         services.AddSingleton<IDiagnosticsCollector, HostDiagnostics>();
 

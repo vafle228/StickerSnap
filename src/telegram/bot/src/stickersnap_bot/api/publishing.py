@@ -58,6 +58,11 @@ class PublishedPackBody(Body):
     stickers: list[PublishedStickerBody]
 
 
+class PackNameStateBody(Body):
+    name: str
+    taken: bool
+
+
 def _pack(found: StickerSet) -> PublishedPackBody:
     return PublishedPackBody(
         name=found.name,
@@ -118,6 +123,13 @@ async def get_published_pack(
     publishing: _PublishingDep, key: DeviceKey, name: _PackName
 ) -> PublishedPackBody:
     return _pack(await publishing.get(key, name))
+
+
+@router.get("/pack-names/{name}", operation_id="checkPackName")
+async def check_pack_name(
+    publishing: _PublishingDep, key: DeviceKey, name: _PackName
+) -> PackNameStateBody:
+    return PackNameStateBody(name=name, taken=await publishing.is_name_taken(key, name))
 
 
 @router.post("/packs/{name}/stickers", operation_id="addSticker")

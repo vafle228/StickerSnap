@@ -7,36 +7,44 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using StickerSnap.Infrastructure.Telegram;
-using StickerSnap.Tests.Infrastructure.Telegram;
+using StickerSnap.Infrastructure.Cloud;
+using StickerSnap.Tests.Infrastructure.Cloud;
+using StickerSnap.Tests.TestData;
 
 namespace StickerSnap.Tests.Api;
 
 /// <summary>
-/// /api/v1/packs and packChanged against a faked Bot API (its answers in TestData/BotApi), with
-/// packs.json and the stickers' files in a temporary data directory.
+/// /api/v1/packs and packChanged against a faked cloud service (its pack in TestData/Cloud), on a
+/// linked computer, with packs.json and the stickers' files in a temporary data directory. No bot
+/// token anywhere: the server reaches Telegram only through the service.
 /// </summary>
-public sealed class PacksEndpointTests : IDisposable
+public sealed class PacksEndpointTests : IDisposable, IAsyncLifetime
 {
     private const string Cats = "cats_by_StickerSnapAppBot";
 
-    private readonly ApiFactory _factory = new(("BotToken", BotApiStub.Token), ("BotApiUrl", BotApiStub.ApiUrl.ToString()));
-    private readonly BotApiStub _api = new();
+    private readonly CloudServiceStub _cloud = new();
+    private readonly ApiFactory _factory;
     private readonly WebApplicationFactory<StickerSnap.Api.Program> _server;
 
     public PacksEndpointTests()
     {
+        _factory = new ApiFactory(("ServiceUrl", CloudServiceStub.ServiceUrl.ToString())) { DataDir = _cloud.DataDir };
         _server = _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
-            services.AddHttpClient<BotApiClient>().ConfigurePrimaryHttpMessageHandler(() => _api)));
+            services.AddHttpClient<CloudClient>().ConfigurePrimaryHttpMessageHandler(() => _cloud)));
+        _cloud.Answer($"GET /v1/packs/{Cats}", TestFiles.ReadText("Cloud/cats.json"));
     }
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
+
+    public async ValueTask InitializeAsync() => await _cloud.LinkAsync(Cancel);
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     public void Dispose()
     {
         _server.Dispose();
         _factory.Dispose();
-        _api.Dispose();
+        _cloud.Dispose();
     }
 
     private static async Task<JsonNode> Json(HttpResponseMessage response) =>
@@ -86,13 +94,13 @@ public sealed class PacksEndpointTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         (await Json(response))["code"]!.GetValue<string>().Should().Be("not_our_pack");
-        _api.Requests.Should().BeEmpty();
+        _cloud.Requests.Should().BeEmpty();
     }
 
     [Fact]
     public async Task Passes_telegrams_wait_on_as_rate_limited_with_its_seconds()
     {
-        _api.Refuse("getStickerSet", 429, "Too Many Requests: retry after 24", retryAfter: 24);
+        _cloud.Refuse($"GET /v1/packs/{Cats}", 429, "rate_limited", """{"retryAfterSec":24}""", retryAfter: 24);
 
         var response = await ImportAsync(_server.CreateClient(), $"https://t.me/addstickers/{Cats}");
 
@@ -116,20 +124,19 @@ public sealed class PacksEndpointTests : IDisposable
     {
         var client = _server.CreateClient();
         (await ImportAsync(client, $"https://t.me/addstickers/{Cats}")).EnsureSuccessStatusCode();
-        _api.Answer("file", "webm bytes");
+        var file = "GET /v1/stickers/CAACAgIAAxkBAAIBc2/file";
+        _cloud.Answer(file, () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("webm bytes") });
         var media = $"/api/v1/packs/{Cats}/stickers/AgADc2/media";
 
         var first = await client.GetAsync(media, Cancel);
-        _api.Throw("getFile", new HttpRequestException("No route to host"));
-        _api.Throw("file", new HttpRequestException("No route to host"));
+        _cloud.Throw(file, new HttpRequestException("No route to host"));
         var second = await client.GetAsync(media, Cancel);
 
         first.StatusCode.Should().Be(HttpStatusCode.OK);
         first.Content.Headers.ContentType!.MediaType.Should().Be("video/webm");
         second.StatusCode.Should().Be(HttpStatusCode.OK);
         (await second.Content.ReadAsStringAsync(Cancel)).Should().Be("webm bytes");
-        _api.Requests.Count(request => request.Method == "file").Should().Be(1);
-        _api.Requests.Should().NotContain(request => request.Address.ToString().Contains("api.telegram.org"));
+        _cloud.Requests.Count(request => request.Route == file).Should().Be(1);
     }
 
     [Fact]
@@ -146,7 +153,7 @@ public sealed class PacksEndpointTests : IDisposable
         var payload = await changed.Task.WaitAsync(TimeSpan.FromSeconds(10), Cancel);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        _api.Single("deleteStickerFromSet").Body.Should().Be("""{"sticker":"CAACAgIAAxkBAAIBc3"}""");
+        _cloud.Single($"DELETE /v1/packs/{Cats}/stickers/CAACAgIAAxkBAAIBc3").Authorization.Should().Be($"Bearer {CloudServiceStub.Key}");
         payload.GetProperty("name").GetString().Should().Be(Cats);
         payload.GetProperty("count").GetInt32().Should().Be(1);
         var pack = await Json(await client.GetAsync($"/api/v1/packs/{Cats}", Cancel));
@@ -154,15 +161,40 @@ public sealed class PacksEndpointTests : IDisposable
     }
 
     [Fact]
-    public async Task Checks_a_name_against_telegram_and_offers_a_variant()
+    public async Task Checks_a_name_with_the_service_and_offers_a_variant()
     {
-        _api.Refuse("getStickerSet", 400, "Bad Request: STICKERSET_INVALID");
+        const string taken = "kot_i_divan_by_StickerSnapAppBot";
+        _cloud.Answer($"GET /v1/pack-names/{taken}", $$"""{"name":"{{taken}}","taken":true}""");
+        _cloud.Answer("GET /v1/pack-names/kot_i_divan_2_by_StickerSnapAppBot", """{"name":"kot_i_divan_2_by_StickerSnapAppBot","taken":false}""");
 
         var response = await _server.CreateClient().PostAsJsonAsync("/api/v1/packs/name-check", new { title = "Кот и диван" }, Cancel);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await response.Content.ReadAsStringAsync(Cancel))
-            .Should().Be("""{"name":"kot_i_divan","fullName":"kot_i_divan_by_StickerSnapAppBot","problems":[]}""");
+        (await response.Content.ReadAsStringAsync(Cancel)).Should().Be(
+            """{"name":"kot_i_divan","fullName":"kot_i_divan_by_StickerSnapAppBot","problems":["taken"],"suggestion":"kot_i_divan_2"}""");
+    }
+
+    [Fact]
+    public async Task Says_a_pack_the_service_does_not_give_is_not_found()
+    {
+        _cloud.Refuse($"GET /v1/packs/{Cats}", 404, "pack_not_found");
+
+        var response = await ImportAsync(_server.CreateClient(), $"https://t.me/addstickers/{Cats}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Json(response))["code"]!.GetValue<string>().Should().Be("pack_not_found");
+    }
+
+    [Fact]
+    public async Task Says_an_unlinked_computer_cannot_reach_its_packs()
+    {
+        await _cloud.Device.ForgetKeyAsync(Cancel);
+
+        var response = await ImportAsync(_server.CreateClient(), $"https://t.me/addstickers/{Cats}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await Json(response))["code"]!.GetValue<string>().Should().Be("account_not_linked");
+        _cloud.Requests.Should().BeEmpty();
     }
 
     [Fact]

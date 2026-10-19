@@ -108,9 +108,25 @@ internal sealed class CloudClient(HttpClient http, IOptions<CloudOptions> option
     public Task<CloudPack> CreatePackAsync(NewPackBody body, CancellationToken cancellationToken) =>
         PackAsync("createPack", HttpMethod.Post, "v1/packs", Body(body), cancellationToken);
 
-    /// <exception cref="Core.Errors.AppException">pack_not_found for a pack that is not this user's or not in the messenger</exception>
-    public Task<CloudPack> GetPackAsync(string name, CancellationToken cancellationToken) =>
-        PackAsync("getPublishedPack", HttpMethod.Get, $"v1/packs/{Segment(name)}", content: null, cancellationToken);
+    /// <returns>Null for a pack that is not this user's or not in the messenger: pack_not_found</returns>
+    public async Task<CloudPack?> GetPackAsync(string name, CancellationToken cancellationToken)
+    {
+        const string operation = "getPublishedPack";
+        using var response = await SendAsync(
+            operation, HttpMethod.Get, $"v1/packs/{Segment(name)}", content: null, await KeyAsync(operation, cancellationToken),
+            cancellationToken, absentOn: HttpStatusCode.NotFound);
+        return response is null ? null : await ReadAsync<CloudPack>(operation, response, cancellationToken);
+    }
+
+    /// <summary>Whether a new pack cannot take <paramref name="name"/>, whoever made the pack of that name.</summary>
+    public async Task<bool> IsPackNameTakenAsync(string name, CancellationToken cancellationToken)
+    {
+        const string operation = "checkPackName";
+        using var response = await SendAsync(
+            operation, HttpMethod.Get, $"v1/pack-names/{Segment(name)}", content: null, await KeyAsync(operation, cancellationToken),
+            cancellationToken);
+        return (await ReadAsync<PackNameState>(operation, response!, cancellationToken)).Taken;
+    }
 
     public Task<CloudPack> AddStickerAsync(string pack, InputSticker sticker, CancellationToken cancellationToken) =>
         PackAsync("addSticker", HttpMethod.Post, $"v1/packs/{Segment(pack)}/stickers", Body(sticker), cancellationToken);

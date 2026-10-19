@@ -494,6 +494,35 @@ paths:
         "502":
           $ref: "#/components/responses/TelegramError"
 
+  /v1/pack-names/{name}:
+    parameters:
+      - $ref: "#/components/parameters/PackName"
+    get:
+      tags: [publish]
+      operationId: checkPackName
+      summary: Занято ли имя для нового пака
+      description: |
+        `taken`, если пак с этим именем есть в реестре сервиса или Telegram его знает, чей
+        угодно (getPublishedPack про чужой пак отвечает 404 и занятость не показывает). Имя без
+        суффикса `_by_<бот>` — 422 `pack_name_invalid` без запроса в Telegram.
+      security:
+        - deviceKey: []
+      responses:
+        "200":
+          description: Ответ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackNameState"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "502":
+          $ref: "#/components/responses/TelegramError"
+
   /v1/packs/{name}/stickers:
     parameters:
       - $ref: "#/components/parameters/PackName"
@@ -1039,6 +1068,16 @@ components:
         id:
           type: string
           description: "`file_id` загруженного .webm, для `InputSticker.file`"
+
+    PackNameState:
+      type: object
+      required: [name, taken]
+      properties:
+        name:
+          type: string
+        taken:
+          type: boolean
+          description: Есть в реестре сервиса или в Telegram, чей угодно
 
     InputSticker:
       type: object
