@@ -42,6 +42,24 @@ describe("demo server", () => {
     vi.unstubAllGlobals();
   });
 
+  describe("diagnostics", () => {
+    const report = (traceId?: string) =>
+      call(api.GET("/api/v1/diagnostics", { params: { query: { traceId } } }));
+
+    it("sends the report's head with the trace asked for and its size in UTF-8", async () => {
+      use("ok");
+      const { text, bytes } = await report("mock-7");
+      expect(text).toMatch(/^StickerSnap 0\.1\.0 \(web\)\nFFmpeg 9\.0\.2 \(ok\)\n/);
+      expect(text).toContain("Error: trace mock-7\n");
+      expect(bytes).toBe(new TextEncoder().encode(text).length);
+    });
+
+    it("refuses a trace over 64 characters", async () => {
+      use("ok");
+      expect(await failure(report("a".repeat(65)))).toBe("bad_request");
+    });
+  });
+
   describe("app", () => {
     const mode = async () => (await call(api.GET("/api/v1/app"))).mode;
 
