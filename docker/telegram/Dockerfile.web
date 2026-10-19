@@ -1,0 +1,8 @@
+# The VPS's front: Caddy with the Mini App's production build. Built by the deploy workflow and
+# Pipeline from the Mini App Pipeline built and checked (artifact miniapp-dist), nothing rebuilt:
+#   docker build -f docker/telegram/Dockerfile.web \
+#     --build-context miniapp=src/telegram/miniapp/dist docker/telegram
+FROM caddy:2.10-alpine
+
+COPY Caddyfile /etc/caddy/Caddyfile
+COPY --from=miniapp . /srv/miniapp

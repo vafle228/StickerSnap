@@ -1,0 +1,24 @@
+# The public face of the bot service on the VPS: HTTPS with a certificate Caddy gets and renews
+# by itself (Let's Encrypt), the Mini App's static files and everything else to the service.
+# DOMAIN comes from .env beside compose.prod.yaml.
+{$DOMAIN} {
+	encode zstd gzip
+
+	# The service: the desktop's and the Mini App's API, Telegram's webhook, the health check
+	@service path /v1/* /telegram/webhook /health
+	handle @service {
+		reverse_proxy bot:8080
+	}
+
+	# The Mini App (src/telegram/miniapp, the production build), a single page: unknown paths get
+	# index.html. Vite names assets by their hash, so they never change; index.html always reloads.
+	handle {
+		root * /srv/miniapp
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@pages not path /assets/*
+		header @pages Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

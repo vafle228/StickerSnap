@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     webhook_base_url: str | None = None
     # checked against the X-Telegram-Bot-Api-Secret-Token header of every webhook call
     webhook_secret: SecretStr | None = None
+    # the Mini App's public address, opened by the menu button; the production Mini App is served
+    # by the same host as the service (docker/telegram/Caddyfile). Not set: the menu button stays
+    # the commands list, as the development bot's Mini App runs on localhost
+    miniapp_url: str | None = None
     # another Bot API server, for a fake one in tests; the real Telegram when not set
     telegram_api_url: str | None = None
     # «Скачать для Windows и Linux» in the bot's messages
@@ -32,7 +36,7 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8080
 
-    @field_validator("feedback_chat_id", mode="before")
+    @field_validator("feedback_chat_id", "miniapp_url", mode="before")
     @classmethod
     def _empty_is_none(cls, value: object) -> object:
         # .env.example leaves it empty

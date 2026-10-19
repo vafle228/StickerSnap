@@ -98,3 +98,16 @@ def _form(n: int) -> int:
 
 def _stickers(n: int) -> str:
     return f"{n} {('стикер', 'стикера', 'стикеров')[_form(n)]}"
+
+
+# The bot's profile (board 17, section 5): the service sets it on every start, so it follows git
+# Description: the empty chat's «Что умеет этот бот?», up to 512 characters
+DESCRIPTION = (
+    "StickerSnap делает видеостикеры для Telegram из видео и гифок на компьютере и сам публикует "
+    "их в ваши паки. Здесь вы смотрите паки, отправляете их друзьям, привязываете компьютер и "
+    "пишете нам об ошибках."
+)
+# About: the profile's line under the name, up to 120 characters
+ABOUT = "Видеостикеры для Telegram из видео и гифок. Делаются на компьютере, живут здесь."
+# The menu button left of the input field, opening the Mini App
+MENU_BUTTON = "StickerSnap"

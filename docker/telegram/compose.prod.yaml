@@ -1,0 +1,61 @@
+# The bot service on the VPS: Caddy (HTTPS, the Mini App) in front of the service, and the daily
+# backup of its database. The deploy workflow (.github/workflows/deploy-bot.yml) copies this file
+# to the VPS as compose.yaml and runs it with the images it pushed:
+#   TAG=<commit> docker compose pull && TAG=<commit> docker compose up -d
+# .env beside it holds DOMAIN, the token and the other secrets (docs: .env.example); it is
+# written on the VPS by hand and is never in git or in an image.
+name: stickersnap-bot
+
+services:
+  web:
+    image: ${REGISTRY:-ghcr.io/vafle228/stickersnap}-web:${TAG:-latest}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      # Caddy's certificates: kept across restarts, so Let's Encrypt is not asked again
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - bot
+    restart: unless-stopped
+
+  bot:
+    image: ${REGISTRY:-ghcr.io/vafle228/stickersnap}-bot:${TAG:-latest}
+    env_file: .env
+    environment:
+      # Production always takes updates by webhook, at the address Caddy serves
+      BOT_MODE: webhook
+      WEBHOOK_BASE_URL: https://${DOMAIN}
+      MINIAPP_URL: https://${DOMAIN}/
+    # No ports: only Caddy reaches the service, over the compose network
+    volumes:
+      - bot-data:/data
+    restart: unless-stopped
+
+  backup:
+    # The service's own image: stickersnap-bot-backup copies the database once a day
+    image: ${REGISTRY:-ghcr.io/vafle228/stickersnap}-bot:${TAG:-latest}
+    entrypoint: ["sh", "-c", "while true; do stickersnap-bot-backup; sleep 86400; done"]
+    # root: a reader of a WAL database writes its -shm file, and ./backups belongs to the VPS user
+    user: root
+    environment:
+      BACKUP_DIR: /backups
+      BACKUP_KEEP: "14"
+    volumes:
+      - bot-data:/data
+      # on the VPS beside this file, to copy off the server: scp vps:stickersnap/backups/...
+      - ./backups:/backups
+    healthcheck:
+      disable: true
+    depends_on:
+      - bot
+    restart: unless-stopped
+
+volumes:
+  bot-data:
+  caddy-data:
+  caddy-config:
