@@ -8,7 +8,7 @@ using StickerSnap.Infrastructure.Cloud;
 namespace StickerSnap.Infrastructure.Diagnostics;
 
 /// <summary>
-/// The head of a report: the app's, the media engine's and the runtime's versions, the mode and
+/// The head of a report: the app's, the media engine's, the runtime's and the shell's versions, the mode and
 /// the system; and what of this computer's must not leave it: the user's name and the device key.
 /// </summary>
 internal sealed class HostSummary(IHostInfo host, IMediaEngine engine, ThisComputer computer, DeviceCredentials credentials)
@@ -22,6 +22,7 @@ internal sealed class HostSummary(IHostInfo host, IMediaEngine engine, ThisCompu
             $"StickerSnap {computer.AppVersion} ({Mode()})",
             $"{media.Name} {media.Version ?? "-"} ({Status(media.Status)})",
             RuntimeInformation.FrameworkDescription,
+            .. host.ShellVersion is { } shell ? [shell] : Array.Empty<string>(),
             $"{computer.Platform} ({RuntimeInformation.OSArchitecture.ToString().ToLowerInvariant()})",
         ];
     }

@@ -7,4 +7,7 @@ public interface IHostInfo
     string AppVersion { get; }
 
     AppMode Mode { get; }
+
+    /// <summary>The desktop shell and its version, "Electron 33.2.1"; null in the browser</summary>
+    string? ShellVersion { get; }
 }
