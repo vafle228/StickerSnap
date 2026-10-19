@@ -16,15 +16,15 @@ namespace StickerSnap.Tests.Api.Contract;
 public static class ContractDocuments
 {
     private const string ContractResource = "Contract/openapi.yaml";
+    private const string BotServiceResource = "Contract/bot-service.yaml";
 
     /// <summary>src/contract/openapi.yaml.</summary>
-    public static Task<OpenApiDocument> ContractAsync(CancellationToken cancellationToken)
-    {
-        using var stream = typeof(ContractDocuments).Assembly.GetManifestResourceStream(ContractResource)
-            ?? throw new FileNotFoundException($"No {ContractResource} among the test assembly's resources");
-        using var reader = new StreamReader(stream);
-        return ReadAsync(reader.ReadToEnd(), cancellationToken);
-    }
+    public static Task<OpenApiDocument> ContractAsync(CancellationToken cancellationToken) =>
+        ResourceAsync(ContractResource, cancellationToken);
+
+    /// <summary>src/contract/bot-service.yaml: the cloud service the desktop is a client of.</summary>
+    public static Task<OpenApiDocument> BotServiceAsync(CancellationToken cancellationToken) =>
+        ResourceAsync(BotServiceResource, cancellationToken);
 
     /// <summary>A YAML of TestData/, such as a trimmed contract: `Contract/trimmed.yaml`.</summary>
     public static Task<OpenApiDocument> TestFileAsync(string path, CancellationToken cancellationToken) =>
@@ -36,6 +36,14 @@ public static class ContractDocuments
         using var factory = new ApiFactory();
         var provider = factory.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1");
         return await provider.GetOpenApiDocumentAsync(cancellationToken);
+    }
+
+    private static Task<OpenApiDocument> ResourceAsync(string resource, CancellationToken cancellationToken)
+    {
+        using var stream = typeof(ContractDocuments).Assembly.GetManifestResourceStream(resource)
+            ?? throw new FileNotFoundException($"No {resource} among the test assembly's resources");
+        using var reader = new StreamReader(stream);
+        return ReadAsync(reader.ReadToEnd(), cancellationToken);
     }
 
     private static async Task<OpenApiDocument> ReadAsync(string yaml, CancellationToken cancellationToken)
