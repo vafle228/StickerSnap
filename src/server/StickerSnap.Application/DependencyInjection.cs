@@ -3,6 +3,7 @@ using StickerSnap.Application.Account;
 using StickerSnap.Application.App;
 using StickerSnap.Application.Estimates;
 using StickerSnap.Application.Exports;
+using StickerSnap.Application.Feedback;
 using StickerSnap.Application.Files;
 using StickerSnap.Application.Jobs;
 using StickerSnap.Application.Packs;
@@ -26,6 +27,7 @@ public static class DependencyInjection
         .AddSingleton<IAppInfoService, AppInfoService>()
         .AddSingleton<ISettingsService, SettingsService>()
         .AddSingleton<IAccountService, AccountService>()
+        .AddSingleton<IFeedbackService, FeedbackService>()
         .AddSingleton<IPackService, PackService>()
         .AddSingleton<IProjectService, ProjectService>()
         .AddSingleton<IProjectMediaService, ProjectMediaService>()
