@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using StickerSnap.Application.Diagnostics;
 using StickerSnap.Application.Feedback;
 using StickerSnap.Core.Errors;
 
@@ -53,6 +54,50 @@ public sealed class FeedbackEndpointTests : IDisposable
         _sent.Contact.Should().Be("@dima");
         _sent.Error.Should().Be(new FeedbackError("render_failed", "7f3a-c21e"));
         _sent.Diagnostics.Should().StartWith("StickerSnap ").And.Contain("Error: render_failed, trace 7f3a-c21e");
+    }
+
+    [Fact]
+    public async Task Puts_the_interface_s_error_and_last_actions_in_the_report()
+    {
+        var response = await Client().PostAsJsonAsync(
+            "/api/v1/feedback",
+            new
+            {
+                type = "bug",
+                text = "",
+                canReply = false,
+                error = new
+                {
+                    code = "internal",
+                    traceId = "a1b2-c3d4",
+                    source = "interface",
+                    message = "TypeError: segment is undefined",
+                    stack = "at Inspector",
+                    at = "2026-10-19T13:22:00Z",
+                    count = 2,
+                },
+                actions = new[] { new { at = "2026-10-19T13:21:50Z", what = "Кнопка: Экспорт" } },
+            },
+            Cancel);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        _sent!.Error.Should().Be(new FeedbackError("internal", "a1b2-c3d4", ErrorSource.Interface,
+            "TypeError: segment is undefined", "at Inspector", new DateTimeOffset(2026, 10, 19, 13, 22, 0, TimeSpan.Zero), 2));
+        _sent.Diagnostics.Should().Contain("Error: internal, number a1b2-c3d4 (interface)\nRepeated 2 times in 10 minutes\n")
+            .And.Contain("== Interface error at 2026-10-19T13:22:00Z ==\nMessage: TypeError: segment is undefined\n")
+            .And.Contain("== Last actions in the interface ==\n2026-10-19T13:21:50Z Кнопка: Экспорт\n");
+    }
+
+    [Fact]
+    public async Task Refuses_more_than_30_actions_with_the_field()
+    {
+        var actions = Enumerable.Range(0, 31).Select(i => new { at = "2026-10-19T13:21:50Z", what = $"Кнопка {i}" });
+
+        var response = await Client().PostAsJsonAsync(
+            "/api/v1/feedback", new { type = "bug", text = "Упало", canReply = false, actions }, Cancel);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Json(response))["fields"]!["actions"]![0]!.GetValue<string>().Should().Be("too_many");
     }
 
     [Fact]

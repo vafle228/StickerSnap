@@ -1,3 +1,4 @@
+import type { LastCrash } from "@stickersnap/desktop/bridge";
 import { fetchFile } from "../api/client";
 import type { SourceRef, Theme } from "../api/types";
 import { serverConnection } from "./connection";
@@ -45,6 +46,8 @@ export interface Platform {
   showInFolder(path: string): void;
   /** The theme setting changed: Electron's title bar and next launch follow it */
   themeChanged(mode: Theme): void;
+  /** How the last launch crashed, once (artboard 19, section 4); the browser never knows */
+  lastCrash(): Promise<LastCrash | null>;
 }
 
 const VIDEO_TYPES = ".mp4,.mov,.webm,.gif,.webp,video/*,image/gif,image/webp";
@@ -90,6 +93,7 @@ export const browserPlatform: Platform = {
   openFolder: () => {},
   showInFolder: () => {},
   themeChanged: () => {},
+  lastCrash: () => Promise.resolve(null),
 };
 
 /** The platform this SPA runs on: Electron's when the desktop shell's preload is there. */

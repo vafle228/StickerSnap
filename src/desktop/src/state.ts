@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import type { ThemeSource } from "./bridge.js";
+import type { LastCrash, ThemeSource } from "./bridge.js";
 
 export interface Bounds {
   x: number;
@@ -18,6 +18,12 @@ export interface ShellState {
   theme: ThemeSource;
   bounds?: Bounds;
   maximized?: boolean;
+  /** A launch is on: set at the start, cleared on a clean quit. Found set, the shell crashed. */
+  running?: boolean;
+  /** ISO time the running launch began */
+  startedAt?: string;
+  /** How the last launch crashed, until the next start hands it to the SPA */
+  crash?: LastCrash;
 }
 
 const DEFAULT: ShellState = { theme: "system" };
@@ -28,6 +34,19 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "obj
 
 const isPort = (v: unknown): v is number =>
   typeof v === "number" && Number.isInteger(v) && v > 0 && v < 65536;
+
+const KINDS: readonly LastCrash["kind"][] = ["server", "window", "shell"];
+
+function isCrash(v: unknown): v is LastCrash {
+  return (
+    isRecord(v) &&
+    KINDS.includes(v.kind as LastCrash["kind"]) &&
+    typeof v.at === "string" &&
+    (v.code === undefined || v.code === null || typeof v.code === "number") &&
+    (v.reason === undefined || typeof v.reason === "string") &&
+    (v.output === undefined || typeof v.output === "string")
+  );
+}
 
 function isBounds(v: unknown): v is Bounds {
   return (
@@ -51,6 +70,9 @@ export function readState(file: string): ShellState {
   if (THEMES.includes(raw.theme as ThemeSource)) state.theme = raw.theme as ThemeSource;
   if (isBounds(raw.bounds)) state.bounds = raw.bounds;
   if (typeof raw.maximized === "boolean") state.maximized = raw.maximized;
+  if (typeof raw.running === "boolean") state.running = raw.running;
+  if (typeof raw.startedAt === "string") state.startedAt = raw.startedAt;
+  if (isCrash(raw.crash)) state.crash = raw.crash;
   return state;
 }
 

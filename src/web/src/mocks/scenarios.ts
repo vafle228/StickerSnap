@@ -22,6 +22,8 @@ export const SCENARIOS = {
   "save-fails": "Не сохраняется",
   "webm-bad": "Чужой .webm",
   "feedback-limit": "Лимит отзывов",
+  "screen-crash": "Экран упал",
+  "last-crash": "Сбой прошлого запуска",
 } as const;
 
 export type Scenario = keyof typeof SCENARIOS;

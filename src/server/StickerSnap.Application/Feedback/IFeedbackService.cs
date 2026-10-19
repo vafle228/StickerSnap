@@ -1,3 +1,4 @@
+using StickerSnap.Application.Diagnostics;
 using StickerSnap.Core.Errors;
 
 namespace StickerSnap.Application.Feedback;
@@ -10,7 +11,7 @@ public interface IFeedbackService
     /// </summary>
     /// <returns>The feedback's number, as the team sees it</returns>
     /// <exception cref="AppException">
-    /// bad_request with fields text, contact or error; what the inbox throws: network_unavailable,
+    /// bad_request with fields text, contact, error or actions; what the inbox throws: network_unavailable,
     /// bot_unavailable, rate_limited
     /// </exception>
     Task<long> SendAsync(FeedbackDraft draft, CancellationToken cancellationToken);
@@ -21,9 +22,11 @@ public interface IFeedbackService
 /// <param name="CanReply">«Можно ответить мне в Telegram», or «Ответить мне на» without a link</param>
 /// <param name="Contact">The e-mail or @username of «Ответить мне на», up to 100 characters</param>
 /// <param name="Error">The error the window was opened from; only for a bug</param>
+/// <param name="Actions">The interface's last steps, up to 30, the oldest first; only for a bug</param>
 public sealed record FeedbackDraft(
     FeedbackKind Kind,
     string Text,
     bool CanReply,
     string? Contact = null,
-    FeedbackError? Error = null);
+    FeedbackError? Error = null,
+    IReadOnlyList<InterfaceAction>? Actions = null);

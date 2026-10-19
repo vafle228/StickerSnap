@@ -16,6 +16,7 @@ function fakeBridge(over: Partial<DesktopBridge> = {}): DesktopBridge {
     saveFile: vi.fn(() => Promise.resolve()),
     setTheme: vi.fn(),
     pathForFile: vi.fn(() => ""),
+    lastCrash: vi.fn(() => Promise.resolve(null)),
     ...over,
   };
 }

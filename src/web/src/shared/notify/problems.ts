@@ -1,6 +1,7 @@
 import type { Tone } from "@stickersnap/ds";
 import { ApiError } from "../api/client";
 import type { ErrorCode, Problem } from "../api/types";
+import { captureProblem } from "../report/errors";
 import { t } from "../strings/ru";
 import { notify, type ToastAction, type ToastHandle } from "./notify";
 
@@ -83,5 +84,6 @@ export function notifyProblem(
     problem.log || problem.traceId
       ? { log: problem.log, traceId: problem.traceId || undefined }
       : undefined;
-  return notify.toast({ tone, title, description: text, details, ...options });
+  const report = captureProblem(problem, title);
+  return notify.toast({ tone, title, description: text, details, report, ...options });
 }

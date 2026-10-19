@@ -19,4 +19,7 @@ public sealed class ShellOptions
 
     /// <summary>The shell's process: the server quits once it is gone, even after a crash.</summary>
     public int? ParentPid { get; set; }
+
+    /// <summary>The shell and its version, «Electron 33.2.1», for the head of a report.</summary>
+    public string? ShellVersion { get; set; }
 }

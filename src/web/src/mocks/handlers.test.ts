@@ -2,6 +2,7 @@ import { setupServer } from "msw/node";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { createDb, type MockDb } from "./data";
 import { handlers } from "./handlers";
+import type { FeedbackRequest } from "../shared/api/types";
 import type { Scenario } from "./scenarios";
 
 /* The demo server answers through the SPA's own typed client, the way screens call it:
@@ -57,6 +58,41 @@ describe("demo server", () => {
     it("refuses a trace over 64 characters", async () => {
       use("ok");
       expect(await failure(report("a".repeat(65)))).toBe("bad_request");
+    });
+  });
+
+  describe("feedback", () => {
+    const at = "2026-10-19T13:22:00Z";
+    const send = (body: FeedbackRequest) => call(api.POST("/api/v1/feedback", { body }));
+
+    it("takes a bug with the interface's error and its last steps", async () => {
+      use("ok");
+      const error = { code: "internal", source: "interface" as const, message: "TypeError", at };
+      const sent = await send({
+        type: "bug",
+        text: "",
+        canReply: false,
+        error,
+        actions: [{ at, what: "Кнопка: Экспорт" }],
+      });
+      expect(sent.id).toBeGreaterThan(1000);
+    });
+
+    it("refuses steps on an idea, more than 30 of them, and an error out of bounds", async () => {
+      use("ok");
+      const step = { at, what: "Кнопка" };
+      expect(
+        await failure(send({ type: "idea", text: "Идея", canReply: false, actions: [step] })),
+      ).toBe("bad_request");
+      const many = Array.from({ length: 31 }, () => step);
+      expect(
+        await failure(send({ type: "bug", text: "Упало", canReply: false, actions: many })),
+      ).toBe("bad_request");
+      expect(
+        await failure(
+          send({ type: "bug", text: "", canReply: false, error: { code: "internal", count: 0 } }),
+        ),
+      ).toBe("bad_request");
     });
   });
 

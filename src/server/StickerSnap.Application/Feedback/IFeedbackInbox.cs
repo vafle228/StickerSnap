@@ -1,3 +1,5 @@
+using StickerSnap.Application.Diagnostics;
+
 namespace StickerSnap.Application.Feedback;
 
 /// <summary>
@@ -40,5 +42,17 @@ public sealed record FeedbackLetter(
     string? Diagnostics = null);
 
 /// <param name="Code">The error's code of the contract, such as render_failed</param>
-/// <param name="TraceId">The trace id the error was shown with</param>
-public sealed record FeedbackError(string Code, string? TraceId);
+/// <param name="TraceId">The trace id the error was shown with; the interface's own number for an error of the interface or the shell</param>
+/// <param name="Source">What failed; only the report tells it, the inbox gets the code and the number</param>
+/// <param name="Message">The exception's text, or why the last launch stopped</param>
+/// <param name="Stack">The stack and the component stack, or the tail of the server's output</param>
+/// <param name="At">When it first happened</param>
+/// <param name="Count">How many times it happened in 10 minutes</param>
+public sealed record FeedbackError(
+    string Code,
+    string? TraceId,
+    ErrorSource Source = ErrorSource.Server,
+    string? Message = null,
+    string? Stack = null,
+    DateTimeOffset? At = null,
+    int Count = 1);

@@ -3,6 +3,7 @@ import { EXIT_FALLBACK_MS } from "@stickersnap/ds/hooks";
 import { create } from "zustand";
 import { ConfirmDialog, type IconName, type Tone } from "@stickersnap/ds";
 import { overlays } from "../overlays/overlays";
+import type { ReportedError } from "../report/errors";
 import { t } from "../strings/ru";
 import { DetailsDialog, type ToastDetails } from "./DetailsDialog";
 
@@ -28,6 +29,9 @@ export interface ToastOptions {
   action?: ToastAction;
   /** Errors: the log and traceId behind «Подробности» */
   details?: ToastDetails;
+  /** An error the user may report: «Сообщить» after the action (artboard 19·1); «Подробности»
+   *  stays only when there is a log to read */
+  report?: ReportedError;
   /** 0–100: a running background task. update() turns it into the result in place */
   progress?: number;
   progressLabel?: string;

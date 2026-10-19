@@ -1,6 +1,7 @@
 import type { Job, Segment } from "../../../shared/api/types";
 import type { ToastOptions } from "../../../shared/notify";
 import { problemText, toProblem } from "../../../shared/notify";
+import { captureProblem } from "../../../shared/report";
 import { plural, t } from "../../../shared/strings/ru";
 import { kilobytes } from "../format";
 import { percent, stageWord } from "./format";
@@ -10,7 +11,7 @@ import { percent, stageWord } from "./format";
 
 export type ExportToast = Pick<
   ToastOptions,
-  "tone" | "title" | "badge" | "description" | "progress" | "details" | "timeout"
+  "tone" | "title" | "badge" | "description" | "progress" | "details" | "report" | "timeout"
 >;
 
 const nameOf = (segments: Segment[], id: string) => segments.find((s) => s.id === id)?.name ?? id;
@@ -70,6 +71,7 @@ export function exportToast(job: Job, segments: Segment[]): ExportToast | undefi
         failure.log || failure.traceId
           ? { log: failure.log, traceId: failure.traceId || undefined }
           : undefined,
+      report: captureProblem(failure, t("export.failed")),
     };
   }
   return undefined;

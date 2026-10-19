@@ -6,13 +6,13 @@ namespace StickerSnap.Application.Diagnostics;
 public interface IDiagnosticsService
 {
     /// <summary>
-    /// The report for the developer: the app and the system, the error of <paramref name="traceId"/>
-    /// with its context and its project's settings, the latest errors and the server's log around
-    /// it. Paths, the user's name and keys are taken out; it fits <see cref="DiagnosticsService.LimitBytes"/>.
+    /// The report for the developer: the app and the system, the subject's error with its context
+    /// and its project's settings, or what the interface saw of its own error; the latest errors,
+    /// the interface's last steps and the server's log around it. Paths, the user's name and keys
+    /// are taken out; it fits <see cref="DiagnosticsService.LimitBytes"/>.
     /// </summary>
-    /// <param name="code">The code the SPA shows, when the error is its own and has no trace on the server</param>
     /// <exception cref="AppException">bad_request with fields.traceId for a trace id over 64 characters</exception>
-    Task<DiagnosticsReport> CollectAsync(string? traceId, string? code, CancellationToken cancellationToken);
+    Task<DiagnosticsReport> CollectAsync(ReportSubject subject, CancellationToken cancellationToken);
 }
 
 /// <param name="Text">Plain text for a person to read, '\n' line endings</param>

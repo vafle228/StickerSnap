@@ -1058,7 +1058,11 @@ paths:
         режим, ОС, контекст ошибки и журнал сервера — тот же пакет, что отдаёт `getDiagnostics`.
         Видео, кадры и проекты не уходят никогда.
 
-        Неверное тело — `bad_request` с `fields.text` или `fields.contact`. Сервис недоступен или
+        У `bug` SPA добавляет то, чего сервер не знает (F5): источник, текст и стек ошибки
+        интерфейса или прошлого запуска, счётчик повторов за 10 минут и последние 30 действий.
+
+        Неверное тело — `bad_request` с `fields.text`, `fields.contact`, `fields.error` или
+        `fields.actions`. Сервис недоступен или
         не настроен — `bot_unavailable` (503), нет сети — `network_unavailable` (503), больше 5
         отзывов в час — `rate_limited` (429) с `params.retryAfterSec`.
       requestBody:
@@ -2316,10 +2320,20 @@ components:
           description: E-mail или @username; уходит в сервис, только если компьютер не привязан
         error:
           $ref: '#/components/schemas/FeedbackError'
+        actions:
+          type: array
+          maxItems: 30
+          description: |
+            Только у `bug`: последние действия в интерфейсе, старые первыми (F5). Без содержимого полей.
+          items:
+            $ref: '#/components/schemas/FeedbackAction'
 
     FeedbackError:
       type: object
-      description: Только у `bug`, ошибка, из которой открыли окно (F5)
+      description: |
+        Только у `bug`, ошибка, из которой открыли окно (F5). Сервер вписывает её в пакет сведений,
+        вычистив пути, имя пользователя и ключи. У `interface` и `shell` ошибки нет в памяти сервера:
+        журнал берётся от 15 минут до `at`.
       required: [code]
       properties:
         code:
@@ -2329,6 +2343,45 @@ components:
         traceId:
           type: string
           maxLength: 64
+          description: У `server` — traceId из Problem, у `interface` и `shell` — номер, который дал SPA
+        source:
+          $ref: '#/components/schemas/ErrorSource'
+        message:
+          type: string
+          maxLength: 1000
+          description: '`interface` и `shell`: текст исключения или причина остановки'
+        stack:
+          type: string
+          maxLength: 8000
+          description: '`interface`: стек и стек компонентов; `shell`: хвост вывода сервера'
+        at:
+          type: string
+          format: date-time
+          description: Когда ошибка случилась впервые
+        count:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: Сколько раз она повторилась за 10 минут
+
+    ErrorSource:
+      type: string
+      description: |
+        Что упало: server — запрос или задача сервера (по умолчанию), interface — сам интерфейс
+        (ErrorBoundary, window.onerror, unhandledrejection), shell — прошлый запуск приложения
+      enum: [server, interface, shell]
+
+    FeedbackAction:
+      type: object
+      required: [at, what]
+      properties:
+        at:
+          type: string
+          format: date-time
+        what:
+          type: string
+          maxLength: 200
+          description: '«Раздел: Проекты», «Кнопка: Экспорт», «POST /api/v1/exports → 202»'
 
     FeedbackCreated:
       type: object

@@ -171,3 +171,44 @@
 .failure {
   margin-top: 0;
 }
+
+/* 19·4б: the card of the error the window was opened from */
+.errorCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.errorCard > svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.errorCard b {
+  display: block;
+  font: 600 14px/20px var(--font-sans);
+}
+
+.errorCard span {
+  display: block;
+  font: 500 12px/16px var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+/* 19·4б: the list of what goes, open, in the sunken box */
+.sent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 12px 16px 12px 32px;
+  border-radius: 16px;
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-inset);
+  font: 500 13px/18px var(--font-sans);
+  color: var(--ink);
+}

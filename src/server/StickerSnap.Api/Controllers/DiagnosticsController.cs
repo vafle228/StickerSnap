@@ -25,7 +25,7 @@ public sealed class DiagnosticsController : ControllerBase
     [ProducesDefaultResponseType(typeof(ProblemDetails))]
     public async Task<IActionResult> Get([FromQuery] string? traceId, CancellationToken cancellationToken)
     {
-        var report = await _service.CollectAsync(traceId, code: null, cancellationToken);
+        var report = await _service.CollectAsync(new ReportSubject(traceId), cancellationToken);
         return Ok(DiagnosticsReportBody.From(report));
     }
 }

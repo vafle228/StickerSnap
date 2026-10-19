@@ -1,5 +1,6 @@
 import createClient, { type Middleware } from "openapi-fetch";
 import { serverConnection } from "../platform/connection";
+import { describeRequest, trail } from "../report/trail";
 import type { paths } from "./schema";
 import type { Problem } from "./types";
 
@@ -29,9 +30,20 @@ const auth: Middleware = {
   },
 };
 
+/** Each request with its status goes on the trail a bug's report carries (artboard 19, section 4). */
+const steps: Middleware = {
+  onResponse({ request, response }) {
+    trail.record(describeRequest(request.method, request.url, response.status));
+    return response;
+  },
+  onError({ request }) {
+    trail.record(describeRequest(request.method, request.url, "нет ответа"));
+  },
+};
+
 /** Typed client of the contract: paths, params, bodies and responses all come from schema.d.ts. */
 export const api = createClient<paths>({ baseUrl: connection.baseUrl });
-api.use(auth);
+api.use(auth, steps);
 
 /** An address the browser loads by itself (<video>, <img>): it cannot send the Bearer header,
  *  so the token rides in the query string, like the hub's (contract, «Доступ»). */

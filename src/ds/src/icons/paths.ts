@@ -80,6 +80,14 @@ export const ICON_PATHS = {
   computer: ["M6 5h12a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z", "M2 19h20"],
   /** «Отзыв» in the menu (artboard 19): a speech bubble with lines */
   feedback: ["M4 5h16v11H9l-5 4z", "M8 9h8", "M8 12h5"],
+  // «Сообщить об ошибке» (artboard 19·1): a beetle, body and legs
+  bug: [
+    "M8 8a4 4 0 0 1 8 0v6a4 4 0 0 1-8 0z",
+    "M12 12v6",
+    "M4 13h4M16 13h4",
+    "M5 7l3 2M19 7l-3 2",
+    "M5 19l3-2M19 19l-3-2",
+  ],
 } satisfies Record<string, string[]>;
 export type IconName = keyof typeof ICON_PATHS;
 

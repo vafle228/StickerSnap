@@ -98,6 +98,8 @@ export interface RunningServer {
   token: string;
   /** Resolves with the exit code when the server stops, whoever stopped it */
   exited: Promise<number | null>;
+  /** The last lines the server printed, for the report of a crash */
+  output(): string;
   stop(): Promise<void>;
 }
 
@@ -108,13 +110,15 @@ export interface StartOptions {
   log?: Writable;
   /** How long the server may take to answer; `dotnet run` builds first */
   timeoutMs: number;
+  /** The shell and its version, «Electron 44.7.2», for the head of a bug's report */
+  shellVersion?: string;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Starts the server on 127.0.0.1:`port` and resolves once it answers HTTP. The server learns
- *  the token, that it runs as the desktop app, and the shell's pid: it quits by itself when the
- *  shell is gone, even if the shell crashed (Program.cs). */
+ *  the token, that it runs as the desktop app, the shell's pid and version: it quits by itself
+ *  when the shell is gone, even if the shell crashed (Program.cs). */
 export async function startServer(
   cmd: ServerCommand,
   options: StartOptions,
@@ -129,6 +133,7 @@ export async function startServer(
       StickerSnap__Token: options.token,
       StickerSnap__Mode: "desktop",
       StickerSnap__ParentPid: String(process.pid),
+      ...(options.shellVersion ? { StickerSnap__ShellVersion: options.shellVersion } : {}),
       DOTNET_NOLOGO: "1",
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -168,7 +173,7 @@ export async function startServer(
   while (!done) {
     try {
       await fetch(`${baseUrl}/`, { signal: AbortSignal.timeout(1000) });
-      return { baseUrl, token: options.token, exited, stop };
+      return { baseUrl, token: options.token, exited, output: () => tail, stop };
     } catch {
       if (Date.now() > deadline) {
         await stop();

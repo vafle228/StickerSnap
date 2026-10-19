@@ -33,6 +33,7 @@ const bridge: DesktopBridge = {
   saveFile: (url, fileName) => invoke("file:save", url, fileName),
   setTheme: (theme) => send("theme:set", theme),
   pathForFile: (file) => webUtils.getPathForFile(file),
+  lastCrash: () => invoke("crash:take"),
 };
 
 contextBridge.exposeInMainWorld("stickersnap", bridge);
