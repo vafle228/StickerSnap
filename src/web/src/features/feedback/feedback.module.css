@@ -1,0 +1,173 @@
+/* «Написать отзыв» (artboard 19·4): 560 px, one column. */
+.window {
+  max-width: 560px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* The type across the whole width, three equal segments */
+.types {
+  display: flex;
+}
+
+.types > button {
+  flex: 1 1 0;
+  height: 40px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  padding-left: 16px;
+}
+
+/* The design system has no multi-line field: the sunken box of TextField, as 19·4 draws it */
+.area,
+.contact {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-inset);
+  color: var(--ink);
+  box-sizing: border-box;
+}
+
+.area {
+  min-height: 132px;
+  padding: 12px 16px;
+  border-radius: 20px;
+  font: 400 15px/22px var(--font-sans);
+  resize: none;
+}
+
+.area:focus-visible,
+.contact:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.area::placeholder,
+.contact::placeholder {
+  color: var(--ink-subtle);
+}
+
+.invalid,
+.invalid:focus-visible {
+  outline: 2px solid var(--danger);
+  outline-offset: 2px;
+}
+
+.hint,
+.error {
+  display: flex;
+  gap: 4px;
+  padding-left: 16px;
+  font: 500 12px/16px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.hint {
+  font-variant-numeric: tabular-nums;
+}
+
+.error {
+  align-items: flex-start;
+  font-weight: 600;
+  color: var(--danger);
+}
+
+/* 19·4в: what goes with a bug, short, with the list behind «Что отправится» */
+.report {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-inset);
+  color: var(--ink-muted);
+}
+
+.reportBody {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  font: 500 13px/18px var(--font-sans);
+  color: var(--ink);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary-ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.muted {
+  font: 500 12px/16px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+/* 19·4а: «Можно ответить мне в Telegram» with the line under it */
+.reply {
+  align-items: flex-start;
+}
+
+.replyText {
+  display: flex;
+  flex-direction: column;
+}
+
+.replyText small {
+  font: 500 12px/16px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+/* 19·4в: the checkbox and the contact in one row */
+.replyRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.replyRow > :first-child {
+  flex: none;
+}
+
+.contact {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  font: 400 13px/18px var(--font-sans);
+}
+
+.contact:disabled {
+  opacity: 0.45;
+}
+
+.failure {
+  margin-top: 0;
+}
