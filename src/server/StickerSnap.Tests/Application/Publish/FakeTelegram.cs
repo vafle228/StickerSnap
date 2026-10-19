@@ -6,7 +6,7 @@ namespace StickerSnap.Tests.Application.Publish;
 
 /// <summary>
 /// The packs of the bot in Telegram, in memory, with a script: a call of a method may fail the
-/// way the Bot API fails (429, 400, no network) or stop until the test lets it go on. Every call
+/// way the service fails (429, a refusal, no network) or stop until the test lets it go on. Every call
 /// is written down in <see cref="Calls"/>, as «upload», «create cats», «add cats», «replace cats F2».
 /// </summary>
 internal sealed class FakeTelegram : IStickerPublisher
@@ -55,45 +55,48 @@ internal sealed class FakeTelegram : IStickerPublisher
 
     /// <summary>429: «Too Many Requests: retry after <paramref name="seconds"/>».</summary>
     public static AppException RateLimited(int seconds) =>
-        new(ErrorCode.RateLimited, "Bot API refused: 429") { Params = new Dictionary<string, object> { ["retryAfterSec"] = seconds } };
+        new(ErrorCode.RateLimited, "The cloud service refused: 429") { Params = new Dictionary<string, object> { ["retryAfterSec"] = seconds } };
 
     public static AppException Refused(string description) =>
-        new(ErrorCode.TelegramError, $"Bot API refused: 400 {description}") { Log = description };
+        new(ErrorCode.TelegramError, $"The cloud service refused: 502 {description}") { Log = description };
 
     public Task<PublishedPack?> GetPackAsync(string name, CancellationToken cancellationToken) =>
         RunAsync("get", name, cancellationToken, () => Snapshot(name));
 
-    public Task<StickerFile.Uploaded> UploadAsync(long ownerId, string path, CancellationToken cancellationToken) =>
-        RunAsync("upload", null, cancellationToken, () => new StickerFile.Uploaded($"up-{Path.GetFileName(path)}"));
+    public Task<bool> IsNameTakenAsync(string name, CancellationToken cancellationToken) =>
+        RunAsync("name", name, cancellationToken, () => _packs.ContainsKey(name));
 
-    public Task CreatePackAsync(
-        long ownerId, string name, string title, PackKind kind, IReadOnlyList<NewSticker> stickers, CancellationToken cancellationToken) =>
+    public Task<UploadedFile> UploadAsync(string path, CancellationToken cancellationToken) =>
+        RunAsync("upload", null, cancellationToken, () => new UploadedFile($"up-{Path.GetFileName(path)}"));
+
+    public Task<PublishedPack> CreatePackAsync(
+        string name, string title, PackKind kind, IReadOnlyList<NewSticker> stickers, CancellationToken cancellationToken) =>
         RunAsync("create", name, cancellationToken, () =>
         {
             if (_packs.ContainsKey(name))
                 throw new AppException(ErrorCode.PackNameTaken, $"{name} is taken");
             _packs[name] = (title, kind, [.. stickers.Select(sticker => NewSticker(sticker.Emoji[0]))]);
-            return true;
+            return Snapshot(name)!;
         });
 
-    public Task AddStickerAsync(long ownerId, string pack, NewSticker sticker, CancellationToken cancellationToken) =>
+    public Task<PublishedPack> AddStickerAsync(string pack, NewSticker sticker, CancellationToken cancellationToken) =>
         RunAsync("add", pack, cancellationToken, () =>
         {
             Find(pack).Stickers.Add(NewSticker(sticker.Emoji[0]));
-            return true;
+            return Snapshot(pack)!;
         });
 
-    public Task ReplaceStickerAsync(long ownerId, string pack, string oldStickerId, NewSticker sticker, CancellationToken cancellationToken) =>
+    public Task<PublishedPack> ReplaceStickerAsync(string pack, string oldStickerId, NewSticker sticker, CancellationToken cancellationToken) =>
         RunAsync("replace", $"{pack} {oldStickerId}", cancellationToken, () =>
         {
             var stickers = Find(pack).Stickers;
             var at = stickers.FindIndex(old => old.Id == oldStickerId);
-            if (at < 0) throw Refused("STICKER_NOT_FOUND");
+            if (at < 0) throw Refused("sticker_not_found");
             stickers[at] = NewSticker(sticker.Emoji[0]);
-            return true;
+            return Snapshot(pack)!;
         });
 
-    public Task DeleteStickerAsync(string stickerId, CancellationToken cancellationToken) => throw new NotSupportedException();
+    public Task DeleteStickerAsync(string pack, string stickerId, CancellationToken cancellationToken) => throw new NotSupportedException();
 
     public Task DownloadAsync(string stickerId, string path, CancellationToken cancellationToken) => throw new NotSupportedException();
 

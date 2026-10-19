@@ -85,6 +85,8 @@ internal sealed record CloudPack(string Name, string Title, CloudPackKind Kind, 
         [.. Stickers.Select(sticker => new PublishedSticker(sticker.Id, sticker.UniqueId, sticker.Emoji.FirstOrDefault()))]);
 }
 
+internal sealed record PackNameState(string Name, bool Taken);
+
 internal sealed record CloudSticker(string Id, string UniqueId, IReadOnlyList<string> Emoji);
 
 /// <summary>RFC 9457 Problem Details with the service's code; the words are English, for the log.</summary>

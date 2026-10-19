@@ -108,7 +108,7 @@ public sealed class PackService(
         }
 
         if (published.Stickers.FirstOrDefault(sticker => sticker.UniqueId == stickerId) is { } sticker)
-            await publisher.DeleteStickerAsync(sticker.Id, cancellationToken);
+            await publisher.DeleteStickerAsync(pack.Name, sticker.Id, cancellationToken);
 
         await UpdateAsync(
             pack.Name, current => current.Reconciled(published, clock.GetUtcNow()).Without(stickerId), cancellationToken);
@@ -174,16 +174,8 @@ public sealed class PackService(
     private async Task<bool> IsTakenAsync(string own, CancellationToken cancellationToken)
     {
         var full = PackNames.Full(own);
-        if (await packs.FindAsync(full, cancellationToken) is not null) return true;
-
-        try
-        {
-            return await publisher.GetPackAsync(full, cancellationToken) is not null;
-        }
-        catch (AppException exception) when (exception.Code == ErrorCode.NotOurPack)
-        {
-            return true;
-        }
+        return await packs.FindAsync(full, cancellationToken) is not null ||
+               await publisher.IsNameTakenAsync(full, cancellationToken);
     }
 
     private async Task<Pack> KnownAsync(string name, CancellationToken cancellationToken) =>
