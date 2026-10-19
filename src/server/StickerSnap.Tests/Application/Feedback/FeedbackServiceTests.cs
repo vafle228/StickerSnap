@@ -1,4 +1,4 @@
-using System.Text;
+using StickerSnap.Application.Diagnostics;
 using StickerSnap.Application.Feedback;
 using StickerSnap.Core.Errors;
 
@@ -10,7 +10,7 @@ public sealed class FeedbackServiceTests
     private static readonly FeedbackError RenderFailed = new("render_failed", "7f3a-c21e");
 
     private readonly IFeedbackInbox _inbox = Substitute.For<IFeedbackInbox>();
-    private readonly IDiagnosticsCollector _diagnostics = Substitute.For<IDiagnosticsCollector>();
+    private readonly IDiagnosticsService _diagnostics = Substitute.For<IDiagnosticsService>();
     private FeedbackLetter? _sent;
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
@@ -18,7 +18,8 @@ public sealed class FeedbackServiceTests
     public FeedbackServiceTests()
     {
         _inbox.SendAsync(Arg.Do<FeedbackLetter>(letter => _sent = letter), Arg.Any<CancellationToken>()).Returns(41L);
-        _diagnostics.CollectAsync(Arg.Any<FeedbackError?>(), Arg.Any<CancellationToken>()).Returns("StickerSnap 0.3.1");
+        _diagnostics.CollectAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new DiagnosticsReport("StickerSnap 0.3.1", 17));
     }
 
     private FeedbackService Service() => new(_inbox, _diagnostics);
@@ -30,7 +31,7 @@ public sealed class FeedbackServiceTests
 
         id.Should().Be(41);
         _sent.Should().Be(new FeedbackLetter(FeedbackKind.Idea, "Обрезать на таймлайне", true));
-        await _diagnostics.DidNotReceiveWithAnyArgs().CollectAsync(null, Cancel);
+        await _diagnostics.DidNotReceiveWithAnyArgs().CollectAsync(null, null, Cancel);
     }
 
     [Fact]
@@ -40,7 +41,7 @@ public sealed class FeedbackServiceTests
 
         _sent!.Diagnostics.Should().Be("StickerSnap 0.3.1");
         _sent.Error.Should().Be(RenderFailed);
-        await _diagnostics.Received(1).CollectAsync(RenderFailed, Arg.Any<CancellationToken>());
+        await _diagnostics.Received(1).CollectAsync("7f3a-c21e", "render_failed", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -78,16 +79,11 @@ public sealed class FeedbackServiceTests
     }
 
     [Fact]
-    public async Task Cuts_a_report_to_200_KB_in_UTF8()
+    public async Task Collects_a_report_without_a_trace_for_a_bug_from_the_menu()
     {
-        _diagnostics.CollectAsync(Arg.Any<FeedbackError?>(), Arg.Any<CancellationToken>())
-            .Returns("версия\n" + new string('ж', 150_000));
-
         await Service().SendAsync(new FeedbackDraft(FeedbackKind.Bug, "Упало", CanReply: false), Cancel);
 
-        var bytes = Encoding.UTF8.GetByteCount(_sent!.Diagnostics!);
-        bytes.Should().BeLessThanOrEqualTo(FeedbackService.DiagnosticsLimitBytes).And.BeGreaterThan(FeedbackService.DiagnosticsLimitBytes - 4);
-        _sent.Diagnostics.Should().StartWith("версия\n");
+        await _diagnostics.Received(1).CollectAsync(null, null, Arg.Any<CancellationToken>());
     }
 
     private async Task AssertBadRequest(FeedbackDraft draft, string field, string problem)

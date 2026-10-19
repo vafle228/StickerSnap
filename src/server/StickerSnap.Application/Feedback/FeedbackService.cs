@@ -1,4 +1,4 @@
-using System.Text;
+using StickerSnap.Application.Diagnostics;
 using StickerSnap.Core.Errors;
 
 namespace StickerSnap.Application.Feedback;
@@ -7,14 +7,11 @@ namespace StickerSnap.Application.Feedback;
 /// The window «Написать отзыв»: a bug always carries the app's report (there is no checkbox for it,
 /// artboard 19·4), an idea or anything else carries only what the user wrote.
 /// </summary>
-public sealed class FeedbackService(IFeedbackInbox inbox, IDiagnosticsCollector diagnostics) : IFeedbackService
+public sealed class FeedbackService(IFeedbackInbox inbox, IDiagnosticsService diagnostics) : IFeedbackService
 {
     public const int TextLimit = 2000;
     public const int ContactLimit = 100;
     public const int CodeLimit = 64;
-
-    /// <summary>The service takes up to 200 KB of the report in UTF-8.</summary>
-    public const int DiagnosticsLimitBytes = 204_800;
 
     /// <inheritdoc />
     public async Task<long> SendAsync(FeedbackDraft draft, CancellationToken cancellationToken)
@@ -24,7 +21,7 @@ public sealed class FeedbackService(IFeedbackInbox inbox, IDiagnosticsCollector 
         Check(draft, text, contact);
 
         var report = draft.Kind == FeedbackKind.Bug
-            ? Cut(await diagnostics.CollectAsync(draft.Error, cancellationToken))
+            ? (await diagnostics.CollectAsync(draft.Error?.TraceId, draft.Error?.Code, cancellationToken)).Text
             : null;
         var letter = new FeedbackLetter(
             draft.Kind,
@@ -55,20 +52,5 @@ public sealed class FeedbackService(IFeedbackInbox inbox, IDiagnosticsCollector 
                 Fields = fields,
             };
         }
-    }
-
-    /// <summary>Keeps the head of a report over the limit: versions and the error come first.</summary>
-    private static string Cut(string report)
-    {
-        if (Encoding.UTF8.GetByteCount(report) <= DiagnosticsLimitBytes) return report;
-        // A UTF-16 character takes up to 3 bytes: a third of the excess at a time never cuts past the limit by much
-        var chars = Math.Min(report.Length, DiagnosticsLimitBytes);
-        int bytes;
-        while ((bytes = Encoding.UTF8.GetByteCount(report.AsSpan(0, chars))) > DiagnosticsLimitBytes)
-        {
-            chars -= (bytes - DiagnosticsLimitBytes + 2) / 3;
-        }
-        if (chars > 0 && char.IsHighSurrogate(report[chars - 1])) chars--;
-        return report[..chars];
     }
 }
