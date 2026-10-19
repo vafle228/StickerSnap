@@ -11,8 +11,9 @@ from stickersnap_bot.api.app import Polling, create_app
 from stickersnap_bot.api.telegram import create_dispatcher
 from stickersnap_bot.application.errors import RateLimitedError
 from stickersnap_bot.application.publishing import MAX_STICKER_BYTES
-from stickersnap_bot.application.sticker_sets import StickerFile
+from stickersnap_bot.application.sticker_sets import StickerFile, StickerSet
 from stickersnap_bot.domain.devices import Device, DeviceOs
+from stickersnap_bot.domain.packs import PackKind
 from stickersnap_bot.domain.secrets import hash_secret
 from stickersnap_bot.domain.users import TelegramProfile, User
 from tests.fakes import (
@@ -171,6 +172,7 @@ async def test_every_route_wants_the_device_key(client: AsyncClient) -> None:
             client.post("/v1/stickers/upload", content=WEBM, headers=revoked),
             client.post("/v1/packs", json=pack, headers=revoked),
             client.get(f"/v1/packs/{CATS}", headers=revoked),
+            client.get(f"/v1/pack-names/{CATS}", headers=revoked),
             client.post(f"/v1/packs/{CATS}/stickers", json=sticker, headers=revoked),
             client.put(f"/v1/packs/{CATS}/stickers/a", json=sticker, headers=revoked),
             client.delete(f"/v1/packs/{CATS}/stickers/a", headers=revoked),
@@ -178,6 +180,29 @@ async def test_every_route_wants_the_device_key(client: AsyncClient) -> None:
         ]
         for call in calls:
             assert problem(await call, 401) == "unauthorized"
+
+
+async def test_tells_a_taken_name_whoever_made_the_pack(
+    client: AsyncClient, sets: FakeStickerSets
+) -> None:
+    sticker = {"file": "file1", "emoji": ["😂"]}
+    await client.post(
+        "/v1/packs", json={"name": CATS, "title": "Коты", "kind": "stickers", "stickers": [sticker]}
+    )
+    someone_elses = "dogs_by_StickerSnapAppBot"
+    sets.sets[someone_elses] = StickerSet(someone_elses, "Псы", PackKind.STICKERS, ())
+
+    ours = await client.get(f"/v1/pack-names/{CATS}")
+    theirs = await client.get(f"/v1/pack-names/{someone_elses}")
+    free = await client.get("/v1/pack-names/birds_by_StickerSnapAppBot")
+    not_the_bots = await client.get("/v1/pack-names/birds_by_OtherBot")
+
+    assert conforms(ours, "PackNameState") == {"name": CATS, "taken": True}
+    assert conforms(theirs, "PackNameState")["taken"] is True
+    assert conforms(free, "PackNameState") == {"name": "birds_by_StickerSnapAppBot", "taken": False}
+    assert problem(not_the_bots, 422) == "pack_name_invalid"
+    # getPublishedPack does not tell: the pack is not the caller's
+    assert problem(await client.get(f"/v1/packs/{someone_elses}"), 404) == "pack_not_found"
 
 
 async def test_a_file_over_the_limit_is_refused(client: AsyncClient) -> None:

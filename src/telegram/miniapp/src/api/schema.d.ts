@@ -367,6 +367,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/pack-names/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя набора в Telegram, с суффиксом `_by_<бот>` */
+                name: components["parameters"]["PackName"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Занято ли имя для нового пака
+         * @description `taken`, если пак с этим именем есть в реестре сервиса или Telegram его знает, чей
+         *     угодно (getPublishedPack про чужой пак отвечает 404 и занятость не показывает). Имя без
+         *     суффикса `_by_<бот>` — 422 `pack_name_invalid` без запроса в Telegram.
+         */
+        get: operations["checkPackName"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/packs/{name}/stickers": {
         parameters: {
             query?: never;
@@ -659,6 +684,11 @@ export interface components {
         UploadedSticker: {
             /** @description `file_id` загруженного .webm, для `InputSticker.file` */
             id: string;
+        };
+        PackNameState: {
+            name: string;
+            /** @description Есть в реестре сервиса или в Telegram, чей угодно */
+            taken: boolean;
         };
         InputSticker: {
             /** @description `id` из `POST /v1/stickers/upload` */
@@ -1260,6 +1290,33 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["RateLimited"];
+            502: components["responses"]["TelegramError"];
+        };
+    };
+    checkPackName: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя набора в Telegram, с суффиксом `_by_<бот>` */
+                name: components["parameters"]["PackName"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ответ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackNameState"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
             502: components["responses"]["TelegramError"];
         };

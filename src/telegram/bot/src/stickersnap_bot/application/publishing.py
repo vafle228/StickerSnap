@@ -112,6 +112,20 @@ class Publishing:
             raise PackNotFoundError(pack.name)
         return found
 
+    async def is_name_taken(self, device_key: str, name: str) -> bool:
+        """Whether a new pack may not take `name`: the service has a pack of that name, or
+        Telegram knows a set of it, whoever made it. getPublishedPack cannot tell: it answers
+        404 for every set that is not the caller's."""
+        await self._owner(device_key)
+        try:
+            name = pack_name(name, await self._sets.bot_username())
+        except InvalidValueError as error:
+            raise PackNameInvalidError(str(error)) from error
+        async with self._unit_of_work() as uow:
+            if await uow.packs.get(name) is not None:
+                return True
+        return await self._sets.get(name) is not None
+
     async def add(self, device_key: str, name: str, sticker: NewSticker) -> StickerSet:
         """At the end of the pack; the bot writes that stickers were added."""
         owner = await self._owner(device_key)

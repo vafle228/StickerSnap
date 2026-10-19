@@ -47,14 +47,14 @@ public sealed class CloudClientTests : IDisposable
     public async Task Turns_a_refusal_into_the_desktops_code_with_the_services_words_in_the_log(int status, string code, ErrorCode expected)
     {
         await _service.LinkAsync(Cancel);
-        _service.Refuse($"GET /v1/packs/{Pack}", status, code);
+        _service.Refuse($"POST /v1/packs/{Pack}/stickers", status, code);
 
-        var error = await ErrorOf(() => _service.Client().GetPackAsync(Pack, Cancel));
+        var error = await ErrorOf(() => _service.Client().AddStickerAsync(Pack, new InputSticker("file-1", ["😴"]), Cancel));
 
         error.Code.Should().Be(expected);
         error.Log.Should().Be($"{status} {code}: Said the service");
-        error.Message.Should().Contain("getPublishedPack");
-        error.Context["method"].Should().Be("getPublishedPack");
+        error.Message.Should().Contain("addSticker");
+        error.Context["method"].Should().Be("addSticker");
         error.Context["status"].Should().Be(status.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
@@ -182,7 +182,7 @@ public sealed class CloudClientTests : IDisposable
         await _service.LinkAsync(Cancel);
         _service.Answer($"GET /v1/packs/{Pack}", PackJson);
 
-        var pack = (await _service.Client().GetPackAsync(Pack, Cancel)).ToPublishedPack();
+        var pack = (await _service.Client().GetPackAsync(Pack, Cancel))!.ToPublishedPack();
 
         pack.Should().Be(new PublishedPack(Pack, "Реакции с созвона", PackKind.Regular, pack.Stickers));
         pack.Stickers.Should().Equal(new PublishedSticker("CAAC-1", "AgAD-1", "😴"), new PublishedSticker("CAAC-2", "AgAD-2", null));
