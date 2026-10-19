@@ -61,10 +61,13 @@ public sealed class FeedbackService(IFeedbackInbox inbox, IDiagnosticsCollector 
     private static string Cut(string report)
     {
         if (Encoding.UTF8.GetByteCount(report) <= DiagnosticsLimitBytes) return report;
-        // A character takes a byte or more, so dropping the excess in characters lands at the limit or under
+        // A UTF-16 character takes up to 3 bytes: a third of the excess at a time never cuts past the limit by much
         var chars = Math.Min(report.Length, DiagnosticsLimitBytes);
         int bytes;
-        while ((bytes = Encoding.UTF8.GetByteCount(report.AsSpan(0, chars))) > DiagnosticsLimitBytes) chars -= bytes - DiagnosticsLimitBytes;
+        while ((bytes = Encoding.UTF8.GetByteCount(report.AsSpan(0, chars))) > DiagnosticsLimitBytes)
+        {
+            chars -= (bytes - DiagnosticsLimitBytes + 2) / 3;
+        }
         if (chars > 0 && char.IsHighSurrogate(report[chars - 1])) chars--;
         return report[..chars];
     }
