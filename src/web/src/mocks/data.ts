@@ -328,12 +328,15 @@ export function createDb(scenario: Scenario): MockDb {
   }
 
   const user = { id: 100200300, username: "demo", firstName: "Дима" };
+  const device = "DESKTOP-7F3K2Q";
   const account: AccountLink =
     scenario === "offline"
-      ? { state: "error", code: "network_unavailable", user }
-      : scenario === "unlinked"
+      ? { state: "error", code: "network_unavailable", user, device }
+      : scenario === "unlinked" || scenario === "link-declined"
         ? { state: "unlinked" }
-        : { state: "linked", user };
+        : scenario === "link-wait"
+          ? demoLink()
+          : { state: "linked", user, device };
 
   return {
     scenario,
@@ -386,4 +389,13 @@ export function packSummary(pack: Pack): PackSummary {
   delete summary.link;
   delete summary.stickers;
   return summary;
+}
+
+/** A link waiting for the answer in Telegram, as the server gives it out: ten minutes to live. */
+export function demoLink(): Extract<AccountLink, { state: "pending" }> {
+  return {
+    state: "pending",
+    deepLink: `https://t.me/StickerSnapAppBot?startapp=link_demo${Date.now()}`,
+    expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+  };
 }

@@ -12,10 +12,10 @@ public interface IAccountRepository
     Task SaveAsync(AccountRecord account, CancellationToken cancellationToken);
 }
 
-/// <param name="User">The linked account, if any</param>
+/// <param name="User">Whom this computer publishes for, if it is linked</param>
+/// <param name="Device">This computer's name in the user's devices; a record without it is not linked</param>
 /// <param name="BotBlocked">The last check found the bot blocked; a lost connection is not kept</param>
-/// <param name="LastMessage">The sequence of the last message to the bot handled, so a restart does not read it again</param>
-public sealed record AccountRecord(LinkedUser? User, bool BotBlocked, long? LastMessage)
+public sealed record AccountRecord(LinkedUser? User, string? Device, bool BotBlocked)
 {
-    public static readonly AccountRecord None = new(null, false, null);
+    public static readonly AccountRecord None = new(null, null, false);
 }

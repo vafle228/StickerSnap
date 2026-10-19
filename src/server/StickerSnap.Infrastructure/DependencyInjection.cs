@@ -72,7 +72,6 @@ public static class DependencyInjection
             .RemoveAllLoggers();
         // The messenger of the Application's ports is Telegram, with the one product bot
         services.AddTransient<IStickerPublisher, TelegramStickerPublisher>();
-        services.AddTransient<IBotChat, TelegramBotChat>();
 
         // The cloud service holds the bot's token; this computer holds only its own key
         services.Configure<CloudOptions>(configuration.GetSection(CloudOptions.Section));

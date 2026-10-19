@@ -68,7 +68,7 @@ public sealed class PublishExecutorTests : IAsyncDisposable
     public PublishExecutorTests()
     {
         Opens(Cat);
-        _account.GetAsync(Arg.Any<CancellationToken>()).Returns(new AccountLink.Linked(new LinkedUser(Owner, "Дима", "dima")));
+        _account.GetAsync(Arg.Any<CancellationToken>()).Returns(new AccountLink.Linked(new LinkedUser(Owner, "Дима", "dima"), "DESKTOP-7F3K2Q"));
         _settings.GetAsync(Arg.Any<CancellationToken>()).Returns(UserSettings.Default(new Folders("/projects", "/stickers")));
         _presence.Of(Arg.Any<string>()).Returns(PresenceStatus.Missing);
         ExportsAs(_ => ValidationVerdict.Pass);

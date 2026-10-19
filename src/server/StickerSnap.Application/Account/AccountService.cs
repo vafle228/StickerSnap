@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using StickerSnap.Application.Events;
 using StickerSnap.Core.Account;
@@ -7,64 +6,48 @@ using StickerSnap.Core.Errors;
 namespace StickerSnap.Application.Account;
 
 /// <summary>
-/// Links the user's account to the product bot. POST /account/link gives out a one-time code in
-/// a link to the bot; while it waits, the bot's messages are read (polled, not pushed, so the app
-/// needs no public address) until `/start &lt;code&gt;` arrives or the code expires. Start with
-/// the code links the sender and the bot greets them; Start with another code, or none, gets a
-/// hint. Every change of the link is sent as accountChanged.
+/// Links this computer to the user's account through <see cref="IDeviceLinking"/>. POST
+/// /account/link gives out a code in a link to the Mini App; while it waits, the answer is asked
+/// for with long waits (pulled, not pushed, so the app needs no public address) until the user
+/// confirms, declines or the code expires. Every change of the link is sent as accountChanged.
 /// </summary>
 public sealed class AccountService : IAccountService, IDisposable
 {
-    /// <summary>How long a code links: enough to open the messenger and press Start.</summary>
-    public static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(10);
-
-    /// <summary>The longest wait for the bot's messages in one request.</summary>
+    /// <summary>The longest wait for the answer in one request.</summary>
     public static readonly TimeSpan MaxWait = TimeSpan.FromSeconds(25);
 
-    /// <summary>The pause after a failed read before the next one.</summary>
+    /// <summary>The pause after a failed wait before the next one.</summary>
     public static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
 
-    public const string Greeting =
-        "Готово, аккаунт привязан к StickerSnap. Возвращайтесь в приложение: паки будут создаваться на вас.";
-
-    public const string Outdated =
-        "Эта ссылка устарела. Откройте бота заново из StickerSnap: «Настройки» → «Публикация в Telegram».";
-
-    public const string Hint =
-        "Чтобы привязать аккаунт, откройте бота из StickerSnap: «Настройки» → «Публикация в Telegram».";
-
-    private const string StartCommand = "/start";
-
     private readonly IAccountRepository _repository;
-    private readonly IBotChat _chat;
+    private readonly IDeviceLinking _linking;
     private readonly IEventPublisher _events;
     private readonly TimeProvider _clock;
     private readonly ILogger<AccountService> _logger;
 
-    /// <summary>One change of the state at a time; never held while the messenger is asked.</summary>
+    /// <summary>One change of the state at a time; never held while the service is asked.</summary>
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     private AccountState? _state;
-    private long? _lastMessage;
 
-    /// <summary>The reading of the bot's messages now running; null when nothing waits for Start.</summary>
-    private CancellationTokenSource? _polling;
+    /// <summary>The code now waiting for the answer and the wait for it; null when nothing waits.</summary>
+    private Waiting? _waiting;
 
     public AccountService(
         IAccountRepository repository,
-        IBotChat chat,
+        IDeviceLinking linking,
         IEventPublisher events,
         TimeProvider clock,
         ILogger<AccountService> logger)
     {
         _repository = repository;
-        _chat = chat;
+        _linking = linking;
         _events = events;
         _clock = clock;
         _logger = logger;
     }
 
-    /// <summary>The reading of the bot's messages, for tests to wait on; completed when none runs.</summary>
+    /// <summary>The wait for the answer, for tests to wait on; completed when none runs.</summary>
     internal Task Polling { get; private set; } = Task.CompletedTask;
 
     /// <inheritdoc />
@@ -84,27 +67,21 @@ public sealed class AccountService : IAccountService, IDisposable
     /// <inheritdoc />
     public async Task<AccountLink> StartLinkAsync(CancellationToken cancellationToken)
     {
-        // Asked first: no token or no connection fails here, not after the user went to the bot
-        var bot = await _chat.GetBotAsync(cancellationToken);
-        if (bot.Username is not { Length: > 0 } username)
-            throw new AppException(ErrorCode.TelegramError, "The bot has no username to link to") { Log = "getMe gave no username" };
-
-        var code = NewCode();
-        var link = new PendingLink(code, $"https://t.me/{username}?start={code}", _clock.GetUtcNow() + CodeLifetime);
+        // Asked first: no service or no connection fails here, not after the user went to the phone
+        var invite = await _linking.InviteAsync(cancellationToken);
 
         AccountLink view;
+        Waiting? replaced;
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            var state = (await LoadAsync(cancellationToken)).Start(link);
+            var state = (await LoadAsync(cancellationToken)).Start(new PendingLink(invite.Code, invite.Link, invite.ExpiresAt));
             _state = state;
             view = state.ViewAt(_clock.GetUtcNow());
-            if (_polling is null)
-            {
-                _polling = new CancellationTokenSource();
-                var polling = _polling;
-                Polling = Task.Run(() => PollAsync(polling), CancellationToken.None);
-            }
+            replaced = StopWaiting();
+            var waiting = new Waiting(invite);
+            _waiting = waiting;
+            Polling = Task.Run(() => WaitAsync(waiting), CancellationToken.None);
         }
         finally
         {
@@ -112,19 +89,27 @@ public sealed class AccountService : IAccountService, IDisposable
         }
 
         await _events.AccountChangedAsync(view, cancellationToken);
+        if (replaced is not null) await BurnAsync(replaced.Invite);
         return view;
     }
 
     /// <inheritdoc />
     public async Task<AccountLink> CancelOrUnlinkAsync(CancellationToken cancellationToken)
     {
+        var current = await LoadLockedAsync(cancellationToken);
+        // Even a code that has just expired: «Отмена» must never unlink the account behind it
+        if (current.Pending is null)
+        {
+            // Asked first: offline the key stays good at the service, so the link stays here too
+            await _linking.UnlinkAsync(cancellationToken);
+        }
+
         AccountLink view;
+        Waiting? cancelled;
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            var current = await LoadAsync(cancellationToken);
-            var now = _clock.GetUtcNow();
-            // Even a code that has just expired: «Отмена» must never unlink the account behind it
+            current = await LoadAsync(cancellationToken);
             if (current.Pending is not null)
             {
                 _state = current.Cancel();
@@ -135,8 +120,8 @@ public sealed class AccountService : IAccountService, IDisposable
                 await SaveAsync(cancellationToken);
             }
 
-            StopPolling();
-            view = _state.ViewAt(now);
+            cancelled = StopWaiting();
+            view = _state.ViewAt(_clock.GetUtcNow());
         }
         finally
         {
@@ -144,33 +129,27 @@ public sealed class AccountService : IAccountService, IDisposable
         }
 
         await _events.AccountChangedAsync(view, cancellationToken);
+        if (cancelled is not null) await BurnAsync(cancelled.Invite);
         return view;
     }
 
     /// <inheritdoc />
     public async Task<AccountLink> CheckAsync(CancellationToken cancellationToken)
     {
-        var user = (await LoadLockedAsync(cancellationToken)).User;
-        if (user is null)
-        {
-            // Nothing to check but the bot itself: no connection is an error of the request
-            await _chat.GetBotAsync(cancellationToken);
-            return await GetAsync(cancellationToken);
-        }
+        var before = await LoadLockedAsync(cancellationToken);
 
-        AccountProblem? problem;
+        LinkedDevice? device;
+        var reached = true;
         try
         {
-            await _chat.CheckChatAsync(user.Id, cancellationToken);
-            problem = null;
+            device = await _linking.GetAsync(cancellationToken);
         }
-        catch (AppException exception) when (exception.Code is ErrorCode.BotBlocked or ErrorCode.AccountNotLinked)
+        catch (AppException exception) when (exception.Code is ErrorCode.NetworkUnavailable or ErrorCode.BotUnavailable)
         {
-            problem = AccountProblem.BotBlocked;
-        }
-        catch (AppException exception) when (exception.Code is ErrorCode.NetworkUnavailable)
-        {
-            problem = AccountProblem.NetworkUnavailable;
+            // Nothing linked: no state to show it in, the request fails instead
+            if (before.User is null) throw;
+            device = null;
+            reached = false;
         }
 
         AccountLink view;
@@ -179,8 +158,12 @@ public sealed class AccountService : IAccountService, IDisposable
         try
         {
             var current = await LoadAsync(cancellationToken);
-            // Unlinked or linked again while the messenger was asked: the answer is of no one now
-            var next = current.User == user ? current.Checked(problem) : current;
+            // Unlinked or linked again while the service was asked: the answer is of no one now
+            var next = current.User != before.User || current.Device != before.Device
+                ? current
+                : reached
+                    ? current.Checked(device?.User, device?.Name, device is { BotBlocked: true } ? AccountProblem.BotBlocked : null)
+                    : current.Unreachable();
             changed = next != current;
             _state = next;
             if (changed) await SaveAsync(cancellationToken);
@@ -195,53 +178,54 @@ public sealed class AccountService : IAccountService, IDisposable
         return view;
     }
 
-    /// <summary>The app is stopping: the reading of the bot's messages ends.</summary>
+    /// <summary>The app is stopping: the wait for the answer ends.</summary>
     public void Dispose()
     {
-        // Not the gate: the reading may still be on its way out through it
-        StopPolling();
+        // Not the gate: the wait may still be on its way out through it
+        StopWaiting();
     }
 
-    /// <summary>Reads the bot's messages while a code waits for Start; ends when it is used, expires or is cancelled.</summary>
-    private async Task PollAsync(CancellationTokenSource polling)
+    /// <summary>Asks for the answer to one code until it comes, the code expires or another code replaces it.</summary>
+    private async Task WaitAsync(Waiting waiting)
     {
-        var stop = polling.Token;
+        var stop = waiting.Stop.Token;
         try
         {
-            while (true)
+            while (await StillWaitingAsync(waiting, stop) is { } expiresAt)
             {
-                var (pending, after) = await NextWaitAsync(polling, stop);
-                if (pending is null) return;
-
-                var wait = pending.ExpiresAt - _clock.GetUtcNow();
+                var wait = expiresAt - _clock.GetUtcNow();
                 if (wait > MaxWait) wait = MaxWait;
 
-                IReadOnlyList<ChatMessage> messages;
+                LinkAnswer answer;
                 try
                 {
-                    messages = await _chat.ReceiveAsync(after, wait, stop);
+                    answer = await _linking.WaitAsync(waiting.Invite, wait, stop);
                 }
                 catch (AppException exception)
                 {
-                    _logger.LogWarning("The bot's messages were not read: {Code} {Message}", exception.Code, exception.Message);
+                    _logger.LogWarning("The answer to the link was not read: {Code} {Message}", exception.Code, exception.Message);
                     await Task.Delay(DelayAfter(exception), _clock, stop);
                     continue;
                 }
 
-                if (messages.Count > 0) await HandleAsync(messages, polling, stop);
+                if (answer is not LinkAnswer.Waiting)
+                {
+                    await AnsweredAsync(waiting, answer, stop);
+                    return;
+                }
             }
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested)
         {
-            // Cancelled, unlinked or the app is stopping
+            // Cancelled, replaced, unlinked or the app is stopping
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Reading the bot's messages stopped");
+            _logger.LogError(exception, "Waiting for the answer to the link stopped");
             await _gate.WaitAsync(CancellationToken.None);
             try
             {
-                if (_polling == polling) StopPolling();
+                if (_waiting == waiting) StopWaiting();
             }
             finally
             {
@@ -250,26 +234,23 @@ public sealed class AccountService : IAccountService, IDisposable
         }
     }
 
-    /// <summary>The code still waiting and where to read from; on expiry the link goes back and the reading ends.</summary>
-    private async Task<(PendingLink? Pending, long? After)> NextWaitAsync(CancellationTokenSource polling, CancellationToken stop)
+    /// <summary>When the code waiting runs out; null when it is no longer waited for, after telling the SPA it expired.</summary>
+    private async Task<DateTimeOffset?> StillWaitingAsync(Waiting waiting, CancellationToken stop)
     {
         AccountLink? expired = null;
         await _gate.WaitAsync(stop);
         try
         {
-            if (_polling != polling) return (null, null);
+            if (_waiting != waiting) return null;
 
             var current = await LoadAsync(stop);
             var now = _clock.GetUtcNow();
             var next = current.Expire(now);
-            if (next != current)
-            {
-                _state = next;
-                expired = next.ViewAt(now);
-            }
+            if (next.Pending is { } pending) return pending.ExpiresAt;
 
-            if (next.Pending is { } pending) return (pending, _lastMessage);
-            StopPolling();
+            _state = next;
+            if (next != current) expired = next.ViewAt(now);
+            StopWaiting();
         }
         finally
         {
@@ -277,63 +258,59 @@ public sealed class AccountService : IAccountService, IDisposable
         }
 
         if (expired is not null) await _events.AccountChangedAsync(expired, CancellationToken.None);
-        return (null, null);
+        return null;
     }
 
-    private async Task HandleAsync(IReadOnlyList<ChatMessage> messages, CancellationTokenSource polling, CancellationToken stop)
+    private async Task AnsweredAsync(Waiting waiting, LinkAnswer answer, CancellationToken stop)
     {
-        var replies = new List<(long ChatId, string Text)>();
-        AccountLink? linked = null;
+        AccountLink? view = null;
         await _gate.WaitAsync(stop);
         try
         {
-            if (_polling != polling) return;
+            if (_waiting != waiting) return;
 
             var current = await LoadAsync(stop);
-            foreach (var message in messages)
+            var code = waiting.Invite.Code;
+            var next = answer switch
             {
-                _lastMessage = message.Sequence;
-                if (CodeOf(message.Text) is not { } code) continue;
+                LinkAnswer.Linked { Device: var device } =>
+                    current.Accept(code, device.User, device.Name) is { } linked
+                        ? linked.Checked(device.User, device.Name, device.BotBlocked ? AccountProblem.BotBlocked : null)
+                        : current,
+                LinkAnswer.Declined => current.End(code, LinkEnd.Declined),
+                _ => current.End(code, LinkEnd.Expired),
+            };
 
-                var now = _clock.GetUtcNow();
-                var user = new LinkedUser(message.From.Id, message.From.FirstName, message.From.Username);
-                if (linked is null && current.Accept(code, user, now) is { } accepted)
-                {
-                    current = accepted;
-                    linked = accepted.ViewAt(now);
-                    _logger.LogInformation("The account {UserId} is linked", user.Id);
-                    replies.Add((message.ChatId, Greeting));
-                }
-                else
-                {
-                    replies.Add((message.ChatId, code.Length == 0 ? Hint : Outdated));
-                }
+            _state = next;
+            StopWaiting();
+            if (answer is LinkAnswer.Linked)
+            {
+                _logger.LogInformation("This computer is linked to the account {UserId}", next.User?.Id);
+                // The key is already kept: the account must outlive a restart too
+                await SaveAsync(CancellationToken.None);
             }
 
-            _state = current;
-            // The account and how far the messages are read, so a restart does not read them again
-            await SaveAsync(stop);
-            if (linked is not null) StopPolling();
+            if (next != current) view = next.ViewAt(_clock.GetUtcNow());
         }
         finally
         {
             _gate.Release();
         }
 
-        if (linked is not null) await _events.AccountChangedAsync(linked, CancellationToken.None);
-        foreach (var (chatId, text) in replies) await ReplyAsync(chatId, text);
+        if (view is not null) await _events.AccountChangedAsync(view, CancellationToken.None);
     }
 
-    private async Task ReplyAsync(long chatId, string text)
+    /// <summary>Burns a code no longer waited for, so opening its link later says it is out of date.</summary>
+    private async Task BurnAsync(LinkInvite invite)
     {
         try
         {
-            await _chat.SendAsync(chatId, text, CancellationToken.None);
+            await _linking.CancelAsync(invite, CancellationToken.None);
         }
         catch (AppException exception)
         {
-            // The link is made either way; a lost reply only loses the bot's words
-            _logger.LogWarning("The bot did not answer in a chat: {Code} {Message}", exception.Code, exception.Message);
+            // It runs out by itself in a few minutes; the user has moved on either way
+            _logger.LogWarning("The link code was not cancelled: {Code} {Message}", exception.Code, exception.Message);
         }
     }
 
@@ -343,9 +320,9 @@ public sealed class AccountService : IAccountService, IDisposable
         if (_state is not null) return _state;
 
         var record = await _repository.GetAsync(cancellationToken);
-        _lastMessage = record.LastMessage;
-        _state = record.User is { } user
-            ? AccountState.Linked(user).Checked(record.BotBlocked ? AccountProblem.BotBlocked : null)
+        // A record without the computer's name is from linking through the bot directly: link again
+        _state = record is { User: { } user, Device: { } device }
+            ? AccountState.Linked(user, device).Checked(user, device, record.BotBlocked ? AccountProblem.BotBlocked : null)
             : AccountState.Unlinked;
         return _state;
     }
@@ -366,29 +343,17 @@ public sealed class AccountService : IAccountService, IDisposable
     /// <summary>Under the gate: what outlives a restart. A lost connection is not kept, a blocked bot is.</summary>
     private Task SaveAsync(CancellationToken cancellationToken) =>
         _repository.SaveAsync(
-            new AccountRecord(_state?.User, _state?.Problem == AccountProblem.BotBlocked, _lastMessage),
+            new AccountRecord(_state?.User, _state?.Device, _state?.Problem == AccountProblem.BotBlocked),
             cancellationToken);
 
-    /// <summary>Under the gate. Not disposed: the reading may still hold its token; it has no timer to free.</summary>
-    private void StopPolling()
+    /// <summary>Under the gate: the wait now running stops; returns it, so its code can be burned.</summary>
+    private Waiting? StopWaiting()
     {
-        _polling?.Cancel();
-        _polling = null;
-    }
-
-    /// <summary>
-    /// The code Start brought: `/start &lt;code&gt;` from a link with one, an empty one from a
-    /// plain Start, null for any other message.
-    /// </summary>
-    internal static string? CodeOf(string? text)
-    {
-        if (text is null || !text.StartsWith(StartCommand, StringComparison.Ordinal)) return null;
-
-        var rest = text[StartCommand.Length..];
-        // "/start@StickerSnapAppBot code" in a group, "/started" is not the command
-        if (rest.StartsWith('@')) rest = rest[(rest.IndexOfAny([' ', '\n']) is var space and >= 0 ? space : rest.Length)..];
-        if (rest.Length > 0 && !char.IsWhiteSpace(rest[0])) return null;
-        return rest.Trim();
+        var waiting = _waiting;
+        // Not disposed: the wait may still hold its token; it has no timer to free
+        waiting?.Stop.Cancel();
+        _waiting = null;
+        return waiting;
     }
 
     private static TimeSpan DelayAfter(AppException exception) =>
@@ -396,7 +361,11 @@ public sealed class AccountService : IAccountService, IDisposable
             ? TimeSpan.FromSeconds(Convert.ToDouble(seconds, System.Globalization.CultureInfo.InvariantCulture))
             : RetryDelay;
 
-    /// <summary>A start parameter of the messenger: up to 64 of A–Z, a–z, 0–9, _ and -.</summary>
-    private static string NewCode() =>
-        RandomNumberGenerator.GetString("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 24);
+    /// <summary>A code waiting for the answer and what stops the wait for it.</summary>
+    private sealed class Waiting(LinkInvite invite)
+    {
+        public LinkInvite Invite { get; } = invite;
+
+        public CancellationTokenSource Stop { get; } = new();
+    }
 }

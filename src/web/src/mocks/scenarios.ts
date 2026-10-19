@@ -6,6 +6,8 @@ export const SCENARIOS = {
   "source-missing": "Исходник не найден",
   "no-packs": "Без паков",
   unlinked: "Без аккаунта",
+  "link-wait": "Ждём привязку",
+  "link-declined": "Привязку отклонили",
   "pack-full": "Пак заполнен",
   "pack-missing": "Пак пропал",
   "publish-errors": "Ошибки отправки",

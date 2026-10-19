@@ -9,9 +9,10 @@ using StickerSnap.Infrastructure.Storage;
 namespace StickerSnap.Infrastructure.Account;
 
 /// <summary>
-/// account.json in the data directory: the linked Telegram account (id, name, username) and how
-/// far the bot's messages are read. A file that cannot be read means no account: the user links
-/// again, which is better than an app that does not start.
+/// account.json in the data directory: the Telegram account this computer is linked to (id, name,
+/// username) and the computer's name in the user's devices; the key itself is in device.json. A
+/// file that cannot be read means no account: the user links again, which is better than an app
+/// that does not start.
 /// </summary>
 internal sealed class JsonAccountRepository(IOptions<DataOptions> options, ILogger<JsonAccountRepository> logger) : IAccountRepository
 {
@@ -54,21 +55,22 @@ internal sealed class JsonAccountRepository(IOptions<DataOptions> options, ILogg
         AtomicFile.WriteAsync(Path, JsonSerializer.SerializeToUtf8Bytes(Stored.From(account), Json), cancellationToken);
 
     /// <summary>The file's shape, apart from the domain's: it outlives renames in the code.</summary>
-    private sealed record Stored(int Version, StoredUser? User, bool BotBlocked, long? LastUpdate)
+    /// <remarks>Version 1 (linking through the bot directly) had no device: such a file reads as not linked.</remarks>
+    private sealed record Stored(int Version, StoredUser? User, string? Device, bool BotBlocked)
     {
-        private const int CurrentVersion = 1;
+        private const int CurrentVersion = 2;
 
         public static Stored From(AccountRecord account) => new(
             CurrentVersion,
             account.User is { } user ? new StoredUser(user.Id, user.FirstName, user.Username) : null,
-            account.BotBlocked,
-            account.LastMessage);
+            account.Device,
+            account.BotBlocked);
 
         /// <summary>A user without an id or a name is no user.</summary>
         public AccountRecord ToRecord() => new(
             User is { Id: > 0, FirstName: { Length: > 0 } name } user ? new LinkedUser(user.Id, name, user.Username) : null,
-            BotBlocked,
-            LastUpdate);
+            Device is { Length: > 0 } ? Device : null,
+            BotBlocked);
     }
 
     private sealed record StoredUser(long Id, string? FirstName, string? Username);

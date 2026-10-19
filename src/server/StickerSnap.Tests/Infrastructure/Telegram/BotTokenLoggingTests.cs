@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using StickerSnap.Application.Account;
 using StickerSnap.Application.Packs;
 using StickerSnap.Core.Errors;
 using StickerSnap.Infrastructure;
@@ -52,20 +51,19 @@ public sealed class BotTokenLoggingTests : IDisposable
     [Fact]
     public async Task Writes_no_token_into_the_log_of_a_call_that_succeeds()
     {
-        await _services.GetRequiredService<IBotChat>().GetBotAsync(Cancel);
         await _services.GetRequiredService<IStickerPublisher>().DownloadAsync("CAACAgIAAxkBAAIBc2", Path.Combine(_data.FullName, "sticker.webm"), Cancel);
 
-        _api.Requests.Should().HaveCount(3);
+        _api.Requests.Should().HaveCount(2);
         _logs.Messages.Should().NotContain(message => message.Contains(BotApiStub.Token));
     }
 
     [Fact]
     public async Task Writes_no_token_into_a_failure_even_when_the_network_names_the_address()
     {
-        var address = $"{BotApiStub.ApiUrl}bot{BotApiStub.Token}/getMe";
-        _api.Throw("getMe", new HttpRequestException($"Connection refused ({address})"));
+        var address = $"{BotApiStub.ApiUrl}bot{BotApiStub.Token}/getStickerSet";
+        _api.Throw("getStickerSet", new HttpRequestException($"Connection refused ({address})"));
 
-        var calling = () => _services.GetRequiredService<IBotChat>().GetBotAsync(Cancel);
+        var calling = () => _services.GetRequiredService<IStickerPublisher>().GetPackAsync("kot_by_StickerSnapAppBot", Cancel);
 
         var error = (await calling.Should().ThrowAsync<AppException>()).Which;
         error.ToString().Should().NotContain(BotApiStub.Token);

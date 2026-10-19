@@ -47,7 +47,7 @@ public sealed class JobServiceTests : IAsyncDisposable
             Substitute.For<ISourceWatch>(), _clock);
         _queue = new JobQueue([_exports, _publishes], _events, _clock, NullLogger<JobQueue>.Instance);
         _service = new JobService(_queue, projects, _packs, _account);
-        _account.GetAsync(Arg.Any<CancellationToken>()).Returns(new AccountLink.Linked(new LinkedUser(42, "Дима", "dima")));
+        _account.GetAsync(Arg.Any<CancellationToken>()).Returns(new AccountLink.Linked(new LinkedUser(42, "Дима", "dima"), "DESKTOP-7F3K2Q"));
         HasPacks(Cats(count: 3));
     }
 

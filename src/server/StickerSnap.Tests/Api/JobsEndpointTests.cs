@@ -40,7 +40,7 @@ public sealed class JobsEndpointTests : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         // The real executors render with FFmpeg: these stand in for them
-        _account.GetAsync(Arg.Any<CancellationToken>()).Returns(new AccountLink.Linked(new LinkedUser(42, "Дима", "dima")));
+        _account.GetAsync(Arg.Any<CancellationToken>()).Returns(new AccountLink.Linked(new LinkedUser(42, "Дима", "dima"), "DESKTOP-7F3K2Q"));
         _server = _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services
             .RemoveAll<IAccountService>()
             .AddSingleton(_account)
