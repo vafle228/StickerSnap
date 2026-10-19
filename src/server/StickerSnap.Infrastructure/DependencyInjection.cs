@@ -1,6 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using StickerSnap.Application.Account;
+using StickerSnap.Application.Diagnostics;
 using StickerSnap.Application.Exports;
 using StickerSnap.Application.Feedback;
 using StickerSnap.Application.Files;
@@ -80,7 +83,14 @@ public static class DependencyInjection
         services.AddHttpClient<CloudClient>(client => client.Timeout = CloudClient.Timeout);
         services.AddTransient<IDeviceLinking, CloudDeviceLinking>();
         services.AddTransient<IFeedbackInbox, CloudFeedbackInbox>();
-        services.AddSingleton<IDiagnosticsCollector, HostDiagnostics>();
+        services.AddSingleton<ISystemSummary, HostSummary>();
+
+        // The server's log in the data directory, which a bug's report takes its lines from
+        // A host without a clock of its own, such as a test's, logs by the system's
+        services.AddSingleton(provider => new FileLog(
+            provider.GetRequiredService<IOptions<DataOptions>>(), provider.GetService<TimeProvider>() ?? TimeProvider.System));
+        services.AddSingleton<ILoggerProvider>(provider => provider.GetRequiredService<FileLog>());
+        services.AddSingleton<ILogArchive>(provider => provider.GetRequiredService<FileLog>());
 
         return services;
     }
