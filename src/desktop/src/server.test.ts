@@ -37,6 +37,7 @@ const ECHO_ENV = `
       token: process.env.StickerSnap__Token,
       mode: process.env.StickerSnap__Mode,
       parent: process.env.StickerSnap__ParentPid,
+      shell: process.env.StickerSnap__ShellVersion,
     }));
   }).listen(Number(url.port), url.hostname);
 `;
@@ -104,13 +105,23 @@ describe("starting the server", () => {
     expect(newToken()).not.toBe(token);
   });
 
-  it("hands it the token, the desktop mode and the shell's pid, and is ready once it answers", async () => {
+  it("hands it the token, the desktop mode, the shell's pid and version, and is ready once it answers", async () => {
     const port = await choosePort();
-    const server = await startServer(fake(ECHO_ENV), { port, token: "t0k3n", timeoutMs: 10_000 });
+    const server = await startServer(fake(ECHO_ENV), {
+      port,
+      token: "t0k3n",
+      timeoutMs: 10_000,
+      shellVersion: "Electron 44.7.2",
+    });
     try {
       expect(server.baseUrl).toBe(`http://127.0.0.1:${port}`);
       const env = (await (await fetch(server.baseUrl)).json()) as Record<string, string>;
-      expect(env).toEqual({ token: "t0k3n", mode: "desktop", parent: String(process.pid) });
+      expect(env).toEqual({
+        token: "t0k3n",
+        mode: "desktop",
+        parent: String(process.pid),
+        shell: "Electron 44.7.2",
+      });
     } finally {
       await server.stop();
     }
@@ -129,6 +140,18 @@ describe("starting the server", () => {
       message: expect.stringContaining("code 3"),
       output: expect.stringContaining("port in use"),
     });
+  });
+
+  it("keeps the end of what a running server printed, for the report of its crash", async () => {
+    const port = await choosePort();
+    const server = await startServer(
+      fake(
+        `${ECHO_ENV}; console.log("listening"); setTimeout(() => { console.error("Unhandled exception"); process.exit(3); }, 300);`,
+      ),
+      { port, token: "t", timeoutMs: 10_000 },
+    );
+    expect(await server.exited).toBe(3);
+    expect(server.output()).toContain("Unhandled exception");
   });
 
   it("gives up on a server that never answers and stops it", async () => {

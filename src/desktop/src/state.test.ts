@@ -23,6 +23,24 @@ describe("the shell's memory between launches", () => {
     expect(readState(path)).toEqual(state);
   });
 
+  it("keeps the mark of a running launch and the crash of the last one", () => {
+    const path = file();
+    const state = {
+      theme: "system" as const,
+      running: true,
+      startedAt: "2026-10-19T13:00:00.000Z",
+      crash: { kind: "server" as const, at: "2026-10-19T12:00:00.000Z", code: 3, output: "boom" },
+    };
+    writeState(path, state);
+    expect(readState(path)).toEqual(state);
+  });
+
+  it("drops a crash it cannot read", () => {
+    const path = file();
+    writeFileSync(path, JSON.stringify({ theme: "light", crash: { kind: "meteor", at: 1 } }));
+    expect(readState(path)).toEqual({ theme: "light" });
+  });
+
   it("drops what is broken and keeps the rest", () => {
     const path = file();
     const broken = { port: 70_000, theme: "pink", bounds: { x: 1 }, maximized: false };
