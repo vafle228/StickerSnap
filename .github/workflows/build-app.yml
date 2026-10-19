@@ -143,6 +143,27 @@ jobs:
           run-id: ${{ needs.pipeline.outputs.run-id }}
           github-token: ${{ github.token }}
 
+      # The installed app links and publishes through the production bot service on the VPS
+      # (docker/telegram): the repository variable BOT_DOMAIN gives its address
+      - name: Bot service address
+        shell: bash
+        env:
+          DOMAIN: ${{ vars.BOT_DOMAIN }}
+          RELEASE: ${{ needs.version.outputs.release }}
+        run: |
+          if [ -z "$DOMAIN" ]; then
+            if [ "$RELEASE" = true ]; then
+              echo "::error::Set the repository variable BOT_DOMAIN (Settings → Secrets and variables → Actions → Variables): a release without it can neither link nor publish"
+              exit 1
+            fi
+            echo "::warning::BOT_DOMAIN is not set: these installers answer bot_unavailable when linking and publishing"
+            exit 0
+          fi
+          settings=src/server/StickerSnap.Api/appsettings.json
+          jq --arg url "https://$DOMAIN" '.StickerSnap.ServiceUrl = $url' "$settings" > "$settings.new"
+          mv "$settings.new" "$settings"
+          echo "Bot service: https://$DOMAIN" >> "$GITHUB_STEP_SUMMARY"
+
       # The self-contained server into server-dist, then the installers
       - run: npm run server -w src/desktop -- ${{ matrix.rid }}
 
