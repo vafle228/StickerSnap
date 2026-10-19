@@ -49,7 +49,7 @@ public sealed class DiagnosticsService(
         foreach (var line in await system.DescribeAsync(cancellationToken)) head.Append(line).Append('\n');
         head.Append(CultureInfo.InvariantCulture, $"Sent at {Stamp(now)}\n");
         if (code is not null || traceId is not null)
-            head.Append(CultureInfo.InvariantCulture, $"Error: {code ?? "-"}{(traceId is null ? "" : $", trace {traceId}")}\n");
+            head.Append("Error: ").AppendJoin(", ", new[] { code, traceId is null ? null : $"trace {traceId}" }.OfType<string>()).Append('\n');
 
         var errors = traceId is null ? [] : journal.Find(traceId);
         if (traceId is not null && errors.Count == 0)

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using StickerSnap.Core.Errors;
 
@@ -24,7 +25,8 @@ public sealed class ErrorJournal(ILogger<ErrorJournal> logger) : IErrorJournal
             _records.Enqueue(record);
         }
         logger.LogWarning(
-            "{Code} in {Operation}, trace {TraceId}: {Message}", record.Code, record.Operation, record.TraceId, record.Message);
+            "{Code} in {Operation}, trace {TraceId}: {Message}",
+            JsonNamingPolicy.SnakeCaseLower.ConvertName(record.Code.ToString()), record.Operation, record.TraceId, record.Message);
     }
 
     /// <inheritdoc />

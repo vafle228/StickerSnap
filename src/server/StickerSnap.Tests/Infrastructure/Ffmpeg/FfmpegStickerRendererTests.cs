@@ -92,13 +92,14 @@ public sealed class FfmpegStickerRendererTests : IDisposable
     [Fact]
     public async Task Fails_with_the_log_of_ffmpeg_and_stops_after_a_failed_pass()
     {
-        Fails(() => new FfmpegResult(1, "", "Error while opening encoder"));
+        Fails(() => new FfmpegResult(1, "", "Error while opening encoder", "ffmpeg -i cat.gif -pass 1"));
 
         var render = () => new FfmpegStickerRenderer(_ffmpeg).RenderAsync(Render(new RateControl.TwoPass(664_098)), progress: null, Cancel);
 
         var error = (await render.Should().ThrowAsync<AppException>()).Which;
         error.Code.Should().Be(ErrorCode.RenderFailed);
         error.Log.Should().Be("Error while opening encoder");
+        error.Context.Should().Contain("command", "ffmpeg -i cat.gif -pass 1");
         _runs.Should().ContainSingle();
     }
 

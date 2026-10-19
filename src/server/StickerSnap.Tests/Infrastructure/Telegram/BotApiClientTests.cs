@@ -36,6 +36,7 @@ public sealed class BotApiClientTests : IDisposable
 
         error.Code.Should().Be(code);
         error.Log.Should().Be(description);
+        error.Context.Should().Contain("method", "getMe").And.Contain("answer", description);
     }
 
     [Fact]
