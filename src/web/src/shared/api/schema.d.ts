@@ -694,6 +694,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Отправить отзыв или отчёт об ошибке
+         * @description Артборд 19·4, задача F2. Сервер пересылает отзыв в облачный сервис (bot-service.yaml,
+         *     `sendFeedback`): с ключом устройства, если компьютер привязан, иначе с `installationId`
+         *     и контактом. У `bug` сервер сам прикладывает сведения: версии StickerSnap, FFmpeg и .NET,
+         *     режим, ОС (журнал и контекст ошибки — F4). Видео, кадры и проекты не уходят никогда.
+         *
+         *     Неверное тело — `bad_request` с `fields.text` или `fields.contact`. Сервис недоступен или
+         *     не настроен — `bot_unavailable` (503), нет сети — `network_unavailable` (503), больше 5
+         *     отзывов в час — `rate_limited` (429) с `params.retryAfterSec`.
+         */
+        post: operations["sendFeedback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1252,6 +1279,34 @@ export interface components {
             export?: components["schemas"]["ExportResult"];
             sticker?: components["schemas"]["StickerRef"];
             error?: components["schemas"]["Problem"];
+        };
+        /**
+         * @description «Ошибка», «Идея», «Другое»
+         * @enum {string}
+         */
+        FeedbackType: "bug" | "idea" | "other";
+        FeedbackRequest: {
+            type: components["schemas"]["FeedbackType"];
+            /** @description Пустой только у `bug` с `error` */
+            text: string;
+            /** @description «Можно ответить мне в Telegram» или «Ответить мне на» */
+            canReply: boolean;
+            /** @description E-mail или @username; уходит в сервис, только если компьютер не привязан */
+            contact?: string;
+            error?: components["schemas"]["FeedbackError"];
+        };
+        /** @description Только у `bug`, ошибка, из которой открыли окно (F5) */
+        FeedbackError: {
+            /** @description Код из `ErrorCode`, render_failed */
+            code: string;
+            traceId?: string;
+        };
+        FeedbackCreated: {
+            /**
+             * Format: int64
+             * @description Номер отзыва в сервисе
+             */
+            id: number;
         };
         /**
          * @description RFC 9457 Problem Details. `title` и `detail` — английский для журнала, в интерфейс не попадают;
@@ -2382,6 +2437,34 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    sendFeedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Отзыв принят сервисом */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackCreated"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            429: components["responses"]["TooManyRequests"];
+            503: components["responses"]["ServiceUnavailable"];
             default: components["responses"]["Problem"];
         };
     };

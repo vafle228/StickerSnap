@@ -35,5 +35,7 @@ export type PackSticker = Schemas["PackSticker"];
 export type PackType = Schemas["PackType"];
 export type PublishDraft = Schemas["PublishDraft"];
 export type PackNameCheck = Schemas["PackNameCheck"];
+export type FeedbackType = Schemas["FeedbackType"];
+export type FeedbackRequest = Schemas["FeedbackRequest"];
 export type Problem = Schemas["Problem"];
 export type ErrorCode = Schemas["ErrorCode"];

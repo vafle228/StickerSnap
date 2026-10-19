@@ -94,6 +94,12 @@
   color: var(--ink);
 }
 
+/* «Нашли ошибку или есть идея?» in «О программе» (artboard 19) */
+.feedbackTitle {
+  font: 600 15px/20px var(--font-sans);
+  color: var(--ink);
+}
+
 /* The account's buttons on the card: «Проверить связь», «Отвязать» in red ink */
 .accountActions {
   display: flex;

@@ -53,6 +53,8 @@ tags:
     description: Паки
   - name: publish
     description: Публикация
+  - name: feedback
+    description: Отзыв
 
 x-events:
   hub: /hubs/events
@@ -1040,6 +1042,43 @@ paths:
                 $ref: '#/components/schemas/PublishDraft'
         '404':
           $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  # -------------------------------------------------------------------- Отзыв
+  /api/v1/feedback:
+    post:
+      tags: [feedback]
+      operationId: sendFeedback
+      summary: Отправить отзыв или отчёт об ошибке
+      description: |
+        Артборд 19·4, задача F2. Сервер пересылает отзыв в облачный сервис (bot-service.yaml,
+        `sendFeedback`): с ключом устройства, если компьютер привязан, иначе с `installationId`
+        и контактом. У `bug` сервер сам прикладывает сведения: версии StickerSnap, FFmpeg и .NET,
+        режим, ОС (журнал и контекст ошибки — F4). Видео, кадры и проекты не уходят никогда.
+
+        Неверное тело — `bad_request` с `fields.text` или `fields.contact`. Сервис недоступен или
+        не настроен — `bot_unavailable` (503), нет сети — `network_unavailable` (503), больше 5
+        отзывов в час — `rate_limited` (429) с `params.retryAfterSec`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackRequest'
+      responses:
+        '201':
+          description: Отзыв принят сервисом
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackCreated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
         default:
           $ref: '#/components/responses/Problem'
 
@@ -2212,6 +2251,54 @@ components:
           $ref: '#/components/schemas/StickerRef'
         error:
           $ref: '#/components/schemas/Problem'
+
+    # ---------------------------------------------------------------- Отзыв
+    FeedbackType:
+      type: string
+      description: «Ошибка», «Идея», «Другое»
+      enum: [bug, idea, other]
+
+    FeedbackRequest:
+      type: object
+      required: [type, text, canReply]
+      properties:
+        type:
+          $ref: '#/components/schemas/FeedbackType'
+        text:
+          type: string
+          maxLength: 2000
+          description: Пустой только у `bug` с `error`
+        canReply:
+          type: boolean
+          description: «Можно ответить мне в Telegram» или «Ответить мне на»
+        contact:
+          type: string
+          maxLength: 100
+          description: E-mail или @username; уходит в сервис, только если компьютер не привязан
+        error:
+          $ref: '#/components/schemas/FeedbackError'
+
+    FeedbackError:
+      type: object
+      description: Только у `bug`, ошибка, из которой открыли окно (F5)
+      required: [code]
+      properties:
+        code:
+          type: string
+          maxLength: 64
+          description: Код из `ErrorCode`, render_failed
+        traceId:
+          type: string
+          maxLength: 64
+
+    FeedbackCreated:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Номер отзыва в сервисе
 
     # --------------------------------------------------------------- Ошибки
     Problem:

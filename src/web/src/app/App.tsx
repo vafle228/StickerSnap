@@ -1,5 +1,6 @@
 import { NavRail, type NavRailItem } from "@stickersnap/ds";
 import { EditorScreen } from "../features/editor/EditorScreen";
+import { openFeedback } from "../features/feedback/openFeedback";
 import { PacksScreen } from "../features/packs/PacksScreen";
 import { PublishWatch } from "../features/packs/PublishWatch";
 import { useProjectActions } from "../features/projects/actions";
@@ -15,12 +16,16 @@ import { useApplyTheme } from "../shared/theme/theme";
 import styles from "./App.module.css";
 import { useApp, type Section } from "./store";
 
-const MAIN: NavRailItem<Section>[] = [
+// «Отзыв» opens a window over any section instead of being one (artboard 19)
+type RailItem = Section | "feedback";
+
+const MAIN: NavRailItem<RailItem>[] = [
   { value: "editor", label: t("nav.editor"), icon: "film" },
   { value: "projects", label: t("nav.projects"), icon: "folder" },
   { value: "packs", label: t("nav.packs"), icon: "sticker" },
 ];
-const BOTTOM: NavRailItem<Section>[] = [
+const BOTTOM: NavRailItem<RailItem>[] = [
+  { value: "feedback", label: t("nav.feedback"), icon: "feedback" },
   { value: "settings", label: t("nav.settings"), icon: "settings" },
 ];
 
@@ -45,7 +50,7 @@ export function App() {
         items={MAIN.map((item) => (item.value === "packs" ? { ...item, dot: sending } : item))}
         bottomItems={BOTTOM}
         value={section}
-        onChange={setSection}
+        onChange={(item) => (item === "feedback" ? openFeedback() : setSection(item))}
       />
       <main className={styles.main}>
         {/* The editor is never unmounted: switching sections keeps its scene and playhead. */}

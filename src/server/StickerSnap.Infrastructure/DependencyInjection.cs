@@ -12,6 +12,7 @@ using StickerSnap.Application.Settings;
 using StickerSnap.Application.Sources;
 using StickerSnap.Infrastructure.Account;
 using StickerSnap.Infrastructure.Cloud;
+using StickerSnap.Infrastructure.Diagnostics;
 using StickerSnap.Infrastructure.Ffmpeg;
 using StickerSnap.Infrastructure.Files;
 using StickerSnap.Infrastructure.Packs;
@@ -79,6 +80,7 @@ public static class DependencyInjection
         services.AddHttpClient<CloudClient>(client => client.Timeout = CloudClient.Timeout);
         services.AddTransient<IDeviceLinking, CloudDeviceLinking>();
         services.AddTransient<IFeedbackInbox, CloudFeedbackInbox>();
+        services.AddSingleton<IDiagnosticsCollector, HostDiagnostics>();
 
         return services;
     }

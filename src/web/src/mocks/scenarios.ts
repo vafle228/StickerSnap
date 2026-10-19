@@ -21,6 +21,7 @@ export const SCENARIOS = {
   "export-fails": "Экспорт не удался",
   "save-fails": "Не сохраняется",
   "webm-bad": "Чужой .webm",
+  "feedback-limit": "Лимит отзывов",
 } as const;
 
 export type Scenario = keyof typeof SCENARIOS;
