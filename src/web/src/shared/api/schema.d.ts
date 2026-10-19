@@ -708,13 +708,45 @@ export interface paths {
          * @description Артборд 19·4, задача F2. Сервер пересылает отзыв в облачный сервис (bot-service.yaml,
          *     `sendFeedback`): с ключом устройства, если компьютер привязан, иначе с `installationId`
          *     и контактом. У `bug` сервер сам прикладывает сведения: версии StickerSnap, FFmpeg и .NET,
-         *     режим, ОС (журнал и контекст ошибки — F4). Видео, кадры и проекты не уходят никогда.
+         *     режим, ОС, контекст ошибки и журнал сервера — тот же пакет, что отдаёт `getDiagnostics`.
+         *     Видео, кадры и проекты не уходят никогда.
          *
          *     Неверное тело — `bad_request` с `fields.text` или `fields.contact`. Сервис недоступен или
          *     не настроен — `bot_unavailable` (503), нет сети — `network_unavailable` (503), больше 5
          *     отзывов в час — `rate_limited` (429) с `params.retryAfterSec`.
          */
         post: operations["sendFeedback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Пакет сведений об ошибке
+         * @description Артборд 19, раздел 4, задача F4. Тот же пакет, что `sendFeedback` прикладывает к `bug`:
+         *     окно 19·4 показывает его в «Что отправится». Версии StickerSnap, FFmpeg, .NET и ОС, режим;
+         *     ошибка по `traceId` с контекстом (операция, проект, отрезок, пак; у FFmpeg — команда и хвост
+         *     stderr, у Telegram и облачного сервиса — метод и ответ); параметры проекта без видео; до 10
+         *     последних ошибок сервера; журнал сервера от 15 минут до ошибки до сейчас, а без `traceId`
+         *     или когда ошибки нет в памяти — за последний час.
+         *
+         *     Пути заменены именами файлов, имя пользователя ОС — `<user>`, токены и ключи — `<secret>`.
+         *     Не больше 200 КБ в UTF-8: при обрезке журнал теряет старые строки. Сервер помнит 50
+         *     последних ошибок с `reportable` до перезапуска; журнал — `logs/server-ГГГГ-ММ-ДД.log`
+         *     каталога данных, 7 дней. `traceId` длиннее 64 символов — `bad_request` с `fields.traceId`;
+         *     неизвестный `traceId` — пакет без контекста с пометкой.
+         */
+        get: operations["getDiagnostics"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1308,6 +1340,12 @@ export interface components {
              */
             id: number;
         };
+        DiagnosticsReport: {
+            /** @description Пакет сведений, до 200 КБ в UTF-8 */
+            text: string;
+            /** @description Размер text в UTF-8, для «≈ 34 КБ» */
+            bytes: number;
+        };
         /**
          * @description RFC 9457 Problem Details. `title` и `detail` — английский для журнала, в интерфейс не попадают;
          *     `log` — то, что раскрывает «Подробности».
@@ -1330,41 +1368,52 @@ export interface components {
             };
             /** @description Строка ffprobe или хвост журнала FFmpeg */
             log?: string;
+            /**
+             * @description Нужна ли у ошибки кнопка «Сообщить об ошибке» (артборд 19·1). Зависит только от кода:
+             *     столбец reportable в таблице `ErrorCode`.
+             */
+            reportable: boolean;
+            /**
+             * @description Номер ошибки: у ответа — trace id запроса, у фоновой задачи и её отрезков — id задачи.
+             *     По нему `GET /api/v1/diagnostics` находит контекст ошибки.
+             */
             traceId: string;
         };
         /**
          * @description Замкнутое множество кодов. Новый код — правка контракта и строка в карте состояний артборда 8.
+         *     reportable: yes — у ошибки кнопка «Сообщить об ошибке» (артборд 19·1, F4), no — ожидаемая ошибка,
+         *     которую человек чинит сам.
          *
-         *     | code | HTTP |
-         *     | --- | --- |
-         *     | source_unreadable | 422 |
-         *     | format_unsupported | 415 |
-         *     | source_not_found | 404 |
-         *     | project_not_found | 404 |
-         *     | project_invalid | 422 |
-         *     | project_too_new | 422 |
-         *     | save_failed | 507 |
-         *     | revision_conflict | 409 |
-         *     | disk_full | 507 |
-         *     | render_failed | 500 |
-         *     | cannot_fit | 422 |
-         *     | ffmpeg_missing | 503 |
-         *     | job_not_found | 404 |
-         *     | file_not_found | 404 |
-         *     | validation_failed | 422 |
-         *     | account_not_linked | 409 |
-         *     | bot_blocked | 403 |
-         *     | network_unavailable | 503 |
-         *     | bot_unavailable | 503 |
-         *     | pack_name_invalid | 422 |
-         *     | pack_name_taken | 409 |
-         *     | pack_full | 409 |
-         *     | pack_not_found | 404 |
-         *     | not_our_pack | 422 |
-         *     | rate_limited | 429 |
-         *     | telegram_error | 502 |
-         *     | bad_request | 400 |
-         *     | internal | 500 |
+         *     | code | HTTP | reportable |
+         *     | --- | --- | --- |
+         *     | source_unreadable | 422 | yes |
+         *     | format_unsupported | 415 | no |
+         *     | source_not_found | 404 | no |
+         *     | project_not_found | 404 | no |
+         *     | project_invalid | 422 | yes |
+         *     | project_too_new | 422 | no |
+         *     | save_failed | 507 | no |
+         *     | revision_conflict | 409 | no |
+         *     | disk_full | 507 | no |
+         *     | render_failed | 500 | yes |
+         *     | cannot_fit | 422 | no |
+         *     | ffmpeg_missing | 503 | no |
+         *     | job_not_found | 404 | yes |
+         *     | file_not_found | 404 | yes |
+         *     | validation_failed | 422 | no |
+         *     | account_not_linked | 409 | no |
+         *     | bot_blocked | 403 | no |
+         *     | network_unavailable | 503 | no |
+         *     | bot_unavailable | 503 | no |
+         *     | pack_name_invalid | 422 | no |
+         *     | pack_name_taken | 409 | no |
+         *     | pack_full | 409 | no |
+         *     | pack_not_found | 404 | no |
+         *     | not_our_pack | 422 | no |
+         *     | rate_limited | 429 | no |
+         *     | telegram_error | 502 | yes |
+         *     | bad_request | 400 | yes |
+         *     | internal | 500 | yes |
          * @enum {string}
          */
         ErrorCode: "source_unreadable" | "format_unsupported" | "source_not_found" | "project_not_found" | "project_invalid" | "project_too_new" | "save_failed" | "revision_conflict" | "disk_full" | "render_failed" | "cannot_fit" | "ffmpeg_missing" | "job_not_found" | "file_not_found" | "validation_failed" | "account_not_linked" | "bot_blocked" | "network_unavailable" | "bot_unavailable" | "pack_name_invalid" | "pack_name_taken" | "pack_full" | "pack_not_found" | "not_our_pack" | "rate_limited" | "telegram_error" | "bad_request" | "internal";
@@ -2465,6 +2514,31 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             429: components["responses"]["TooManyRequests"];
             503: components["responses"]["ServiceUnavailable"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDiagnostics: {
+        parameters: {
+            query?: {
+                /** @description Номер ошибки из Problem */
+                traceId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Пакет сведений */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiagnosticsReport"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
             default: components["responses"]["Problem"];
         };
     };
