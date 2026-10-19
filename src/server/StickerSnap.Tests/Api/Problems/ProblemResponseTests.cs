@@ -31,6 +31,7 @@ public sealed class ProblemResponseTests
         problem["code"]!.GetValue<string>().Should().Be("bad_request");
         problem["type"]!.GetValue<string>().Should().Be("https://stickersnap.app/problems/bad_request");
         problem["detail"]!.GetValue<string>().Should().Be("No endpoint for GET /api/v1/zzz");
+        problem["reportable"]!.GetValue<bool>().Should().BeTrue();
     }
 
     [Fact]
@@ -49,6 +50,7 @@ public sealed class ProblemResponseTests
         var problem = await ProblemOf(response);
         problem["code"]!.GetValue<string>().Should().Be("rate_limited");
         problem["params"]!.ToJsonString().Should().Be("""{"retryAfterSec":24}""");
+        problem["reportable"]!.GetValue<bool>().Should().BeFalse("the user waits out a limit alone");
     }
 
     [Fact]
@@ -63,6 +65,7 @@ public sealed class ProblemResponseTests
         response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
         var problem = await ProblemOf(response);
         problem["code"]!.GetValue<string>().Should().Be("internal");
+        problem["reportable"]!.GetValue<bool>().Should().BeTrue();
         problem.ToJsonString().Should().NotContain("secret path");
     }
 

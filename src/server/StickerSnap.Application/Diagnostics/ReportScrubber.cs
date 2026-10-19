@@ -47,14 +47,15 @@ public sealed partial class ReportScrubber(IReadOnlyList<string> userNames, IRea
 
     /// <summary>
     /// `C:\…\name`, `C:/…/name` or `\\server\…\name`, with single or JSON-doubled backslashes.
-    /// Folders may hold spaces, since a slash follows them; the file name ends at a space.
+    /// A folder may hold spaces inside, since a slash follows it, but neither starts nor ends with
+    /// one: «a.mp4 or C:\b» stays two paths. The file name ends at a space.
     /// </summary>
     [GeneratedRegex(
-        """(?<![\w])(?:[A-Za-z]:|\\\\[^\\/\s]+)(?:[\\/]+[^\\/:*?"<>|\r\n]+(?=[\\/]))*[\\/]+(?<name>[^\\/:*?"<>|\r\n\s]*)""")]
+        """(?<![\w])(?:[A-Za-z]:|\\\\[^\\/\s]+)(?:[\\/]+[^\\/:*?"<>|\s](?:[^\\/:*?"<>|\r\n]*[^\\/:*?"<>|\s])?(?=[\\/]))*[\\/]+(?<name>[^\\/:*?"<>|\r\n\s]*)""")]
     private static partial Regex WindowsPath();
 
     /// <summary>An absolute path under a folder that holds users' or the system's files, or under ~.</summary>
     [GeneratedRegex(
-        """(?<![\w.~/])(?:~|/(?:home|Users|tmp|var|private|mnt|media|opt|root|run|Volumes|srv|usr|etc))(?:/[^/:*?"<>|\r\n]+(?=/))*/(?<name>[^/:*?"<>|\r\n\s]*)""")]
+        """(?<![\w.~/])(?:~|/(?:home|Users|tmp|var|private|mnt|media|opt|root|run|Volumes|srv|usr|etc))(?:/[^/:*?"<>|~\s](?:[^/:*?"<>|~\r\n]*[^/:*?"<>|~\s])?(?=/))*/(?<name>[^/:*?"<>|\r\n\s]*)""")]
     private static partial Regex UnixPath();
 }
