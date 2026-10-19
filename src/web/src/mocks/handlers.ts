@@ -1,5 +1,5 @@
 import type { AccountLink, Job, PackNameCheck, Settings } from "../shared/api/types";
-import { app, packSummary, summaryOf, type MockDb } from "./data";
+import { app, demoLink, packSummary, summaryOf, type MockDb } from "./data";
 import { fakeHub } from "./fakeHub";
 import { frameSprite } from "./frames";
 import { cancelJob, startJob } from "./jobs";
@@ -37,7 +37,8 @@ export function handlers(db: MockDb) {
   // «Не сохраняется»: the folder is out of reach for the first save; the retry 30 s later lands
   let saveFailures = db.scenario === "save-fails" ? 1 : 0;
   // The account behind a link in progress: «Отмена» gives it back, as the server does
-  let accountBefore = db.account;
+  let accountBefore: AccountLink =
+    db.account.state === "pending" ? { state: "unlinked" } : db.account;
 
   return [
     // ---------------------------------------------------------------- Приложение
@@ -195,25 +196,34 @@ export function handlers(db: MockDb) {
     route("post", "/api/v1/account/link", () => {
       if (offline) return problem("network_unavailable");
       if (db.account.state !== "pending") accountBefore = db.account;
-      const pending: AccountLink = {
-        state: "pending",
-        deepLink: `https://t.me/${app.botUsername}?start=demo${Date.now()}`,
-        expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
-      };
+      const pending = demoLink();
       db.account = pending;
-      // The bot gets «Start» a few seconds later, unless the wait was cancelled or started again.
+      // The answer comes from the Mini App a few seconds later, unless the wait was cancelled or
+      // started again: «Привязать», or «Это не я» in «Привязку отклонили».
       setTimeout(() => {
         if (db.account !== pending) return;
-        db.account = { state: "linked", user: { id: 100200300, firstName: "Дима" } };
+        db.account =
+          db.scenario === "link-declined"
+            ? accountBefore.state === "unlinked"
+              ? { state: "unlinked", reason: "declined" }
+              : accountBefore
+            : {
+                state: "linked",
+                user: { id: 100200300, firstName: "Дима" },
+                device: "DESKTOP-7F3K2Q",
+              };
         fakeHub.emit("accountChanged", db.account);
-      }, 4000);
+      }, 8000);
       return { status: 200, body: db.account };
     }),
     route("post", "/api/v1/account/check", () =>
       offline ? problem("network_unavailable") : { status: 200, body: db.account },
     ),
     route("delete", "/api/v1/account/link", () => {
-      db.account = db.account.state === "pending" ? accountBefore : { state: "unlinked" };
+      db.account =
+        db.account.state === "pending" && accountBefore.state !== "unlinked"
+          ? accountBefore
+          : { state: "unlinked" };
       fakeHub.emit("accountChanged", db.account);
       return { status: 200, body: db.account };
     }),

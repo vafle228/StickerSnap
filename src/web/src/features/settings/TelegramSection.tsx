@@ -1,5 +1,5 @@
 import type { UseMutationResult } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Badge, Banner, Button, Icon } from "@stickersnap/ds";
 import { useApp } from "../../app/store";
 import { useAccount, useAccountActions, useAppInfo } from "../../shared/api/queries";
@@ -7,6 +7,8 @@ import type { AccountLink, Problem } from "../../shared/api/types";
 import { notifyProblem, PROBLEMS, problemText, toProblem } from "../../shared/notify/problems";
 import { platform } from "../../shared/platform";
 import { t } from "../../shared/strings/ru";
+import { countdown } from "../packs/format";
+import { LinkQr } from "./LinkQr";
 import { SettingsSection } from "./Section";
 import styles from "./sections.module.css";
 
@@ -19,10 +21,11 @@ interface Failure {
   retry: () => void;
 }
 
-/** «Публикация в Telegram», first in the scroll: the four states of the link (artboard 5) right
- *  in the section. «Открыть бота» gets a one-time code from the server and opens the bot; the
- *  server waits for Start and says so with accountChanged. There is no bot token here: one
- *  shared bot (@StickerSnapAppBot). */
+/** «Публикация в Telegram», first in the scroll: the four states of the link (artboards 5 and 18)
+ *  right in the section. «Привязать» gets a code from the server and shows its link to the Mini
+ *  App as a button, a copy and a QR (artboard 18, section 4); the server waits for the user's
+ *  answer in Telegram and says so with accountChanged. There is no bot token here: one shared
+ *  bot (@StickerSnapAppBot). */
 export function TelegramSection() {
   const account = useAccount();
   const actions = useAccountActions();
@@ -31,7 +34,7 @@ export function TelegramSection() {
   const link = account.data;
 
   const [failure, setFailure] = useState<Failure>();
-  // «Готово» after Start pressed while the section is open; the account card on any other visit
+  // «Готово» after the user confirmed while the section is open; the account card on any other visit
   const [seen, setSeen] = useState(link?.state);
   const [justLinked, setJustLinked] = useState(false);
   if (link?.state !== seen) {
@@ -57,10 +60,8 @@ export function TelegramSection() {
     });
   }
 
-  const openBot = () =>
-    run(actions.start, (next) => {
-      if (next.state === "pending") platform.openExternal(next.deepLink);
-    });
+  // The link waits on screen with its QR: Telegram may be only on the phone
+  const openBot = () => run(actions.start);
   const drop = () => run(actions.drop);
   const check = () => run(actions.check);
   const busy = actions.start.isPending || actions.drop.isPending || actions.check.isPending;
@@ -85,27 +86,15 @@ export function TelegramSection() {
             {t("settings.bot.open")}
           </Button>
         </div>
+        {link.reason && (
+          <p className={styles.hint} role="status">
+            {t(`settings.bot.${link.reason}`)}
+          </p>
+        )}
       </div>
     );
   } else if (link.state === "pending") {
-    body = (
-      <div className={styles.linkStep}>
-        <h3 className={styles.stepTitle}>{t("settings.bot.wait.title")}</h3>
-        <p className={styles.note}>{t("settings.bot.wait.text")}</p>
-        <div className={styles.waiting} role="status">
-          <Icon name="spinner" size={18} strokeWidth={2} />
-          {t("settings.bot.pending")}
-        </div>
-        <div className={styles.stepActions}>
-          <Button icon="external" onClick={() => platform.openExternal(link.deepLink)}>
-            {t("settings.bot.openAgain")}
-          </Button>
-          <Button variant="ghost" disabled={busy} onClick={drop}>
-            {t("common.cancel")}
-          </Button>
-        </div>
-      </div>
-    );
+    body = <PendingLink link={link} busy={busy} onCancel={drop} />;
   } else {
     body = (
       <>
@@ -122,6 +111,7 @@ export function TelegramSection() {
         )}
         <AccountCard
           user={link.user}
+          device={link.device}
           problem={link.state === "error" ? link.code : undefined}
           bot={bot}
           actions={
@@ -183,15 +173,80 @@ function nameOf(user: TelegramUser) {
   return user.username ? `@${user.username}` : user.firstName;
 }
 
+/** Waiting for the answer in Telegram (artboard 18, section 4): the QR, the link as a button and
+ *  a copy, «Отмена» and how long the link lives. Its end comes from the server. */
+function PendingLink({
+  link,
+  busy,
+  onCancel,
+}: {
+  link: Extract<AccountLink, { state: "pending" }>;
+  busy: boolean;
+  onCancel: () => void;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!copied) return undefined;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  const copy = () => {
+    void navigator.clipboard?.writeText(link.deepLink).then(
+      () => setCopied(true),
+      () => {},
+    );
+  };
+
+  return (
+    <div className={styles.pending}>
+      <LinkQr link={link.deepLink} label={t("settings.bot.qr")} />
+      <div className={styles.pendingBody}>
+        <Badge tone="info" icon="info">
+          {t("settings.bot.pending")}
+        </Badge>
+        <p className={styles.note}>{t("settings.bot.wait.text")}</p>
+        <div className={styles.stepActions}>
+          <Button
+            variant="primary"
+            icon="external"
+            onClick={() => platform.openExternal(link.deepLink)}
+          >
+            {t("settings.bot.openTelegram")}
+          </Button>
+          <Button icon={copied ? "check" : undefined} onClick={copy}>
+            {t(copied ? "common.copied" : "settings.bot.copyLink")}
+          </Button>
+          <Button variant="ghost" disabled={busy} onClick={onCancel}>
+            {t("common.cancel")}
+          </Button>
+        </div>
+        <span className={styles.hint} role="timer">
+          {t("settings.bot.expiresIn", { time: countdown(Date.parse(link.expiresAt) - now) })}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /** The sunken account card: who is linked and its badge, or what is going on instead. */
 function AccountCard({
   user,
+  device,
   problem,
   bot,
   title,
   actions,
 }: {
   user?: TelegramUser;
+  device?: string;
   problem?: "bot_blocked" | "network_unavailable";
   bot?: string;
   title?: string;
@@ -206,7 +261,9 @@ function AccountCard({
         {user ? (
           <>
             <div className={styles.accountLine}>
-              <span className={styles.accountName}>{nameOf(user)}</span>
+              <span className={styles.accountName}>
+                {device ? `${nameOf(user)}, ${device}` : nameOf(user)}
+              </span>
               {problem ? (
                 <Badge tone="danger">{t(`settings.bot.${problem}`)}</Badge>
               ) : (
