@@ -11,7 +11,7 @@ import {
   type IpcMainEvent,
   type IpcMainInvokeEvent,
 } from "electron";
-import type { FileKind, Invokes, Sends, ThemeSource } from "./bridge.js";
+import type { FileKind, Invokes, LastCrash, Sends, ThemeSource } from "./bridge.js";
 import { isAppUrl, isExternalLink, isServerFile, safeFileName } from "./guard.js";
 import { ru } from "./strings.js";
 
@@ -21,6 +21,8 @@ export interface IpcContext {
   /** The local server, when the shell started one */
   server?: { baseUrl: string; token: string };
   onTheme(theme: ThemeSource): void;
+  /** How the last launch crashed; handed to the SPA once */
+  takeCrash(): LastCrash | null;
 }
 
 const VIDEO = ["mp4", "m4v", "mov", "webm", "mkv", "avi", "gif", "webp"];
@@ -134,6 +136,12 @@ export function registerIpc(ctx: IpcContext) {
       if (!response.ok) throw new Error(`GET ${new URL(url).pathname}: HTTP ${response.status}`);
       await writeFile(target.filePath, Buffer.from(await response.arrayBuffer()));
     },
+  );
+
+  handle(
+    "crash:take",
+    (args): args is [] => args.length === 0,
+    async () => ctx.takeCrash(),
   );
 
   on(

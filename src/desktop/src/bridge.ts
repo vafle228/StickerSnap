@@ -8,6 +8,20 @@ export type FileKind = "video" | "webm" | "project";
 /** The SPA's theme setting; the native parts of the window (title bar, menus) follow it */
 export type ThemeSource = "system" | "light" | "dark";
 
+/** How the last launch ended badly (artboard 19, section 4): the server stopped by itself, the
+ *  window's renderer died, or the shell itself went without quitting. */
+export interface LastCrash {
+  kind: "server" | "window" | "shell";
+  /** ISO time: when it happened; for the shell, when that launch began */
+  at: string;
+  /** The server's exit code */
+  code?: number | null;
+  /** Why the renderer died: crashed, oom, killed… */
+  reason?: string;
+  /** The end of what the server printed */
+  output?: string;
+}
+
 export interface DesktopBridge {
   /** The local server: its origin and the one-time token of this launch. Both are absent in
    *  development, where the window shows Vite on its own origin over the demo data. */
@@ -28,6 +42,8 @@ export interface DesktopBridge {
   setTheme(theme: ThemeSource): void;
   /** The path of a file dropped on the window (webUtils.getPathForFile); "" when it has none */
   pathForFile(file: File): string;
+  /** How the last launch crashed, once: the next call answers null */
+  lastCrash(): Promise<LastCrash | null>;
 }
 
 /** IPC from the preload to the main process: channel → arguments and result */
@@ -38,6 +54,7 @@ export interface Invokes {
   "shell:show-in-folder": (path: string) => void;
   "shell:open-external": (url: string) => void;
   "file:save": (url: string, fileName: string) => void;
+  "crash:take": () => LastCrash | null;
 }
 
 /** One-way messages from the preload */
