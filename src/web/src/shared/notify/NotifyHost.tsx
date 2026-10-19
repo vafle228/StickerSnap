@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { Badge, Button, Toast, ToastStack } from "@stickersnap/ds";
+import { ReportButton } from "../report/ReportButton";
 import { t } from "../strings/ru";
 import { notify, useToasts } from "./notify";
 import styles from "./notify.module.css";
@@ -52,14 +53,22 @@ export function NotifyHost() {
             )
           }
           secondaryAction={
-            toast.details && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => toast.details && notify.showDetails(toast.details)}
-              >
-                {t("common.details")}
-              </Button>
+            // «Сообщить» right after the action (19·1); «Подробности» stays for the log
+            (toast.report || toast.details) && (
+              <>
+                {toast.report && (
+                  <ReportButton error={toast.report} onClick={() => notify.close(toast.id)} />
+                )}
+                {toast.details && (toast.details.log || !toast.report) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => toast.details && notify.showDetails(toast.details)}
+                  >
+                    {t("common.details")}
+                  </Button>
+                )}
+              </>
             )
           }
         />

@@ -3,6 +3,7 @@ import { useJobs, usePacks } from "../../shared/api/queries";
 import type { Job } from "../../shared/api/types";
 import { notify, PROBLEMS, problemText, type ToastHandle } from "../../shared/notify";
 import { platform } from "../../shared/platform";
+import { captureProblem } from "../../shared/report";
 import { t } from "../../shared/strings/ru";
 import { usePackActions } from "./actions";
 import { countdown } from "./format";
@@ -116,6 +117,7 @@ function endOf(job: Job, pack: string, onRetry: () => void) {
       description: text,
       action: { label: t("packs.partial.retry"), onClick: onRetry },
       details: job.error.log ? { log: job.error.log, traceId: job.error.traceId } : undefined,
+      report: captureProblem(job.error, title),
       timeout: null,
     };
   }

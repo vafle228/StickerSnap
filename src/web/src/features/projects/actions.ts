@@ -6,6 +6,7 @@ import { keys } from "../../shared/api/queries";
 import type { Project, ProjectSummary, SourceRef } from "../../shared/api/types";
 import { confirm, notify, notifyProblem, toProblem } from "../../shared/notify";
 import { platform, type LocalFile } from "../../shared/platform";
+import { captureProblem } from "../../shared/report";
 import { t } from "../../shared/strings/ru";
 import { useEditor } from "../editor/model/store";
 import { checkWebm } from "../validator/check";
@@ -17,13 +18,15 @@ function notifyImportProblem(error: unknown, file: LocalFile, pickAnother: () =>
   const problem = toProblem(error);
   const another = { label: t("import.another"), onClick: pickAnother };
   if (problem.code === "source_unreadable") {
+    const title = t("import.unreadable.title", { name: file.name });
     notify.toast({
       key: "import",
       tone: "danger",
-      title: t("import.unreadable.title", { name: file.name }),
+      title,
       description: t("import.unreadable.text"),
       action: another,
       details: { log: problem.log, traceId: problem.traceId || undefined },
+      report: captureProblem(problem, title),
     });
   } else if (problem.code === "format_unsupported") {
     const ext = problem.params?.ext ?? file.name.split(".").pop() ?? "";
