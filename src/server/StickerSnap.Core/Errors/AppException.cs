@@ -18,4 +18,10 @@ public sealed class AppException(ErrorCode code, string message, Exception? inne
 
     /// <summary>What the media engine said, such as the tail of its log, shown under «Подробности».</summary>
     public string? Log { get; init; }
+
+    /// <summary>
+    /// What the app was doing when it failed, for the developer's report and never the interface:
+    /// { command: "ffmpeg -i …" }, { method: "createNewStickerSet", answer: "…" }.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Context { get; init; } = new Dictionary<string, string>();
 }

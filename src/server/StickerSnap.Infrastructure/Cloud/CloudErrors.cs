@@ -50,20 +50,31 @@ internal static class CloudErrors
             {
                 Params = new Dictionary<string, object> { ["retryAfterSec"] = Math.Max(seconds, 1) },
                 Log = words,
+                Context = ContextOf(operation, status, words),
             };
         }
-        return new AppException(code, message) { Log = words };
+        return new AppException(code, message) { Log = words, Context = ContextOf(operation, status, words) };
+    }
+
+    /// <summary>What a report says of a call: the operation, its status and the service's answer, never the key.</summary>
+    private static Dictionary<string, string> ContextOf(string operation, int? status, string? answer)
+    {
+        var context = new Dictionary<string, string>(StringComparer.Ordinal) { ["method"] = operation };
+        if (status is { } code) context["status"] = code.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (answer is not null) context["answer"] = answer;
+        return context;
     }
 
     /// <summary>No connection, or no answer in time: the user's network or the service, the app cannot tell.</summary>
     public static AppException Unreachable(string operation, string why) =>
-        new(ErrorCode.NetworkUnavailable, $"The cloud service is out of reach for {operation}: {why}") { Log = why };
+        new(ErrorCode.NetworkUnavailable, $"The cloud service is out of reach for {operation}: {why}") { Log = why, Context = ContextOf(operation, null, why) };
 
     /// <summary>An answer that is not the service's JSON, such as a proxy's error page.</summary>
     public static AppException Garbled(string operation, int status) =>
         new(ErrorCode.BotUnavailable, $"The cloud service answered {operation} with HTTP {status} without its JSON")
         {
             Log = $"HTTP {status} without the service's JSON",
+            Context = ContextOf(operation, status, null),
         };
 
     /// <summary>This build knows no address of the service.</summary>

@@ -250,6 +250,25 @@ export function handlers(db: MockDb) {
       feedbackSent.push(Date.now());
       return { status: 201, body: { id: 1000 + feedbackSent.length } };
     }),
+    // A report as the server writes it, without a log: the demo has no server to take it from
+    route("get", "/api/v1/diagnostics", ({ url }) => {
+      const traceId = url.searchParams.get("traceId");
+      if (traceId && traceId.length > 64)
+        return problem("bad_request", { fields: { traceId: ["too_long"] } });
+      const mode = runsAsDesktop(db.scenario) ? "desktop" : "web";
+      const text = [
+        `StickerSnap ${app.appVersion} (${mode})`,
+        `FFmpeg ${app.ffmpeg.version ?? "-"} (${app.ffmpeg.status})`,
+        "Sent at " + new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+        ...(traceId
+          ? [`Error: trace ${traceId}`, `Trace ${traceId} is not in memory: this is the demo`]
+          : []),
+        "",
+        "== Server log ==",
+        "",
+      ].join("\n");
+      return { status: 200, body: { text, bytes: new TextEncoder().encode(text).length } };
+    }),
 
     // -------------------------------------------------------------------- Паки
     route("get", "/api/v1/packs", () => ({ status: 200, body: db.packs.map(packSummary) })),

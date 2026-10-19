@@ -114,8 +114,8 @@ internal sealed class FfmpegEditorMedia(IFfmpeg ffmpeg) : IEditorMedia
         DeleteQuietly(outputPath);
         var name = Path.GetFileName(sourcePath);
         throw result.Log.Contains(NoSpace, StringComparison.OrdinalIgnoreCase)
-            ? new AppException(ErrorCode.DiskFull, $"No space left for {what} of {name}") { Log = result.Log }
-            : new AppException(ErrorCode.RenderFailed, $"ffmpeg failed {what} of {name} (exit code {result.ExitCode})") { Log = result.Log };
+            ? new AppException(ErrorCode.DiskFull, $"No space left for {what} of {name}") { Log = result.Log, Context = result.Context }
+            : new AppException(ErrorCode.RenderFailed, $"ffmpeg failed {what} of {name} (exit code {result.ExitCode})") { Log = result.Log, Context = result.Context };
     }
 
     private static void DeleteQuietly(string path)

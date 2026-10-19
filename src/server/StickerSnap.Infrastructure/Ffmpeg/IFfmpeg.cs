@@ -22,9 +22,14 @@ internal interface IFfmpeg
 /// <summary>How a run of ffmpeg ended.</summary>
 /// <param name="Output">What it wrote to its standard output, such as `metadata=print:file=-`</param>
 /// <param name="Log">The last lines of its standard error: what goes under «Подробности»</param>
-internal sealed record FfmpegResult(int ExitCode, string Output, string Log)
+/// <param name="Command">The command line it ran, for a bug's report</param>
+internal sealed record FfmpegResult(int ExitCode, string Output, string Log, string? Command = null)
 {
     public bool IsSuccess => ExitCode == 0;
+
+    /// <summary>The context of an error this run ends with: its command.</summary>
+    public IReadOnlyDictionary<string, string> Context =>
+        Command is null ? new Dictionary<string, string>() : new Dictionary<string, string> { ["command"] = Command };
 }
 
 /// <summary>One block of `-progress pipe:1`.</summary>

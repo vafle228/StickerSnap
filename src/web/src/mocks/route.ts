@@ -87,6 +87,18 @@ const STATUS: Record<ErrorCode, number> = {
   internal: 500,
 };
 
+/** The codes whose problem offers «Сообщить об ошибке» (contract, ErrorCode's reportable). */
+const REPORTABLE: ReadonlySet<ErrorCode> = new Set<ErrorCode>([
+  "source_unreadable",
+  "project_invalid",
+  "render_failed",
+  "job_not_found",
+  "file_not_found",
+  "telegram_error",
+  "bad_request",
+  "internal",
+]);
+
 let traces = 0;
 
 export function problemOf(code: ErrorCode, extra: Partial<Problem> = {}): Problem {
@@ -95,6 +107,7 @@ export function problemOf(code: ErrorCode, extra: Partial<Problem> = {}): Proble
     status: STATUS[code],
     title: code.replace(/_/g, " "),
     code,
+    reportable: REPORTABLE.has(code),
     traceId: `mock-${++traces}`,
     ...extra,
   };

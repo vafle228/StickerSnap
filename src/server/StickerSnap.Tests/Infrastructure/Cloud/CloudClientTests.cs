@@ -54,6 +54,8 @@ public sealed class CloudClientTests : IDisposable
         error.Code.Should().Be(expected);
         error.Log.Should().Be($"{status} {code}: Said the service");
         error.Message.Should().Contain("addSticker");
+        error.Context["method"].Should().Be("addSticker");
+        error.Context["status"].Should().Be(status.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
     [Fact]

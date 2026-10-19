@@ -125,6 +125,7 @@ describe("the export popup (3c, F)", () => {
           status: 507,
           title: "disk full",
           code: "disk_full",
+          reportable: false,
           traceId: "t-1",
           log: "No space left on device",
         },

@@ -25,6 +25,7 @@ internal sealed partial class FfprobeMediaProbe(IFfmpegLocator locator, IFfmpeg 
             throw new AppException(ErrorCode.SourceUnreadable, $"ffprobe could not read {path} (exit code {probe.ExitCode})")
             {
                 Log = probe.Log,
+                Context = probe.Context,
             };
 
         var media = FfprobeOutput.Parse(probe.Output, extension);
@@ -50,6 +51,7 @@ internal sealed partial class FfprobeMediaProbe(IFfmpegLocator locator, IFfmpeg 
             throw new AppException(ErrorCode.SourceUnreadable, $"ffprobe could not read the frames of {path} (exit code {frames.ExitCode})")
             {
                 Log = frames.Log,
+                Context = frames.Context,
             };
 
         return frames.Output;
@@ -74,6 +76,7 @@ internal sealed partial class FfprobeMediaProbe(IFfmpegLocator locator, IFfmpeg 
             throw new AppException(ErrorCode.SourceUnreadable, $"ffmpeg could not decode {path} (exit code {run.ExitCode})")
             {
                 Log = run.Log,
+                Context = run.Context,
             };
 
         return AlphaMinimum().Matches(run.Output)

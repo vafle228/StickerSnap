@@ -49,6 +49,7 @@ export function toProblem(error: unknown): Problem {
     status: error instanceof ApiError ? error.status : 0,
     title: error instanceof Error ? error.message : String(error),
     code: "internal",
+    reportable: true,
     traceId: "",
   };
 }

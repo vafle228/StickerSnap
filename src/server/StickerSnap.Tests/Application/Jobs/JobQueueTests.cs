@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
+using StickerSnap.Application.Diagnostics;
 using StickerSnap.Application.Jobs;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Jobs;
@@ -22,11 +23,12 @@ public sealed class JobQueueTests : IAsyncDisposable
     private readonly ControlledExecutor _previews = new(JobKind.Preview);
     private readonly ControlledExecutor _exports = new(JobKind.Export);
     private readonly ControlledExecutor _publications = new(JobKind.Publish);
+    private readonly ErrorJournal _journal = new(NullLogger<ErrorJournal>.Instance);
     private readonly JobQueue _queue;
 
     public JobQueueTests()
     {
-        _queue = new JobQueue([_previews, _exports, _publications], _events, _clock, NullLogger<JobQueue>.Instance);
+        _queue = new JobQueue([_previews, _exports, _publications], _events, _journal, _clock, NullLogger<JobQueue>.Instance);
     }
 
     public ValueTask DisposeAsync() => _queue.DisposeAsync();
@@ -203,6 +205,44 @@ public sealed class JobQueueTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task Keeps_a_failure_for_a_report_under_the_job_s_id_with_its_project_and_command()
+    {
+        var job = _queue.Enqueue(Export(Cat));
+        var call = await _exports.NextAsync();
+
+        call.Throw(new AppException(ErrorCode.RenderFailed, "ffmpeg failed pass 2")
+        {
+            Context = new Dictionary<string, string> { ["command"] = "ffmpeg -i cat.gif" },
+        });
+        await _events.UntilAsync(job.Id, JobState.Failed);
+
+        var record = _journal.Find(job.Id).Should().ContainSingle().Which;
+        record.Code.Should().Be(ErrorCode.RenderFailed);
+        record.Operation.Should().Be("export job");
+        record.At.Should().Be(_clock.GetUtcNow());
+        record.Context.Should().BeEquivalentTo(new Dictionary<string, string>
+        {
+            [ErrorRecord.ProjectKey] = Cat.ToString(),
+            ["command"] = "ffmpeg -i cat.gif",
+        });
+    }
+
+    [Fact]
+    public async Task Keeps_the_failure_of_a_segment_with_the_segment_and_the_pack()
+    {
+        var job = _queue.Enqueue(Publish(Cat));
+        var call = await _publications.NextAsync();
+
+        call.Run.ItemFailed("seg-1", new AppException(ErrorCode.TelegramError, "Bad Request: STICKER_VIDEO_LONG"));
+        call.Return();
+        await _events.UntilAsync(job.Id, JobState.Failed);
+
+        var record = _journal.Find(job.Id).Should().ContainSingle().Which;
+        record.Context[ErrorRecord.SegmentKey].Should().Be("seg-1");
+        record.Context[ErrorRecord.PackKey].Should().Be("cats_by_StickerSnapAppBot");
+    }
+
+    [Fact]
     public async Task Ends_partial_when_a_segment_failed_and_the_others_were_done()
     {
         var job = _queue.Enqueue(Export(Cat));
@@ -220,7 +260,7 @@ public sealed class JobQueueTests : IAsyncDisposable
     [Fact]
     public async Task Fails_a_job_of_a_kind_nothing_runs()
     {
-        await using var queue = new JobQueue([], _events, _clock, NullLogger<JobQueue>.Instance);
+        await using var queue = new JobQueue([], _events, Substitute.For<IErrorJournal>(), _clock, NullLogger<JobQueue>.Instance);
 
         var job = queue.Enqueue(Export(Cat));
         var failed = await _events.UntilAsync(job.Id, JobState.Failed);

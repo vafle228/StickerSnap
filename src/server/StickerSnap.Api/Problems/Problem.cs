@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using StickerSnap.Application.Diagnostics;
 using StickerSnap.Core.Errors;
 
 namespace StickerSnap.Api.Problems;
@@ -36,14 +37,19 @@ public static class Problem
     /// <summary>
     /// Fills in what a problem written by the framework lacks: a 400 of a request it could not
     /// read is `bad_request`, anything else without a code is `internal`. Every problem gets the
-    /// trace id, which «Подробности» show and the log carries.
+    /// trace id, which «Подробности» show and the log carries, and whether it offers «Сообщить об
+    /// ошибке»; a reportable one is kept in the error journal for the report to find by that id.
     /// </summary>
     public static void Complete(ProblemDetailsContext context)
     {
         var problem = context.ProblemDetails;
-        if (!problem.Extensions.ContainsKey("code"))
+        if (problem.Extensions.TryGetValue("code", out var given) && given is ErrorCode code)
         {
-            var code = problem.Status == StatusCodes.Status400BadRequest ? ErrorCode.BadRequest : ErrorCode.Internal;
+            // The code a problem was made with
+        }
+        else
+        {
+            code = problem.Status == StatusCodes.Status400BadRequest ? ErrorCode.BadRequest : ErrorCode.Internal;
             var complete = Of(code, problem.Detail);
             problem.Type = complete.Type;
             problem.Title = complete.Title;
@@ -51,6 +57,11 @@ public static class Problem
             problem.Extensions["code"] = code;
             context.HttpContext.Response.StatusCode = complete.Status!.Value;
         }
-        problem.Extensions["traceId"] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
+        var traceId = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
+        problem.Extensions["reportable"] = code.IsReportable();
+        problem.Extensions["traceId"] = traceId;
+
+        if (code.IsReportable() && context.HttpContext.RequestServices.GetService<IErrorJournal>() is { } journal)
+            journal.Record(ProblemRecords.Of(context.HttpContext, problem, code, context.Exception, traceId));
     }
 }

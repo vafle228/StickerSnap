@@ -150,6 +150,7 @@ public sealed record ProblemBody(
     [property: StringOrNumberValues] IReadOnlyDictionary<string, object>? Params,
     IReadOnlyDictionary<string, string[]>? Fields,
     string? Log,
+    bool Reportable,
     string TraceId)
 {
     public static ProblemBody? From(JobError? error, string traceId)
@@ -165,6 +166,7 @@ public sealed record ProblemBody(
             error.Params.Count > 0 ? error.Params : null,
             error.Fields.Count > 0 ? error.Fields : null,
             error.Log,
+            error.Code.IsReportable(),
             traceId);
     }
 }

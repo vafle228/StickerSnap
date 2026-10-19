@@ -62,6 +62,19 @@ public sealed partial class ContractTests
     }
 
     [Fact]
+    public async Task Gives_each_code_the_reportable_of_the_contract_s_table()
+    {
+        var contract = await ContractDocuments.ContractAsync(Cancel);
+        var table = StatusRow().Matches(contract.Components!.Schemas!["ErrorCode"].Description!)
+            .ToDictionary(row => row.Groups["code"].Value, row => row.Groups["reportable"].Value == "yes");
+
+        var reportable = Enum.GetValues<ErrorCode>().ToDictionary(SnakeCase, code => code.IsReportable());
+
+        table.Should().NotBeEmpty();
+        reportable.Should().Equal(table);
+    }
+
+    [Fact]
     public async Task Sends_the_events_of_the_contract_on_its_hub()
     {
         var events = XEvents(await ContractDocuments.ContractAsync(Cancel));
@@ -85,7 +98,7 @@ public sealed partial class ContractTests
 
     private static string SnakeCase(ErrorCode code) => JsonNamingPolicy.SnakeCaseLower.ConvertName(code.ToString());
 
-    /// <summary>A row of the table in ErrorCode's description: `| source_unreadable | 422 |`.</summary>
-    [GeneratedRegex(@"^\| (?<code>[a-z_]+) \| (?<status>\d{3}) \|\r?$", RegexOptions.Multiline)]
+    /// <summary>A row of the table in ErrorCode's description: `| source_unreadable | 422 | yes |`.</summary>
+    [GeneratedRegex(@"^\| (?<code>[a-z_]+) \| (?<status>\d{3}) \| (?<reportable>yes|no) \|\r?$", RegexOptions.Multiline)]
     private static partial Regex StatusRow();
 }

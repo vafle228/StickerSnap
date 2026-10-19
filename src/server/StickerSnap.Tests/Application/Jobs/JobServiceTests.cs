@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using StickerSnap.Application.Account;
+using StickerSnap.Application.Diagnostics;
 using StickerSnap.Application.Jobs;
 using StickerSnap.Application.Packs;
 using StickerSnap.Application.Projects;
@@ -45,7 +46,7 @@ public sealed class JobServiceTests : IAsyncDisposable
         var projects = new ProjectService(
             _registry, _store, Substitute.For<ITrash>(), sources, _events, Imports.Unused(), Substitute.For<ISettingsService>(),
             Substitute.For<ISourceWatch>(), _clock);
-        _queue = new JobQueue([_exports, _publishes], _events, _clock, NullLogger<JobQueue>.Instance);
+        _queue = new JobQueue([_exports, _publishes], _events, Substitute.For<IErrorJournal>(), _clock, NullLogger<JobQueue>.Instance);
         _service = new JobService(_queue, projects, _packs, _account);
         _account.GetAsync(Arg.Any<CancellationToken>()).Returns(new AccountLink.Linked(new LinkedUser(42, "Дима", "dima"), "DESKTOP-7F3K2Q"));
         HasPacks(Cats(count: 3));

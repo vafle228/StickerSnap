@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using StickerSnap.Application.Account;
+using StickerSnap.Application.Diagnostics;
 using StickerSnap.Application.Events;
 using StickerSnap.Application.Exports;
 using StickerSnap.Application.Jobs;
@@ -78,7 +79,7 @@ public sealed class PublishExecutorTests : IAsyncDisposable
             Substitute.For<IEventPublisher>(), _clock);
         var executor = new PublishExecutor(
             _projects, _account, packs, _telegram, _settings, _exporter, _probe, _presence, _clock);
-        _queue = new JobQueue([executor], _events, _clock, NullLogger<JobQueue>.Instance);
+        _queue = new JobQueue([executor], _events, Substitute.For<IErrorJournal>(), _clock, NullLogger<JobQueue>.Instance);
     }
 
     public ValueTask DisposeAsync() => _queue.DisposeAsync();

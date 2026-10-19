@@ -43,12 +43,15 @@ public sealed class JobRun
         _queue.Report(this, job => job.WithDone(segmentId, preview, export, sticker));
 
     /// <summary>A segment failed; the job goes on with the others and ends partial.</summary>
-    public void ItemFailed(string segmentId, AppException error) =>
+    public void ItemFailed(string segmentId, AppException error)
+    {
+        _queue.Record(Entry, error, segmentId);
         _queue.Report(this, job => job.WithItem(
             segmentId,
             JobItemState.Failed,
             job.Items.FirstOrDefault(item => item.SegmentId == segmentId)?.Fraction ?? 0,
             JobError.Of(error)));
+    }
 
     /// <summary>
     /// A segment is left out, for <paramref name="why"/>: a sticker that did not pass the checks is

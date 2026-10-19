@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
+using StickerSnap.Application.Diagnostics;
 using StickerSnap.Application.Exports;
 using StickerSnap.Application.Files;
 using StickerSnap.Application.Jobs;
@@ -44,7 +45,7 @@ public sealed class PreviewExecutorTests : IAsyncDisposable
             });
 
         var executor = new PreviewExecutor(_projects, _engine, _files);
-        _queue = new JobQueue([executor], _events, new FakeTimeProvider(), NullLogger<JobQueue>.Instance);
+        _queue = new JobQueue([executor], _events, Substitute.For<IErrorJournal>(), new FakeTimeProvider(), NullLogger<JobQueue>.Instance);
     }
 
     public ValueTask DisposeAsync() => _queue.DisposeAsync();
