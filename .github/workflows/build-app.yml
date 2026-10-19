@@ -99,31 +99,12 @@ jobs:
     outputs:
       run-id: ${{ steps.find.outputs.run-id }}
     steps:
+      - uses: actions/checkout@v7
       - id: find
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
-        run: |
-          for attempt in $(seq 1 90); do
-            runs=$(gh run list -R "$REPO" --workflow pipeline.yml --commit "$SHA" -L 50               --json databaseId,status,conclusion)
-            for id in $(jq -r '.[] | select(.conclusion == "success") | .databaseId' <<<"$runs"); do
-              spa=$(gh api "repos/$REPO/actions/runs/$id/artifacts"                 --jq '[.artifacts[] | select(.name == "spa-dist" and (.expired | not))] | length')
-              if [ "$spa" != 0 ]; then
-                echo "run-id=$id" >> "$GITHUB_OUTPUT"
-                echo "✅ Pipeline run $id passed on $SHA: its SPA goes into the installers" >> "$GITHUB_STEP_SUMMARY"
-                exit 0
-              fi
-            done
-            if [ "$(jq '[.[] | select(.status != "completed")] | length' <<<"$runs")" = 0 ]; then
-              echo "::error::No Pipeline run passed on $SHA with its SPA still kept (7 days): run Pipeline on this branch (Actions → Pipeline → Run workflow), then this again"
-              exit 1
-            fi
-            echo "Pipeline is still running on $SHA, waiting for it"
-            sleep 30
-          done
-          echo "::error::Pipeline did not finish on $SHA in 45 minutes"
-          exit 1
+        uses: ./.github/actions/pipeline-run
+        with:
+          artifact: spa-dist
+          use: goes into the installers
 
   package:
     # Static name: GitHub appends the matrix values itself, "Installer (Windows, ...)"
@@ -161,6 +142,27 @@ jobs:
           path: src/server/StickerSnap.Api/wwwroot
           run-id: ${{ needs.pipeline.outputs.run-id }}
           github-token: ${{ github.token }}
+
+      # The installed app links and publishes through the production bot service on the VPS
+      # (docker/telegram): the repository variable BOT_DOMAIN gives its address
+      - name: Bot service address
+        shell: bash
+        env:
+          DOMAIN: ${{ vars.BOT_DOMAIN }}
+          RELEASE: ${{ needs.version.outputs.release }}
+        run: |
+          if [ -z "$DOMAIN" ]; then
+            if [ "$RELEASE" = true ]; then
+              echo "::error::Set the repository variable BOT_DOMAIN (Settings → Secrets and variables → Actions → Variables): a release without it can neither link nor publish"
+              exit 1
+            fi
+            echo "::warning::BOT_DOMAIN is not set: these installers answer bot_unavailable when linking and publishing"
+            exit 0
+          fi
+          settings=src/server/StickerSnap.Api/appsettings.json
+          jq --arg url "https://$DOMAIN" '.StickerSnap.ServiceUrl = $url' "$settings" > "$settings.new"
+          mv "$settings.new" "$settings"
+          echo "Bot service: https://$DOMAIN" >> "$GITHUB_STEP_SUMMARY"
 
       # The self-contained server into server-dist, then the installers
       - run: npm run server -w src/desktop -- ${{ matrix.rid }}

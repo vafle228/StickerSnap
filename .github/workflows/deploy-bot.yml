@@ -1,0 +1,143 @@
+name: Deploy bot
+
+# The play button of the bot service: Actions → "Deploy bot" → "Run workflow" on main.
+#
+# Only a commit Pipeline passed is deployed, with what that run built and tested: the Mini App
+# comes from its artifact miniapp-dist. Builds the two images of docker/telegram, pushes them to
+# GitHub Packages (ghcr.io/<owner>/stickersnap-bot and -web, tagged with the commit and latest),
+# copies compose.prod.yaml to the VPS as ~/stickersnap/compose.yaml, restarts the service there
+# and checks https://<BOT_DOMAIN>/health. The VPS keeps its .env (the token, DOMAIN, the other
+# secrets) beside compose.yaml, written there by hand; nothing secret is in git or in an image.
+#
+# Set up once in Settings → Secrets and variables → Actions:
+#   secrets   VPS_HOST, VPS_USER, VPS_SSH_KEY (the private deploy key), VPS_KNOWN_HOSTS
+#             (`ssh-keyscan <VPS_HOST>`: the deploy talks only to that server)
+#   variable  BOT_DOMAIN, like bot.example.com (also gives the installers their service address)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # to find the Pipeline run of the commit and download its artifact
+  actions: read
+
+# One deploy at a time, and a running one is never cut off halfway
+concurrency:
+  group: deploy-bot
+  cancel-in-progress: false
+
+jobs:
+  pipeline:
+    name: Pipeline of the commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    outputs:
+      run-id: ${{ steps.find.outputs.run-id }}
+    steps:
+      - name: Only main is deployed
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::The bot is deployed only from main: run Deploy bot on main"
+          exit 1
+      - uses: actions/checkout@v7
+      - id: find
+        uses: ./.github/actions/pipeline-run
+        with:
+          artifact: miniapp-dist
+          use: goes onto the VPS
+
+  images:
+    name: Images
+    needs: [pipeline]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    outputs:
+      registry: ${{ steps.registry.outputs.registry }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: miniapp-dist
+          path: miniapp-dist
+          run-id: ${{ needs.pipeline.outputs.run-id }}
+          github-token: ${{ github.token }}
+      # GitHub Packages wants the image name in lower case; the repository has capitals
+      - id: registry
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: echo "registry=ghcr.io/${OWNER,,}/stickersnap" >> "$GITHUB_OUTPUT"
+      - env:
+          TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+        run: echo "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+      - env:
+          REGISTRY: ${{ steps.registry.outputs.registry }}
+        run: |
+          docker build -f docker/telegram/Dockerfile \
+            -t "$REGISTRY-bot:$GITHUB_SHA" -t "$REGISTRY-bot:latest" src/telegram/bot
+          docker build -f docker/telegram/Dockerfile.web --build-context miniapp=miniapp-dist \
+            -t "$REGISTRY-web:$GITHUB_SHA" -t "$REGISTRY-web:latest" docker/telegram
+          docker push --all-tags "$REGISTRY-bot"
+          docker push --all-tags "$REGISTRY-web"
+
+  deploy:
+    name: VPS
+    needs: [images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      # the VPS pulls the images with this run's token, logged out right after
+      packages: read
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      DOMAIN: ${{ vars.BOT_DOMAIN }}
+      REGISTRY: ${{ needs.images.outputs.registry }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Settings are in place
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          missing=""
+          for name in VPS_HOST VPS_USER VPS_SSH_KEY VPS_KNOWN_HOSTS DOMAIN; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Not set:$missing. Secrets VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_KNOWN_HOSTS and the variable BOT_DOMAIN go in Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  StrictHostKeyChecking yes\n' \
+            "$VPS_HOST" "$VPS_USER" > ~/.ssh/config
+      - name: Copy the compose file
+        run: |
+          ssh vps 'mkdir -p stickersnap/backups && test -f stickersnap/.env' || {
+            echo "::error::~/stickersnap/.env is missing on the VPS: write it there first (the token, DOMAIN, WEBHOOK_SECRET, FEEDBACK_CHAT_ID)"
+            exit 1
+          }
+          scp docker/telegram/compose.prod.yaml vps:stickersnap/compose.yaml
+      - name: Restart the service
+        env:
+          TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          echo "$TOKEN" | ssh vps "docker login ghcr.io -u '$ACTOR' --password-stdin"
+          ssh vps "cd stickersnap \
+            && export TAG='$GITHUB_SHA' REGISTRY='$REGISTRY' \
+            && docker compose pull --quiet \
+            && docker compose up -d --remove-orphans; \
+            status=\$?; docker logout ghcr.io; docker image prune -f >/dev/null; exit \$status"
+      - name: The service answers
+        run: |
+          curl -fsS --retry 12 --retry-delay 5 --retry-all-errors "https://$DOMAIN/health"
+          echo "✅ $GITHUB_SHA is live at https://$DOMAIN" >> "$GITHUB_STEP_SUMMARY"

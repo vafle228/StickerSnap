@@ -19,6 +19,7 @@ dependencies = [
 [project.scripts]
 stickersnap-bot = "stickersnap_bot.main:main"
 stickersnap-bot-launch-data = "stickersnap_bot.main:print_launch_data"
+stickersnap-bot-backup = "stickersnap_bot.main:backup"
 
 [build-system]
 requires = ["uv_build>=0.11.7,<0.12.0"]

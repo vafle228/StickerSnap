@@ -1,0 +1,48 @@
+name: Pipeline run of the commit
+description: >-
+  The Pipeline run that passed on this commit and still keeps the given artifact (7 days), waiting
+  while Pipeline still runs on it. Fails when none passed, so nothing untested is shipped.
+inputs:
+  artifact:
+    description: The artifact the caller takes from that run, like spa-dist
+    required: true
+  use:
+    description: What the artifact is for, for the run's summary
+    required: true
+outputs:
+  run-id:
+    description: The Pipeline run's id, for actions/download-artifact run-id
+    value: ${{ steps.find.outputs.run-id }}
+runs:
+  using: composite
+  steps:
+    - id: find
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        SHA: ${{ github.sha }}
+        ARTIFACT: ${{ inputs.artifact }}
+        USE: ${{ inputs.use }}
+      run: |
+        for attempt in $(seq 1 90); do
+          runs=$(gh run list -R "$REPO" --workflow pipeline.yml --commit "$SHA" -L 50 \
+            --json databaseId,status,conclusion)
+          for id in $(jq -r '.[] | select(.conclusion == "success") | .databaseId' <<<"$runs"); do
+            kept=$(gh api "repos/$REPO/actions/runs/$id/artifacts" \
+              --jq "[.artifacts[] | select(.name == \"$ARTIFACT\" and (.expired | not))] | length")
+            if [ "$kept" != 0 ]; then
+              echo "run-id=$id" >> "$GITHUB_OUTPUT"
+              echo "✅ Pipeline run $id passed on $SHA: its $ARTIFACT $USE" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          done
+          if [ "$(jq '[.[] | select(.status != "completed")] | length' <<<"$runs")" = 0 ]; then
+            echo "::error::No Pipeline run passed on $SHA with its $ARTIFACT still kept (7 days): run Pipeline on this branch (Actions → Pipeline → Run workflow), then this again"
+            exit 1
+          fi
+          echo "Pipeline is still running on $SHA, waiting for it"
+          sleep 30
+        done
+        echo "::error::Pipeline did not finish on $SHA in 45 minutes"
+        exit 1

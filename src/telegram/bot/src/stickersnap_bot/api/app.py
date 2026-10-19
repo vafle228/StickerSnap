@@ -47,9 +47,11 @@ def create_app(
     send_feedback: SendFeedback,
     linking: Linking,
     publishing: Publishing,
+    starting: Sequence[Callable[[], Awaitable[None]]] = (),
     closing: Sequence[Callable[[], Awaitable[None]]] = (),
 ) -> FastAPI:
-    """`closing` runs on shutdown after the bot stops: the database engine and the like."""
+    """`starting` runs on startup before updates arrive: the bot's profile and the like.
+    `closing` runs on shutdown after the bot stops: the database engine and the like."""
 
     async def close() -> None:
         await bot.session.close()
@@ -60,6 +62,8 @@ def create_app(
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         polling: asyncio.Task[None] | None = None
         await bot.set_my_commands(list(COMMANDS))
+        for step in starting:
+            await step()
         if isinstance(delivery, Webhook):
             await bot.set_webhook(
                 delivery.base_url.rstrip("/") + WEBHOOK_PATH,

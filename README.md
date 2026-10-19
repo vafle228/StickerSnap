@@ -183,8 +183,11 @@ The bot's chat asks nothing: `/start`, `/help` and `/feedback` answer with text 
 else gets one phrase, and the bot writes by itself when a computer is linked, a pack is created or
 stickers are added (`application/chat.py`, texts in `application/chat_texts.py`). Buttons open the
 Mini App on a screen through `https://t.me/<bot>?startapp=<screen>` links, so they need the Main Mini
-App switched on in @BotFather. The commands menu is set on every start; «Скачать» leads to
-`DOWNLOAD_URL`, the GitHub releases page by default.
+App switched on in @BotFather. The commands, the description and the about line are set on every
+start, and the menu button opens `MINIAPP_URL` when it is set (`infrastructure/telegram/bot_profile.py`;
+each is written only when it differs). The name, the avatar, the Main Mini App and the group mode
+have no Bot API method and are set in @BotFather. «Скачать» leads to `DOWNLOAD_URL`, the GitHub
+releases page by default.
 
 A desktop links itself without the chat (`application/linking.py`): `POST /v1/links` gives a code
 for ten minutes, a `https://t.me/<bot>?startapp=link_<code>` link and a poll token; the link opens
@@ -200,11 +203,21 @@ to the chat in `FEEDBACK_CHAT_ID` (your private chat with the bot, or a closed g
 it), the desktop's diagnostics as a file in reply. Without `FEEDBACK_CHAT_ID` feedback is only stored;
 a message Telegram refused stays in the table with an empty `forwarded_at`.
 
-`docker/telegram` holds the image and its compose file: `docker compose -f docker/telegram/compose.yaml up --build`
-runs the service with `.env` from the repository root and keeps SQLite in a volume. On the VPS the
-`.env` with the production token lies beside `compose.yaml` and is passed with `BOT_ENV_FILE=./.env`;
-it is created there by hand or by the deploy workflow from a GitHub secret, never committed.
-In production `BOT_MODE=webhook` with `WEBHOOK_BASE_URL` and `WEBHOOK_SECRET`.
+`docker/telegram` holds the images and their compose files. Locally `docker compose -f
+docker/telegram/compose.yaml up --build` runs the service with `.env` from the repository root and
+keeps SQLite in a volume.
+
+On the VPS `compose.prod.yaml` runs three containers: `web` (Caddy with the Mini App's production
+build, `Dockerfile.web`), which gets and renews the HTTPS certificate for `DOMAIN` by itself, serves
+the Mini App at `/` and passes `/v1/*`, `/telegram/webhook` and `/health` to `bot`; `bot` in webhook
+mode at `https://<DOMAIN>`; and `backup`, which copies the database once a day into
+`~/stickersnap/backups` and keeps two weeks (`stickersnap-bot-backup`). The `.env` with `DOMAIN`, the
+production token and the other secrets is written on the VPS by hand beside `compose.yaml` and is
+never committed. Actions → «Deploy bot» → «Run workflow» on main deploys a commit Pipeline passed:
+it pushes both images to GitHub Packages, copies the compose file to the VPS, restarts the service
+and checks `/health` (secrets `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`, variable
+`BOT_DOMAIN`). `BOT_DOMAIN` also gives «Build app» the service address the installers talk to; a
+release without it fails.
 
 ### Telegram Mini App
 
