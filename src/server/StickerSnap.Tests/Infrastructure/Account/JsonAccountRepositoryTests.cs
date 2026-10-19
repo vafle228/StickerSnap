@@ -30,7 +30,7 @@ public sealed class JsonAccountRepositoryTests : IDisposable
     [Fact]
     public async Task Reads_back_what_it_saved_after_a_restart()
     {
-        var saved = new AccountRecord(new LinkedUser(42, "Дима", null), BotBlocked: true, LastMessage: 815000002);
+        var saved = new AccountRecord(new LinkedUser(42, "Дима", null), "DESKTOP-7F3K2Q", BotBlocked: true);
 
         await Repository().SaveAsync(saved, Cancel);
 
@@ -38,12 +38,21 @@ public sealed class JsonAccountRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task Writes_the_account_and_where_the_messages_are_read_to()
+    public async Task Writes_the_account_and_the_computer_s_name()
     {
-        await Repository().SaveAsync(new AccountRecord(new LinkedUser(42, "Дима", "dima"), false, 815000002), Cancel);
+        await Repository().SaveAsync(new AccountRecord(new LinkedUser(42, "Дима", "dima"), "Ноутбук Димы", false), Cancel);
 
         var json = await File.ReadAllTextAsync(FilePath, Cancel);
-        json.Should().Contain("\"id\": 42").And.Contain("\"firstName\": \"Дима\"").And.Contain("\"username\": \"dima\"").And.Contain("\"lastUpdate\": 815000002");
+        json.Should().Contain("\"version\": 2").And.Contain("\"id\": 42").And.Contain("\"firstName\": \"Дима\"")
+            .And.Contain("\"username\": \"dima\"").And.Contain("\"device\": \"Ноутбук Димы\"");
+    }
+
+    [Fact]
+    public async Task Reads_a_file_of_linking_through_the_bot_without_the_computer()
+    {
+        await File.WriteAllTextAsync(FilePath, "{ \"version\": 1, \"user\": { \"id\": 42, \"firstName\": \"Дима\" }, \"lastUpdate\": 7 }", Cancel);
+
+        (await Repository().GetAsync(Cancel)).Should().Be(new AccountRecord(new LinkedUser(42, "Дима", null), null, false));
     }
 
     [Theory]

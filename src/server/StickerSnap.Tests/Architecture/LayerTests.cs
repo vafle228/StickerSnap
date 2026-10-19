@@ -63,8 +63,8 @@ public sealed class LayerTests
     }
 
     /// <summary>
-    /// The use cases reach the messenger through IStickerPublisher and IBotChat; how they are
-    /// carried (HTTP to the Bot API today) only the Infrastructure knows.
+    /// The use cases reach the messenger and the cloud service through IStickerPublisher and
+    /// IDeviceLinking; how they are carried (HTTP today) only the Infrastructure knows.
     /// </summary>
     [Fact]
     public void Core_and_application_do_not_speak_http()

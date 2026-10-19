@@ -7,22 +7,23 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using StickerSnap.Application.Account;
+using StickerSnap.Core.Account;
 using StickerSnap.Tests.Application.Account;
 
 namespace StickerSnap.Tests.Api;
 
-/// <summary>/api/v1/account and accountChanged, with the bot's chat faked and account.json in a temporary data directory.</summary>
+/// <summary>/api/v1/account and accountChanged, with the linking service faked and account.json in a temporary data directory.</summary>
 public sealed class AccountEndpointTests : IDisposable
 {
     private readonly ApiFactory _factory = new();
-    private readonly FakeBotChat _chat = new(TimeProvider.System);
+    private readonly FakeDeviceLinking _linking = new(TimeProvider.System);
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     public void Dispose() => _factory.Dispose();
 
-    private WebApplicationFactory<StickerSnap.Api.Program> WithChat() =>
-        _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton<IBotChat>(_chat)));
+    private WebApplicationFactory<StickerSnap.Api.Program> WithLinking() =>
+        _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton<IDeviceLinking>(_linking)));
 
     private static async Task<JsonNode> Json(HttpResponseMessage response) =>
         JsonNode.Parse(await response.Content.ReadAsStringAsync(Cancel))!;
@@ -37,7 +38,7 @@ public sealed class AccountEndpointTests : IDisposable
     }
 
     [Fact]
-    public async Task Gives_no_link_when_the_server_has_no_bot_token()
+    public async Task Gives_no_link_when_the_server_has_no_service()
     {
         var response = await _factory.CreateClient().PostAsync("/api/v1/account/link", null, Cancel);
 
@@ -47,9 +48,9 @@ public sealed class AccountEndpointTests : IDisposable
     }
 
     [Fact]
-    public async Task Links_the_account_when_Start_comes_and_says_so_over_the_hub()
+    public async Task Links_the_computer_when_the_user_confirms_and_says_so_over_the_hub()
     {
-        using var server = WithChat();
+        using var server = WithLinking();
         var client = server.CreateClient();
         await using var hub = Connect(server.Server);
         var linked = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -60,23 +61,44 @@ public sealed class AccountEndpointTests : IDisposable
         await hub.StartAsync(Cancel);
 
         var pending = await Json(await client.PostAsync("/api/v1/account/link", null, Cancel));
-        var code = pending["deepLink"]!.GetValue<string>().Split("start=")[1];
-        await _chat.ParkedAsync();
-        _chat.Deliver(new ChatMessage(1, 42, new ChatUser(42, "Дима", null, "dima"), $"/start {code}", DateTimeOffset.UtcNow));
+        await _linking.ParkedAsync();
+        _linking.Answer(new LinkAnswer.Linked(new LinkedDevice("dev_1", "DESKTOP-7F3K2Q", DateTimeOffset.UtcNow, new LinkedUser(42, "Дима", "dima"), false)));
         var payload = await linked.Task.WaitAsync(TimeSpan.FromSeconds(10), Cancel);
 
         pending["state"]!.GetValue<string>().Should().Be("pending");
-        pending["deepLink"]!.GetValue<string>().Should().StartWith("https://t.me/StickerSnapAppBot?start=");
+        pending["deepLink"]!.GetValue<string>().Should().Be("https://t.me/StickerSnapAppBot?startapp=link_code1");
         pending["expiresAt"].Should().NotBeNull();
-        payload.GetRawText().Should().Be("""{"state":"linked","user":{"id":42,"username":"dima","firstName":"Дима"}}""");
+        payload.GetRawText().Should().Be("""{"state":"linked","user":{"id":42,"username":"dima","firstName":"Дима"},"device":"DESKTOP-7F3K2Q"}""");
         (await client.GetStringAsync("/api/v1/account", Cancel)).Should().Be(payload.GetRawText());
         File.Exists(Path.Combine(_factory.DataDir, "account.json")).Should().BeTrue();
     }
 
     [Fact]
+    public async Task Says_why_the_last_link_ended()
+    {
+        using var server = WithLinking();
+        var client = server.CreateClient();
+        await using var hub = Connect(server.Server);
+        var ended = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
+        hub.On<JsonElement>("accountChanged", payload =>
+        {
+            if (payload.GetProperty("state").GetString() == "unlinked") ended.TrySetResult(payload);
+        });
+        await hub.StartAsync(Cancel);
+        await client.PostAsync("/api/v1/account/link", null, Cancel);
+        await _linking.ParkedAsync();
+
+        _linking.Answer(new LinkAnswer.Declined());
+        var payload = await ended.Task.WaitAsync(TimeSpan.FromSeconds(10), Cancel);
+
+        payload.GetRawText().Should().Be("""{"state":"unlinked","reason":"declined"}""");
+        (await client.GetStringAsync("/api/v1/account", Cancel)).Should().Be(payload.GetRawText());
+    }
+
+    [Fact]
     public async Task Cancels_the_wait_and_unlinks()
     {
-        using var server = WithChat();
+        using var server = WithLinking();
         var client = server.CreateClient();
         await client.PostAsync("/api/v1/account/link", null, Cancel);
 
@@ -91,16 +113,16 @@ public sealed class AccountEndpointTests : IDisposable
     {
         await File.WriteAllTextAsync(
             Path.Combine(_factory.DataDir, "account.json"),
-            """{ "version": 1, "user": { "id": 42, "firstName": "Дима" }, "botBlocked": false }""",
+            """{ "version": 2, "user": { "id": 42, "firstName": "Дима" }, "device": "DESKTOP-7F3K2Q", "botBlocked": false }""",
             Cancel);
-        _chat.ChatFailure = new StickerSnap.Core.Errors.AppException(StickerSnap.Core.Errors.ErrorCode.BotBlocked, "blocked");
-        using var server = WithChat();
+        _linking.Device = new LinkedDevice("dev_1", "DESKTOP-7F3K2Q", DateTimeOffset.UtcNow, new LinkedUser(42, "Дима", null), BotBlocked: true);
+        using var server = WithLinking();
 
         var response = await server.CreateClient().PostAsync("/api/v1/account/check", null, Cancel);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync(Cancel))
-            .Should().Be("""{"state":"error","code":"bot_blocked","user":{"id":42,"firstName":"Дима"}}""");
+            .Should().Be("""{"state":"error","code":"bot_blocked","user":{"id":42,"firstName":"Дима"},"device":"DESKTOP-7F3K2Q"}""");
     }
 
     private static HubConnection Connect(TestServer server) =>

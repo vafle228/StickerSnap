@@ -43,7 +43,7 @@ public sealed class PublishDraftServiceTests
         };
         _projects.GetAsync(Cat.Id, Arg.Any<CancellationToken>())
             .Returns(new OpenedProject(Cat with { Exports = exports }, "/p/cat.ssproj", PresenceStatus.Ok));
-        _account.GetAsync(Arg.Any<CancellationToken>()).Returns(new AccountLink.Linked(new LinkedUser(42, "Дима", null)));
+        _account.GetAsync(Arg.Any<CancellationToken>()).Returns(new AccountLink.Linked(new LinkedUser(42, "Дима", null), "DESKTOP-7F3K2Q"));
         _settings.GetAsync(Arg.Any<CancellationToken>())
             .Returns(UserSettings.Default(new Folders("/p", "/s")).WithRecentEmoji(["😂", "🔥"]));
         _packs.ListAsync(Arg.Any<CancellationToken>()).Returns(
