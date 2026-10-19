@@ -4,20 +4,27 @@ import type { ErrorCode } from "../shared/api/types";
 import { PROBLEMS } from "../shared/notify/problems";
 import { problemOf } from "./route";
 
-/** The «code | HTTP» table in the description of ErrorCode (contract, «Ошибки»). */
-function statusTable(): Map<string, number> {
-  const rows = contract.matchAll(/^\s*\|\s*([a-z_]+)\s*\|\s*(\d{3})\s*\|\s*$/gm);
-  return new Map([...rows].map(([, code = "", status = "0"]) => [code, Number(status)]));
+/** The «code | HTTP | reportable» table in the description of ErrorCode (contract, «Ошибки»). */
+function table(): Map<string, { status: number; reportable: boolean }> {
+  const rows = contract.matchAll(/^\s*\|\s*([a-z_]+)\s*\|\s*(\d{3})\s*\|\s*(yes|no)\s*\|\s*$/gm);
+  return new Map(
+    [...rows].map(([, code = "", status = "0", reportable]) => [
+      code,
+      { status: Number(status), reportable: reportable === "yes" },
+    ]),
+  );
 }
 
 describe("demo errors", () => {
   const codes = Object.keys(PROBLEMS) as ErrorCode[];
 
-  it("answers every error code with the HTTP status the contract gives it", () => {
-    const table = statusTable();
-    expect([...table.keys()].sort()).toEqual([...codes].sort());
-    for (const code of codes)
-      expect([code, problemOf(code).status]).toEqual([code, table.get(code)]);
+  it("answers every error code with the HTTP status and reportable the contract gives it", () => {
+    const rows = table();
+    expect([...rows.keys()].sort()).toEqual([...codes].sort());
+    for (const code of codes) {
+      const { status, reportable } = problemOf(code);
+      expect([code, { status, reportable }]).toEqual([code, rows.get(code)]);
+    }
   });
 
   it("gives every problem its own trace number", () => {

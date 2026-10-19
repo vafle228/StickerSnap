@@ -73,6 +73,7 @@ describe("problems", () => {
       title: "Unsupported",
       code,
       params: { ext: "avi" },
+      reportable: false,
       traceId: "t-1",
     });
 

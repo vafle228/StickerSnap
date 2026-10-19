@@ -10,6 +10,7 @@ const conflict: Problem = {
   status: 409,
   title: "Revision conflict",
   code: "revision_conflict",
+  reportable: false,
   traceId: "t-1",
 };
 
