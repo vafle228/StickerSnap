@@ -28,6 +28,7 @@ from stickersnap_bot.infrastructure.database.migrate import migrate
 from stickersnap_bot.infrastructure.database.unit_of_work import SqlUnitOfWork, create_engine
 from stickersnap_bot.infrastructure.settings import Settings
 from stickersnap_bot.infrastructure.telegram.app_links import BotAppLinks
+from stickersnap_bot.infrastructure.telegram.bot_profile import BotProfile
 from stickersnap_bot.infrastructure.telegram.chat_messages import BotChatMessages
 from stickersnap_bot.infrastructure.telegram.feedback_inbox import TelegramFeedbackInbox
 from stickersnap_bot.infrastructure.telegram.sticker_sets import BotStickerSets
@@ -85,6 +86,7 @@ def build_app(settings: Settings) -> FastAPI:
         send_feedback,
         linking,
         publishing,
+        starting=[BotProfile(bot, settings.miniapp_url).apply],
         closing=[engine.dispose],
     )
 

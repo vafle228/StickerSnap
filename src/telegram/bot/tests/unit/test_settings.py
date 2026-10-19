@@ -6,7 +6,14 @@ from stickersnap_bot.infrastructure.settings import Settings
 
 @pytest.fixture(autouse=True)
 def _clean_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("BOT_TOKEN", "BOT_MODE", "WEBHOOK_BASE_URL", "WEBHOOK_SECRET", "FEEDBACK_CHAT_ID"):
+    for name in (
+        "BOT_TOKEN",
+        "BOT_MODE",
+        "WEBHOOK_BASE_URL",
+        "WEBHOOK_SECRET",
+        "FEEDBACK_CHAT_ID",
+        "MINIAPP_URL",
+    ):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -53,3 +60,15 @@ def test_an_empty_feedback_chat_is_none(
     monkeypatch.setenv("FEEDBACK_CHAT_ID", value)
 
     assert Settings().feedback_chat_id == chat_id
+
+
+@pytest.mark.parametrize(
+    ("value", "url"), [("", None), ("https://bot.example.com/", "https://bot.example.com/")]
+)
+def test_an_empty_miniapp_url_is_none(
+    monkeypatch: pytest.MonkeyPatch, value: str, url: str | None
+) -> None:
+    monkeypatch.setenv("BOT_TOKEN", "123:secret")
+    monkeypatch.setenv("MINIAPP_URL", value)
+
+    assert Settings().miniapp_url == url
