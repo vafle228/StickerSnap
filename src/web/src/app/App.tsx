@@ -42,12 +42,18 @@ const BOTTOM: NavRailItem<RailItem>[] = [
 // «Сообщить об ошибке» anywhere opens the feedback window with the error (artboard 19)
 setReportWindow(openBugReport);
 let crashAsked = false;
+let lastSection: Section | undefined;
 
 /** What a bug's report needs before anyone asks (artboard 19, section 4): the clicks and the
  *  sections on the trail, the errors nothing caught, the crash of the last launch. */
 function useErrorCapture(section: Section) {
   useEffect(() => startCapture(), []);
-  useEffect(() => trail.record(`Раздел: ${t(`nav.${section}`)}`), [section]);
+  useEffect(() => {
+    // Once per visit, not once per effect run
+    if (section === lastSection) return;
+    lastSection = section;
+    trail.record(`Раздел: ${t(`nav.${section}`)}`);
+  }, [section]);
   useEffect(() => {
     // Asked once per page: the shell hands the crash over only once
     if (crashAsked) return;

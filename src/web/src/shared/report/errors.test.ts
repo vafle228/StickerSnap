@@ -29,7 +29,7 @@ describe("the errors a user may report", () => {
     const again = captureError(uiError, at(REPEAT_MS - 1));
 
     expect(first.count).toBe(1);
-    expect(again).toMatchObject({ count: 2, at: first.at });
+    expect(again).toMatchObject({ count: 2, at: first.at, traceId: first.traceId });
     expect(first.traceId).toMatch(/^[0-9a-f]{4}-[0-9a-f]{4}$/);
   });
 

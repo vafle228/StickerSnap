@@ -58,8 +58,9 @@ export function captureError(input: ErrorInput, now: Date = new Date()): Reporte
   const before = seen.get(key);
   // The same answer drawn again (a popup updated in place) is not a new occurrence
   if (before && input.traceId && before.traceId === input.traceId) return before;
-  const traceId = input.traceId || ownNumber();
   const fresh = before && now.getTime() - new Date(before.at).getTime() < REPEAT_MS;
+  // The interface's own error keeps its first number: the one the user may already have named
+  const traceId = input.traceId || (fresh ? before.traceId : ownNumber());
   const error: ReportedError = {
     ...input,
     message: input.message?.slice(0, MESSAGE_MAX),

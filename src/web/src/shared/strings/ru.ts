@@ -583,7 +583,7 @@ export const ru = {
   "feedback.errorWhen": "сегодня {time}",
   "feedback.errorTimes": "×{count} за 10 мин",
   "feedback.reportHint":
-    "Пути к файлам и имя пользователя ОС не уходят. Видео, кадры и проекты не уходят никогда.",
+    "Пути к файлам и имя пользователя ОС заменены. Видео, кадры и проекты не уходят никогда.",
   "feedback.canReply": "Можно ответить мне в Telegram",
   "feedback.canReplyHint": "Ответ придёт от бота StickerSnap.",
   "feedback.replyTo": "Ответить мне на",
