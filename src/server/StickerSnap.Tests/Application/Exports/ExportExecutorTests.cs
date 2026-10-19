@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
+using StickerSnap.Application.Diagnostics;
 using StickerSnap.Application.Exports;
 using StickerSnap.Application.Files;
 using StickerSnap.Application.Jobs;
@@ -64,7 +65,7 @@ public sealed class ExportExecutorTests : IAsyncDisposable
         _files.AddAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ => $"file-{Interlocked.Increment(ref _fileIds)}");
 
         var executor = new ExportExecutor(_projects, _settings, new SegmentExporter(_projects, _engine, _folder, _files));
-        _queue = new JobQueue([executor], _events, new FakeTimeProvider(), NullLogger<JobQueue>.Instance);
+        _queue = new JobQueue([executor], _events, Substitute.For<IErrorJournal>(), new FakeTimeProvider(), NullLogger<JobQueue>.Instance);
     }
 
     public ValueTask DisposeAsync() => _queue.DisposeAsync();

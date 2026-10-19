@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using StickerSnap.Application.Diagnostics;
 using StickerSnap.Application.Events;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Jobs;
@@ -26,16 +27,23 @@ public sealed class JobQueue : IJobQueue, IAsyncDisposable
     private readonly Lane _outputs = new();
     private readonly Dictionary<JobKind, IJobExecutor> _executors;
     private readonly IEventPublisher _events;
+    private readonly IErrorJournal _journal;
     private readonly TimeProvider _clock;
     private readonly ILogger<JobQueue> _logger;
     private readonly CancellationTokenSource _stopping = new();
     private long _sequence;
     private bool _disposed;
 
-    public JobQueue(IEnumerable<IJobExecutor> executors, IEventPublisher events, TimeProvider clock, ILogger<JobQueue> logger)
+    public JobQueue(
+        IEnumerable<IJobExecutor> executors,
+        IEventPublisher events,
+        IErrorJournal journal,
+        TimeProvider clock,
+        ILogger<JobQueue> logger)
     {
         _executors = executors.ToDictionary(executor => executor.Kind);
         _events = events;
+        _journal = journal;
         _clock = clock;
         _logger = logger;
     }
@@ -245,11 +253,13 @@ public sealed class JobQueue : IJobQueue, IAsyncDisposable
         catch (AppException exception)
         {
             error = JobError.Of(exception);
+            Record(entry, exception, segmentId: null);
         }
         catch (Exception exception)
         {
             _logger.LogError(exception, "Job {Job} ({Kind}) failed", entry.Job.Id, entry.Request.Kind);
             error = JobError.Of(ErrorCode.Internal, exception.Message);
+            Record(entry, exception, segmentId: null);
         }
 
         lock (_gate)
@@ -264,6 +274,22 @@ public sealed class JobQueue : IJobQueue, IAsyncDisposable
             Pump(entry.Lane);
         }
         run.Cancellation.Dispose();
+    }
+
+    /// <summary>
+    /// Keeps a failure of the job, or of one of its segments, for a bug's report: the job's id is
+    /// the trace id its problems carry.
+    /// </summary>
+    internal void Record(Entry entry, Exception exception, string? segmentId)
+    {
+        var where = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [ErrorRecord.ProjectKey] = entry.Request.ProjectId.ToString(),
+        };
+        if (segmentId is not null) where[ErrorRecord.SegmentKey] = segmentId;
+        if (entry.Job.Pack is { } pack) where[ErrorRecord.PackKey] = pack;
+        var operation = $"{entry.Request.Kind.ToString().ToLowerInvariant()} job";
+        _journal.Record(ErrorRecord.Of(exception, entry.Job.Id, _clock.GetUtcNow(), operation, where));
     }
 
     private void Finished(Entry entry)

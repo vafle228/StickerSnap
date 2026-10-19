@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
+using StickerSnap.Application.Diagnostics;
 using StickerSnap.Application.Jobs;
 using StickerSnap.Core.Errors;
 using StickerSnap.Core.Jobs;
@@ -26,7 +27,7 @@ public sealed class JobQueueTests : IAsyncDisposable
 
     public JobQueueTests()
     {
-        _queue = new JobQueue([_previews, _exports, _publications], _events, _clock, NullLogger<JobQueue>.Instance);
+        _queue = new JobQueue([_previews, _exports, _publications], _events, Substitute.For<IErrorJournal>(), _clock, NullLogger<JobQueue>.Instance);
     }
 
     public ValueTask DisposeAsync() => _queue.DisposeAsync();
@@ -220,7 +221,7 @@ public sealed class JobQueueTests : IAsyncDisposable
     [Fact]
     public async Task Fails_a_job_of_a_kind_nothing_runs()
     {
-        await using var queue = new JobQueue([], _events, _clock, NullLogger<JobQueue>.Instance);
+        await using var queue = new JobQueue([], _events, Substitute.For<IErrorJournal>(), _clock, NullLogger<JobQueue>.Instance);
 
         var job = queue.Enqueue(Export(Cat));
         var failed = await _events.UntilAsync(job.Id, JobState.Failed);
