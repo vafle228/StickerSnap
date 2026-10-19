@@ -38,6 +38,9 @@ export function handlers(db: MockDb) {
   let saveFailures = db.scenario === "save-fails" ? 1 : 0;
   // The account behind a link in progress: «Отмена» gives it back, as the server does
   let accountBefore = db.account;
+  // Feedback sent in the last hour: the service takes 5 («Лимит отзывов» starts at the limit)
+  const feedbackSent: number[] =
+    db.scenario === "feedback-limit" ? Array.from({ length: 5 }, () => Date.now()) : [];
 
   return [
     // ---------------------------------------------------------------- Приложение
@@ -216,6 +219,26 @@ export function handlers(db: MockDb) {
       db.account = db.account.state === "pending" ? accountBefore : { state: "unlinked" };
       fakeHub.emit("accountChanged", db.account);
       return { status: 200, body: db.account };
+    }),
+
+    // ------------------------------------------------------------------- Отзыв
+    route("post", "/api/v1/feedback", ({ body }) => {
+      const text = body.text.trim();
+      const fields: Record<string, string[]> = {};
+      if (text.length > 2000) fields.text = ["too_long"];
+      else if (!text && !(body.type === "bug" && body.error)) fields.text = ["empty"];
+      if ((body.contact ?? "").length > 100) fields.contact = ["too_long"];
+      if (Object.keys(fields).length > 0) return problem("bad_request", { fields });
+      if (offline) return problem("network_unavailable");
+      const hourAgo = Date.now() - 3_600_000;
+      const recent = feedbackSent.filter((at) => at > hourAgo);
+      if (recent.length >= 5) {
+        const oldest = Math.min(...recent);
+        const retryAfterSec = Math.ceil((oldest + 3_600_000 - Date.now()) / 1000);
+        return problem("rate_limited", { params: { retryAfterSec } });
+      }
+      feedbackSent.push(Date.now());
+      return { status: 201, body: { id: 1000 + feedbackSent.length } };
     }),
 
     // -------------------------------------------------------------------- Паки

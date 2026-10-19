@@ -78,6 +78,8 @@ export const ICON_PATHS = {
   share: ["M12 15V3", "M8 7l4-4l4 4", "M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"],
   download: ["M12 4v11", "M7 10l5 5l5-5", "M5 20h14"],
   computer: ["M6 5h12a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z", "M2 19h20"],
+  /** «Отзыв» in the menu (artboard 19): a speech bubble with lines */
+  feedback: ["M4 5h16v11H9l-5 4z", "M8 9h8", "M8 12h5"],
 } satisfies Record<string, string[]>;
 export type IconName = keyof typeof ICON_PATHS;
 

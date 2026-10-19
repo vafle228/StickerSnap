@@ -1,5 +1,6 @@
 import appIcon from "../../assets/app-icon.png";
-import { Button } from "@stickersnap/ds";
+import { Button, Icon } from "@stickersnap/ds";
+import { openFeedback } from "../feedback/openFeedback";
 import { useAppInfo } from "../../shared/api/queries";
 import type { AppInfo } from "../../shared/api/types";
 import { notify } from "../../shared/notify";
@@ -28,7 +29,8 @@ async function copyVersions(app: AppInfo) {
   }
 }
 
-/** «О программе»: versions of the app and FFmpeg (GET /api/v1/app) and the open-source licenses. */
+/** «О программе»: versions of the app and FFmpeg (GET /api/v1/app), the open-source
+ *  licenses and «Написать отзыв…». */
 export function AboutSection() {
   const app = useAppInfo().data;
 
@@ -57,6 +59,19 @@ export function AboutSection() {
             {t("settings.about.licenses")}
           </Button>
         </div>
+      </div>
+      {/* The second way into «Написать отзыв», for those who look in the settings (artboard 19) */}
+      <div className={styles.account}>
+        <span className={styles.accountIcon} aria-hidden>
+          <Icon name="feedback" size={20} />
+        </span>
+        <div className={styles.accountBody}>
+          <span className={styles.feedbackTitle}>{t("settings.about.feedback")}</span>
+          <span className={styles.muted}>{t("settings.about.feedbackText")}</span>
+        </div>
+        <Button variant="primary" onClick={openFeedback}>
+          {t("settings.about.feedbackOpen")}
+        </Button>
       </div>
       <p className={styles.note}>{t("settings.about.text")}</p>
     </SettingsSection>

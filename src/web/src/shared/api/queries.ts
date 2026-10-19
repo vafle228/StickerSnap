@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notifyProblem } from "../notify/problems";
 import { api, call } from "./client";
-import type { AccountLink, Segment, Settings, SettingsPatch } from "./types";
+import type { AccountLink, FeedbackRequest, Segment, Settings, SettingsPatch } from "./types";
 
 /** Query keys of the server's resources. Lists and items have their own roots, so refetching
  *  a list after a reconnect never refetches the project open in the editor. */
@@ -177,5 +177,13 @@ export function usePublishDraft(projectId: string | undefined) {
         }),
       ),
     enabled: projectId !== undefined,
+  });
+}
+
+/** «Написать отзыв» (artboard 19·4): the server attaches its report to a bug and forwards the
+ *  feedback to the cloud service. A failure is the window's to show, under its buttons. */
+export function useSendFeedback() {
+  return useMutation({
+    mutationFn: (body: FeedbackRequest) => call(api.POST("/api/v1/feedback", { body })),
   });
 }
