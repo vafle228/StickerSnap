@@ -463,15 +463,18 @@ export interface paths {
         put?: never;
         /**
          * Одноразовый код и ссылка на бота
-         * @description Артборды 5-1, 5-2. Этап 1c. Ссылка вида `t.me/StickerSnapAppBot?start=<код>`;
-         *     дальше сервер ждёт Start. Итог — событие SignalR `accountChanged` (Start нажат, код истёк).
-         *     Без токена бота у сервера — `bot_unavailable` (503), без связи с Telegram — `network_unavailable` (503).
+         * @description Артборды 5-1, 5-2, 18 (раздел 4). Этап 1c, D2. Код на 10 минут от облачного сервиса и ссылка
+         *     `https://t.me/StickerSnapAppBot?startapp=link_<код>` на подтверждение в Mini App; дальше сервер
+         *     ждёт ответа. Итог — событие SignalR `accountChanged`: привязано (`linked`), «Это не я»
+         *     (`reason: declined`), код истёк (`reason: expired`). Сервис не настроен или не отвечает —
+         *     `bot_unavailable` (503), нет связи — `network_unavailable` (503).
          */
         post: operations["startAccountLink"];
         /**
          * «Отмена» ожидания или «Отвязать»
-         * @description Артборд 5. Этап 1c. Во время ожидания Start отменяет его и возвращает привязку, какой
-         *     она была до ссылки; иначе отвязывает аккаунт.
+         * @description Артборд 5. Этап 1c, D2. Во время ожидания сжигает код у сервиса и возвращает привязку, какой
+         *     она была до ссылки; иначе отзывает ключ этого компьютера у сервиса (без связи —
+         *     `network_unavailable`, привязка остаётся).
          */
         delete: operations["deleteAccountLink"];
         options?: never;
@@ -490,7 +493,8 @@ export interface paths {
         put?: never;
         /**
          * «Проверить связь»
-         * @description Артборды 5-3, 5-4. Этап 1c.
+         * @description Артборды 5-3, 5-4. Этап 1c, D2. Спрашивает облачный сервис: ключ отозван из Mini App —
+         *     `unlinked`, бот остановлен — `error` `bot_blocked`, нет связи — `error` `network_unavailable`.
          */
         post: operations["checkAccount"];
         delete?: never;
@@ -1042,6 +1046,12 @@ export interface components {
         AccountLink: {
             /** @constant */
             state: "unlinked";
+            /**
+             * @description Чем кончилась прошлая ссылка, пока не нажали «Привязать» или «Отмена» снова:
+             *     expired — код истёк, declined — «Это не я» в Telegram
+             * @enum {string}
+             */
+            reason?: "expired" | "declined";
         } | {
             /** @constant */
             state: "pending";
@@ -1052,12 +1062,15 @@ export interface components {
             /** @constant */
             state: "linked";
             user: components["schemas"]["TelegramUser"];
+            /** @description Имя этого компьютера, как его видит человек в «Устройствах» Mini App */
+            device: string;
         } | {
             /** @constant */
             state: "error";
             /** @enum {string} */
             code: "bot_blocked" | "network_unavailable";
             user?: components["schemas"]["TelegramUser"];
+            device?: string;
         };
         TelegramUser: {
             /** Format: int64 */

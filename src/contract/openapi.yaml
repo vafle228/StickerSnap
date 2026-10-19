@@ -759,9 +759,11 @@ paths:
       operationId: startAccountLink
       summary: Одноразовый код и ссылка на бота
       description: |
-        Артборды 5-1, 5-2. Этап 1c. Ссылка вида `t.me/StickerSnapAppBot?start=<код>`;
-        дальше сервер ждёт Start. Итог — событие SignalR `accountChanged` (Start нажат, код истёк).
-        Без токена бота у сервера — `bot_unavailable` (503), без связи с Telegram — `network_unavailable` (503).
+        Артборды 5-1, 5-2, 18 (раздел 4). Этап 1c, D2. Код на 10 минут от облачного сервиса и ссылка
+        `https://t.me/StickerSnapAppBot?startapp=link_<код>` на подтверждение в Mini App; дальше сервер
+        ждёт ответа. Итог — событие SignalR `accountChanged`: привязано (`linked`), «Это не я»
+        (`reason: declined`), код истёк (`reason: expired`). Сервис не настроен или не отвечает —
+        `bot_unavailable` (503), нет связи — `network_unavailable` (503).
       responses:
         '200':
           description: Привязка в состоянии `pending`
@@ -778,8 +780,9 @@ paths:
       operationId: deleteAccountLink
       summary: «Отмена» ожидания или «Отвязать»
       description: |
-        Артборд 5. Этап 1c. Во время ожидания Start отменяет его и возвращает привязку, какой
-        она была до ссылки; иначе отвязывает аккаунт.
+        Артборд 5. Этап 1c, D2. Во время ожидания сжигает код у сервиса и возвращает привязку, какой
+        она была до ссылки; иначе отзывает ключ этого компьютера у сервиса (без связи —
+        `network_unavailable`, привязка остаётся).
       responses:
         '200':
           description: Привязка после отмены или отвязки (`unlinked`, если аккаунта не было)
@@ -795,7 +798,9 @@ paths:
       tags: [account]
       operationId: checkAccount
       summary: «Проверить связь»
-      description: Артборды 5-3, 5-4. Этап 1c.
+      description: |
+        Артборды 5-3, 5-4. Этап 1c, D2. Спрашивает облачный сервис: ключ отозван из Mini App —
+        `unlinked`, бот остановлен — `error` `bot_blocked`, нет связи — `error` `network_unavailable`.
       responses:
         '200':
           description: Состояние привязки после проверки
@@ -1798,6 +1803,12 @@ components:
             state:
               type: string
               const: unlinked
+            reason:
+              type: string
+              description: |
+                Чем кончилась прошлая ссылка, пока не нажали «Привязать» или «Отмена» снова:
+                expired — код истёк, declined — «Это не я» в Telegram
+              enum: [expired, declined]
         - type: object
           required: [state, deepLink, expiresAt]
           properties:
@@ -1810,13 +1821,16 @@ components:
               type: string
               format: date-time
         - type: object
-          required: [state, user]
+          required: [state, user, device]
           properties:
             state:
               type: string
               const: linked
             user:
               $ref: '#/components/schemas/TelegramUser'
+            device:
+              type: string
+              description: Имя этого компьютера, как его видит человек в «Устройствах» Mini App
         - type: object
           required: [state, code]
           properties:
@@ -1828,6 +1842,8 @@ components:
               enum: [bot_blocked, network_unavailable]
             user:
               $ref: '#/components/schemas/TelegramUser'
+            device:
+              type: string
 
     TelegramUser:
       type: object
