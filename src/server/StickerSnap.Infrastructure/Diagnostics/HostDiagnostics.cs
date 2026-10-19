@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
-using System.Text;
 using StickerSnap.Application.App;
 using StickerSnap.Application.Feedback;
 using StickerSnap.Application.Media;
@@ -19,18 +18,18 @@ internal sealed class HostDiagnostics(IHostInfo host, IMediaEngine engine, ThisC
     public async Task<string> CollectAsync(FeedbackError? error, CancellationToken cancellationToken)
     {
         var media = await engine.GetInfoAsync(cancellationToken);
-        var report = new StringBuilder()
-            .AppendLine(CultureInfo.InvariantCulture, $"StickerSnap {computer.AppVersion} ({Mode()})")
-            .AppendLine(CultureInfo.InvariantCulture, $"{media.Name} {media.Version ?? "-"} ({Status(media.Status)})")
-            .AppendLine(RuntimeInformation.FrameworkDescription)
-            .AppendLine(CultureInfo.InvariantCulture, $"{computer.Platform} ({RuntimeInformation.OSArchitecture.ToString().ToLowerInvariant()})")
-            .AppendLine(CultureInfo.InvariantCulture, $"Sent at {clock.GetUtcNow():yyyy-MM-ddTHH:mm:ssZ}");
-        if (error is not null)
+        var lines = new List<string>
         {
-            report.AppendLine(CultureInfo.InvariantCulture, $"Error: {error.Code}{(error.TraceId is { } trace ? $", trace {trace}" : "")}");
-        }
+            $"StickerSnap {computer.AppVersion} ({Mode()})",
+            $"{media.Name} {media.Version ?? "-"} ({Status(media.Status)})",
+            RuntimeInformation.FrameworkDescription,
+            $"{computer.Platform} ({RuntimeInformation.OSArchitecture.ToString().ToLowerInvariant()})",
+            string.Create(CultureInfo.InvariantCulture, $"Sent at {clock.GetUtcNow():yyyy-MM-ddTHH:mm:ssZ}"),
+        };
+        if (error is not null) lines.Add($"Error: {error.Code}{(error.TraceId is { } trace ? $", trace {trace}" : "")}");
 
-        return report.ToString();
+        // One line ending on every system: the report is read in the messenger, not on this computer
+        return string.Join('\n', lines) + '\n';
     }
 
     private string Mode() => host.Mode == AppMode.Desktop ? "desktop" : "web";

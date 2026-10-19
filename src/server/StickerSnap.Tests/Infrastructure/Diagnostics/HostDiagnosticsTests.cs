@@ -28,7 +28,7 @@ public sealed class HostDiagnosticsTests
     {
         var report = await Diagnostics().CollectAsync(null, Cancel);
 
-        var lines = report.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        var lines = report.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         lines[0].Should().Be("StickerSnap 0.3.1 (desktop)");
         lines[1].Should().Be("FFmpeg 9.0.2 (ok)");
         lines[2].Should().StartWith(".NET");
