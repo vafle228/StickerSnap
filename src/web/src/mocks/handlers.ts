@@ -238,6 +238,23 @@ export function handlers(db: MockDb) {
       if (text.length > 2000) fields.text = ["too_long"];
       else if (!text && !(body.type === "bug" && body.error)) fields.text = ["empty"];
       if ((body.contact ?? "").length > 100) fields.contact = ["too_long"];
+      const error = body.error;
+      if (error && body.type !== "bug") fields.error = ["bug_only"];
+      else if (
+        error &&
+        (!error.code ||
+          error.code.length > 64 ||
+          (error.traceId ?? "").length > 64 ||
+          (error.message ?? "").length > 1000 ||
+          (error.stack ?? "").length > 8000 ||
+          (error.count ?? 1) < 1 ||
+          (error.count ?? 1) > 1000)
+      )
+        fields.error = ["invalid"];
+      const actions = body.actions ?? [];
+      if (actions.length > 0 && body.type !== "bug") fields.actions = ["bug_only"];
+      else if (actions.length > 30) fields.actions = ["too_many"];
+      else if (actions.some((a) => a.what.length > 200)) fields.actions = ["too_long"];
       if (Object.keys(fields).length > 0) return problem("bad_request", { fields });
       if (offline) return problem("network_unavailable");
       const hourAgo = Date.now() - 3_600_000;
