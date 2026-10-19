@@ -161,7 +161,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  # The image the VPS runs (docker/telegram); nothing is pushed yet, that is the deploy workflow (O1)
+  # The image the VPS runs (docker/telegram); pushing it is the manual workflow "Deploy bot"
   build-bot:
     name: Build bot image
     needs: [bot-lint]
@@ -169,6 +169,28 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker build -f docker/telegram/Dockerfile -t stickersnap-bot src/telegram/bot
+
+  # The VPS's front: Caddy with the Mini App this run built. Checks the Caddyfile and the
+  # production compose file the deploy copies to the VPS, so a broken one never reaches it.
+  build-bot-web:
+    name: Build bot web image
+    needs: [build-miniapp]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: miniapp-dist
+          path: miniapp-dist
+      - run: >-
+          docker build -f docker/telegram/Dockerfile.web --build-context miniapp=miniapp-dist
+          -t stickersnap-web docker/telegram
+      - run: >-
+          docker run --rm -e DOMAIN=bot.example.com stickersnap-web
+          caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      # .env is written on the VPS by hand; an empty one stands in for it here
+      - run: touch .env && DOMAIN=bot.example.com docker compose -f compose.prod.yaml config -q
+        working-directory: docker/telegram
 
   # ─────────────────────── test · fast unit and integration tests ───────────────────────
 
@@ -325,7 +347,7 @@ jobs:
   gate:
     name: Pipeline passed
     if: ${{ !cancelled() }}
-    needs: [contract, web-lint, desktop-lint, miniapp-lint, bot-lint, build-web, build-server, build-miniapp, build-bot, web-unit, desktop-unit, server-fast, miniapp-unit, bot-unit, render-slow, e2e, e2e-server, miniapp-e2e]
+    needs: [contract, web-lint, desktop-lint, miniapp-lint, bot-lint, build-web, build-server, build-miniapp, build-bot, build-bot-web, web-unit, desktop-unit, server-fast, miniapp-unit, bot-unit, render-slow, e2e, e2e-server, miniapp-e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any job failed or was cancelled
