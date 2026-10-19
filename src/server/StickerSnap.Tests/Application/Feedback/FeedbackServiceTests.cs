@@ -18,7 +18,7 @@ public sealed class FeedbackServiceTests
     public FeedbackServiceTests()
     {
         _inbox.SendAsync(Arg.Do<FeedbackLetter>(letter => _sent = letter), Arg.Any<CancellationToken>()).Returns(41L);
-        _diagnostics.CollectAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _diagnostics.CollectAsync(Arg.Any<ReportSubject>(), Arg.Any<CancellationToken>())
             .Returns(new DiagnosticsReport("StickerSnap 0.3.1", 17));
     }
 
@@ -31,7 +31,7 @@ public sealed class FeedbackServiceTests
 
         id.Should().Be(41);
         _sent.Should().Be(new FeedbackLetter(FeedbackKind.Idea, "Обрезать на таймлайне", true));
-        await _diagnostics.DidNotReceiveWithAnyArgs().CollectAsync(null, null, Cancel);
+        await _diagnostics.DidNotReceiveWithAnyArgs().CollectAsync(ReportSubject.None, Cancel);
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public sealed class FeedbackServiceTests
 
         _sent!.Diagnostics.Should().Be("StickerSnap 0.3.1");
         _sent.Error.Should().Be(RenderFailed);
-        await _diagnostics.Received(1).CollectAsync("7f3a-c21e", "render_failed", Arg.Any<CancellationToken>());
+        await _diagnostics.Received(1).CollectAsync(new ReportSubject("7f3a-c21e", "render_failed"), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -83,8 +83,49 @@ public sealed class FeedbackServiceTests
     {
         await Service().SendAsync(new FeedbackDraft(FeedbackKind.Bug, "Упало", CanReply: false), Cancel);
 
-        await _diagnostics.Received(1).CollectAsync(null, null, Arg.Any<CancellationToken>());
+        await _diagnostics.Received(1).CollectAsync(ReportSubject.None, Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Gives_the_report_the_interface_s_error_and_its_last_actions()
+    {
+        var at = new DateTimeOffset(2026, 10, 19, 13, 22, 0, TimeSpan.Zero);
+        var error = new FeedbackError("internal", "a1b2-c3d4", ErrorSource.Interface, "TypeError", "at Inspector", at, 2);
+        InterfaceAction[] actions = [new(at, "Кнопка: Экспорт")];
+
+        await Service().SendAsync(new FeedbackDraft(FeedbackKind.Bug, "", CanReply: false, Error: error, Actions: actions), Cancel);
+
+        await _diagnostics.Received(1).CollectAsync(
+            Arg.Is<ReportSubject>(subject =>
+                subject.TraceId == "a1b2-c3d4" && subject.Source == ErrorSource.Interface && subject.Message == "TypeError"
+                && subject.Stack == "at Inspector" && subject.At == at && subject.Count == 2 && subject.Actions == actions),
+            Arg.Any<CancellationToken>());
+        _sent!.Error.Should().Be(error);
+    }
+
+    [Fact]
+    public async Task Refuses_an_error_whose_text_stack_or_count_is_out_of_bounds()
+    {
+        await AssertBadRequest(Bug(RenderFailed with { Message = new string('a', 1001) }), "error", "invalid");
+        await AssertBadRequest(Bug(RenderFailed with { Stack = new string('a', 8001) }), "error", "invalid");
+        await AssertBadRequest(Bug(RenderFailed with { Count = 0 }), "error", "invalid");
+        await AssertBadRequest(Bug(RenderFailed with { Count = 1001 }), "error", "invalid");
+    }
+
+    [Fact]
+    public async Task Takes_up_to_30_short_actions_and_only_with_a_bug()
+    {
+        var now = DateTimeOffset.UnixEpoch;
+        var many = Enumerable.Range(0, 31).Select(i => new InterfaceAction(now, $"Кнопка {i}")).ToList();
+
+        await AssertBadRequest(Bug(RenderFailed) with { Actions = many }, "actions", "too_many");
+        await AssertBadRequest(Bug(RenderFailed) with { Actions = [new(now, new string('a', 201))] }, "actions", "too_long");
+        await AssertBadRequest(
+            new FeedbackDraft(FeedbackKind.Idea, "Идея", CanReply: false, Actions: [new(now, "Кнопка")]), "actions", "bug_only");
+        await Service().SendAsync(Bug(RenderFailed) with { Actions = many[..30] }, Cancel);
+    }
+
+    private static FeedbackDraft Bug(FeedbackError error) => new(FeedbackKind.Bug, "", CanReply: false, Error: error);
 
     private async Task AssertBadRequest(FeedbackDraft draft, string field, string problem)
     {

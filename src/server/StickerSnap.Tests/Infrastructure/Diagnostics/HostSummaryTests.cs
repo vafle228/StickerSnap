@@ -28,11 +28,12 @@ public sealed class HostSummaryTests : IDisposable
         _data.Delete(recursive: true);
     }
 
-    private HostSummary Summary()
+    private HostSummary Summary(string? shell = null)
     {
         var host = Substitute.For<IHostInfo>();
         host.AppVersion.Returns("0.3.1");
         host.Mode.Returns(AppMode.Desktop);
+        host.ShellVersion.Returns(shell);
         var engine = Substitute.For<IMediaEngine>();
         engine.GetInfoAsync(Arg.Any<CancellationToken>()).Returns(new MediaEngineInfo("FFmpeg", MediaEngineStatus.Ok, "9.0.2"));
         return new HostSummary(host, engine, new ThisComputer(host), _credentials);
@@ -47,6 +48,15 @@ public sealed class HostSummaryTests : IDisposable
         lines[1].Should().Be("FFmpeg 9.0.2 (ok)");
         lines[2].Should().StartWith(".NET");
         lines.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public async Task Names_the_shell_after_the_runtime_when_it_runs_in_one()
+    {
+        var lines = await Summary("Electron 33.2.1").DescribeAsync(Cancel);
+
+        lines[3].Should().Be("Electron 33.2.1");
+        lines.Should().HaveCount(5);
     }
 
     [Fact]
