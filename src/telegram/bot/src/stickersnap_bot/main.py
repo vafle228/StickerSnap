@@ -1,8 +1,10 @@
 """The only composition root: the one module that knows every layer."""
 
 import json
+import os
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
 from urllib.parse import quote
 
 import uvicorn
@@ -21,6 +23,7 @@ from stickersnap_bot.application.media import MediaLinks
 from stickersnap_bot.application.miniapp import MiniApp
 from stickersnap_bot.application.publishing import Publishing
 from stickersnap_bot.application.sign_in import SignIn
+from stickersnap_bot.infrastructure.database.backup import back_up
 from stickersnap_bot.infrastructure.database.migrate import migrate
 from stickersnap_bot.infrastructure.database.unit_of_work import SqlUnitOfWork, create_engine
 from stickersnap_bot.infrastructure.settings import Settings
@@ -91,6 +94,16 @@ def main() -> None:
     # before the app: the schema is ready when the first update or request arrives
     migrate(settings.database_path)
     uvicorn.run(build_app(settings), host=settings.host, port=settings.port)
+
+
+def backup() -> None:
+    """`stickersnap-bot-backup`: today's copy of the database into BACKUP_DIR, keeping the last
+    BACKUP_KEEP days. Reads no token: the backup container of docker/telegram/compose.prod.yaml
+    runs it once a day."""
+    database = Path(os.environ.get("DATABASE_PATH", "data/bot.sqlite3"))
+    folder = Path(os.environ.get("BACKUP_DIR", "backups"))
+    keep = int(os.environ.get("BACKUP_KEEP", "14"))
+    print(back_up(database, folder, _now(), keep), flush=True)
 
 
 def print_launch_data() -> None:
