@@ -711,7 +711,11 @@ export interface paths {
          *     режим, ОС, контекст ошибки и журнал сервера — тот же пакет, что отдаёт `getDiagnostics`.
          *     Видео, кадры и проекты не уходят никогда.
          *
-         *     Неверное тело — `bad_request` с `fields.text` или `fields.contact`. Сервис недоступен или
+         *     У `bug` SPA добавляет то, чего сервер не знает (F5): источник, текст и стек ошибки
+         *     интерфейса или прошлого запуска, счётчик повторов за 10 минут и последние 30 действий.
+         *
+         *     Неверное тело — `bad_request` с `fields.text`, `fields.contact`, `fields.error` или
+         *     `fields.actions`. Сервис недоступен или
          *     не настроен — `bot_unavailable` (503), нет сети — `network_unavailable` (503), больше 5
          *     отзывов в час — `rate_limited` (429) с `params.retryAfterSec`.
          */
@@ -1326,12 +1330,43 @@ export interface components {
             /** @description E-mail или @username; уходит в сервис, только если компьютер не привязан */
             contact?: string;
             error?: components["schemas"]["FeedbackError"];
+            /** @description Только у `bug`: последние действия в интерфейсе, старые первыми (F5). Без содержимого полей. */
+            actions?: components["schemas"]["FeedbackAction"][];
         };
-        /** @description Только у `bug`, ошибка, из которой открыли окно (F5) */
+        /**
+         * @description Только у `bug`, ошибка, из которой открыли окно (F5). Сервер вписывает её в пакет сведений,
+         *     вычистив пути, имя пользователя и ключи. У `interface` и `shell` ошибки нет в памяти сервера:
+         *     журнал берётся от 15 минут до `at`.
+         */
         FeedbackError: {
             /** @description Код из `ErrorCode`, render_failed */
             code: string;
+            /** @description У `server` — traceId из Problem, у `interface` и `shell` — номер, который дал SPA */
             traceId?: string;
+            source?: components["schemas"]["ErrorSource"];
+            /** @description `interface` и `shell`: текст исключения или причина остановки */
+            message?: string;
+            /** @description `interface`: стек и стек компонентов; `shell`: хвост вывода сервера */
+            stack?: string;
+            /**
+             * Format: date-time
+             * @description Когда ошибка случилась впервые
+             */
+            at?: string;
+            /** @description Сколько раз она повторилась за 10 минут */
+            count?: number;
+        };
+        /**
+         * @description Что упало: server — запрос или задача сервера (по умолчанию), interface — сам интерфейс
+         *     (ErrorBoundary, window.onerror, unhandledrejection), shell — прошлый запуск приложения
+         * @enum {string}
+         */
+        ErrorSource: "server" | "interface" | "shell";
+        FeedbackAction: {
+            /** Format: date-time */
+            at: string;
+            /** @description «Раздел: Проекты», «Кнопка: Экспорт», «POST /api/v1/exports → 202» */
+            what: string;
         };
         FeedbackCreated: {
             /**
