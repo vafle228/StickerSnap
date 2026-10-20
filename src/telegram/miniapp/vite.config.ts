@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
@@ -35,8 +36,37 @@ function mockWorker(): Plugin {
   };
 }
 
+// Telegram's bridge (window.Telegram.WebApp, core.telegram.org/bots/webapps) from our own domain,
+// not from telegram.org: Telegram's web view loads the page over the user's own connection, not
+// through the MTProto proxy Telegram itself may need, so where telegram.org is blocked a script
+// from there hangs the page until it times out and the Mini App starts with no launch data.
+// @twa-dev/sdk ships the same script (MIT), kept current by npm; served by `vite`, written next to
+// index.html by every build.
+function telegramBridge(): Plugin {
+  const file = join(
+    dirname(createRequire(import.meta.url).resolve("@twa-dev/sdk")),
+    "telegram-web-apps.js",
+  );
+  return {
+    name: "stickersnap-telegram-bridge",
+    configureServer(server) {
+      server.middlewares.use("/telegram-web-app.js", (_req, res) => {
+        res.setHeader("Content-Type", "text/javascript");
+        res.end(readFileSync(file));
+      });
+    },
+    generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: "telegram-web-app.js",
+        source: readFileSync(file),
+      });
+    },
+  };
+}
+
 export default defineConfig(({ command, mode }) => ({
-  plugins: [react(), mockWorker()],
+  plugins: [react(), mockWorker(), telegramBridge()],
   define: {
     // main.tsx loads the demo data and the dev bar only when this is true.
     "import.meta.env.DEV_TOOLS": JSON.stringify(command === "serve" || mode === DEV_BUILD),
