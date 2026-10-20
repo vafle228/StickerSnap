@@ -8,8 +8,9 @@
     />
     <meta name="color-scheme" content="light dark" />
     <title>StickerSnap</title>
-    <!-- Telegram's own bridge: window.Telegram.WebApp (core.telegram.org/bots/webapps) -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Telegram's own bridge: window.Telegram.WebApp (core.telegram.org/bots/webapps), served
+         from our domain by vite.config.ts (telegramBridge): telegram.org may be unreachable -->
+    <script src="/telegram-web-app.js"></script>
     <script>
       // The theme before the first paint: Telegram's light or dark, our colours
       // (artboard 16, variant A). Mirrors src/telegram/theme.ts.
