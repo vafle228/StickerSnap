@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using StickerSnap.Application.Diagnostics;
 using StickerSnap.Application.Events;
@@ -61,6 +62,7 @@ public sealed class JobQueue : IJobQueue, IAsyncDisposable
             var entry = new Entry(request, ++_sequence, LaneOf(request.Kind))
             {
                 Job = Job.Queue(id, request.Kind, request.ProjectId, request.SegmentIds, _clock.GetUtcNow(), pack),
+                Origin = Activity.Current?.Context ?? default,
             };
             _jobs.Add(id, entry);
             stopped.AddRange(Supersede(entry));
@@ -126,6 +128,7 @@ public sealed class JobQueue : IJobQueue, IAsyncDisposable
 
             entry.Job = entry.Job.Retry();
             entry.FinishedAt = null;
+            entry.Origin = Activity.Current?.Context ?? default;
             stopped.AddRange(Supersede(entry));
             job = Wait(entry);
         }
@@ -238,6 +241,17 @@ public sealed class JobQueue : IJobQueue, IAsyncDisposable
 
     private async Task ExecuteAsync(Entry entry, Run run)
     {
+        // A trace of its own, linked to the request that queued the job: the job outlives it.
+        // Task.Run carried over the span of whoever pumped the lane; it is no parent of this job.
+        Activity.Current = null;
+        var kind = entry.Request.Kind.ToString().ToLowerInvariant();
+        ActivityLink[]? links = entry.Origin == default ? null : new[] { new ActivityLink(entry.Origin) };
+        using var activity = Telemetry.Source.StartActivity(
+            $"{kind} job", ActivityKind.Internal, parentContext: default, links: links);
+        activity?.SetTag("stickersnap.job.id", entry.Job.Id);
+        activity?.SetTag("stickersnap.job.kind", kind);
+        var started = _clock.GetTimestamp();
+
         JobError? error = null;
         var canceled = false;
         try
@@ -262,6 +276,8 @@ public sealed class JobQueue : IJobQueue, IAsyncDisposable
             Record(entry, exception, segmentId: null);
         }
 
+        // Canceled from outside, the job has its end already and this run no longer owns it.
+        var outcome = "canceled";
         lock (_gate)
         {
             if (entry.Run == run)
@@ -269,11 +285,19 @@ public sealed class JobQueue : IJobQueue, IAsyncDisposable
                 entry.Run = null;
                 entry.Job = canceled ? entry.Job.Cancel() : entry.Job.Finish(error);
                 Finished(entry);
+                outcome = entry.Job.State.ToString().ToLowerInvariant();
             }
             entry.Lane.Current = null;
             Pump(entry.Lane);
         }
         run.Cancellation.Dispose();
+
+        activity?.SetTag("stickersnap.job.outcome", outcome);
+        if (error is not null) activity?.SetStatus(ActivityStatusCode.Error, error.Code.ToString());
+        Telemetry.JobDuration.Record(
+            _clock.GetElapsedTime(started).TotalSeconds,
+            new KeyValuePair<string, object?>("stickersnap.job.kind", kind),
+            new KeyValuePair<string, object?>("stickersnap.job.outcome", outcome));
     }
 
     /// <summary>
@@ -381,6 +405,9 @@ public sealed class JobQueue : IJobQueue, IAsyncDisposable
         public Run? Run { get; set; }
 
         public DateTimeOffset? FinishedAt { get; set; }
+
+        /// <summary>The span of the request that queued or retried the job, for the job's own span to link to.</summary>
+        public ActivityContext Origin { get; set; }
 
         public DateTimeOffset? SentAt { get; set; }
 

@@ -219,6 +219,40 @@ and checks `/health` (secrets `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_KNOWN_
 `BOT_DOMAIN`). `BOT_DOMAIN` also gives «Build app» the service address the installers talk to; a
 release without it fails.
 
+### Observability
+
+The bot service and the web server (the .NET server when it runs by itself, `StickerSnap__Mode`
+other than `desktop`) send traces, metrics and logs by OpenTelemetry over OTLP. The desktop app
+never sends anything: its server turns telemetry off in desktop mode whatever the environment says
+and passes no trace id on to the bot service; its own log for bug reports stays on the computer.
+
+Each service turns it on with `OTEL_EXPORTER_OTLP_ENDPOINT` (the bot: OTLP/HTTP, `:4318`; the .NET
+server: OTLP/gRPC by default, `:4317`); without it nothing is exported and the bot logs to stdout
+only. `OTEL_SERVICE_NAME` and the other `OTEL_*` variables are read by the SDKs. Every log line
+written inside a span carries its `trace_id` and `span_id`, so Grafana goes from a line to its
+trace and back. What is traced:
+
+- bot: the HTTP API (FastAPI), every Telegram update (`telegram <type>` span and the counter
+  `stickersnap.bot.updates` by type and outcome, `api/telegram.py`), each Bot API call
+  (`telegram <method>`, the token cut out of the URL) and the SQL;
+- server: ASP.NET Core and HttpClient, and each background job as a trace of its own linked to
+  the request that queued it, with the histogram `stickersnap.job.duration` by kind and outcome
+  (`Application/Diagnostics/Telemetry.cs`).
+
+On the VPS `docker/telegram/observability/compose.yaml`, included by `compose.prod.yaml`, runs
+Alloy (the OTLP collector the services send to, plus the VPS's own CPU, memory and disk metrics),
+Prometheus (metrics, 30 days and at most 5 GB), Loki (logs, 14 days) and Tempo (traces, 7 days),
+each with its config beside it. Nothing is open to the internet: the stores answer on 127.0.0.1
+only (9090, 3100, 3200), and a Grafana in Docker joins the network `stickersnap-telemetry` and
+reads them by name. `observability/grafana/datasources.yaml` is the Grafana provisioning file for
+the three data sources and the links between them. «Deploy bot» copies the folder to
+`~/stickersnap/observability` and restarts the stack with the service; the data lives in Docker
+volumes. `include` needs Docker Compose 2.20 or newer on the VPS.
+
+Locally `docker compose -f docker/telegram/observability/compose.dev.yaml up` runs Grafana with
+the three stores in one container (grafana/otel-lgtm): set `OTEL_EXPORTER_OTLP_ENDPOINT=
+http://127.0.0.1:4318` in `.env`, run the bot and open http://127.0.0.1:3000.
+
 ### Telegram Mini App
 
 `src/telegram/miniapp` is the Mini App of @StickerSnapAppBot: the packs the bot made for a Telegram

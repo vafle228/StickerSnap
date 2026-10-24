@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using StickerSnap.Application.Diagnostics;
@@ -56,6 +57,36 @@ public sealed class JobQueueTests : IAsyncDisposable
         call.Run.Request.Kind.Should().Be(JobKind.Export);
         done.Progress.Fraction.Should().Be(1);
         _queue.Get(job.Id).Should().Be(done);
+    }
+
+    [Fact]
+    public async Task Traces_a_job_on_its_own_and_links_it_to_the_request_that_queued_it()
+    {
+        var stopped = new TaskCompletionSource<Activity>(TaskCreationOptions.RunContinuationsAsynchronously);
+        string? id = null;
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == Telemetry.Name,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity =>
+            {
+                if (id is not null && Equals(activity.GetTagItem("stickersnap.job.id"), id)) stopped.TrySetResult(activity);
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+        using var request = new Activity("POST /api/v1/exports").Start();
+
+        var job = _queue.Enqueue(Export(Cat));
+        id = job.Id;
+        request.Stop();
+        (await _exports.NextAsync()).Complete();
+        var span = await stopped.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        span.DisplayName.Should().Be("export job");
+        span.ParentSpanId.Should().Be(default(ActivitySpanId));
+        span.TraceId.Should().NotBe(request.TraceId);
+        span.Links.Should().ContainSingle().Which.Context.TraceId.Should().Be(request.TraceId);
+        span.GetTagItem("stickersnap.job.outcome").Should().Be("succeeded");
     }
 
     [Fact]

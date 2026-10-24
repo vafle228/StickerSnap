@@ -1,0 +1,62 @@
+# The three stores as Grafana data sources, with the links between them: a log line's trace_id
+# opens its trace, a span opens its logs and its service's metrics. Put this file into Grafana's
+# provisioning/datasources folder (/etc/grafana/provisioning/datasources/stickersnap.yaml) and
+# restart Grafana, or add the same by hand in Connections → Data sources.
+#
+# The URLs are for a Grafana installed on the VPS itself. A Grafana in Docker joins the network
+# stickersnap-telemetry (observability/compose.yaml) and uses http://prometheus:9090,
+# http://loki:3100 and http://tempo:3200 instead.
+apiVersion: 1
+
+datasources:
+  - name: StickerSnap Prometheus
+    uid: stickersnap-prometheus
+    type: prometheus
+    access: proxy
+    url: http://127.0.0.1:9090
+    jsonData:
+      timeInterval: 30s
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: stickersnap-tempo
+
+  - name: StickerSnap Loki
+    uid: stickersnap-loki
+    type: loki
+    access: proxy
+    url: http://127.0.0.1:3100
+    jsonData:
+      derivedFields:
+        # trace_id is structured metadata of every line written inside a span
+        - name: Trace
+          matcherType: label
+          matcherRegex: trace_id
+          datasourceUid: stickersnap-tempo
+          url: "$${__value.raw}"
+          urlDisplayLabel: Открыть трейс
+
+  - name: StickerSnap Tempo
+    uid: stickersnap-tempo
+    type: tempo
+    access: proxy
+    url: http://127.0.0.1:3200
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: stickersnap-loki
+        spanStartTimeShift: "-5m"
+        spanEndTimeShift: "5m"
+        filterByTraceID: true
+        tags:
+          - key: service.name
+            value: service_name
+      tracesToMetrics:
+        datasourceUid: stickersnap-prometheus
+        tags:
+          - key: service.name
+            value: job
+      serviceMap:
+        datasourceUid: stickersnap-prometheus
+      nodeGraph:
+        enabled: true
+      lokiSearch:
+        datasourceUid: stickersnap-loki
