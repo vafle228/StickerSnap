@@ -6,7 +6,7 @@ import { keys, useDownloads } from "../../../shared/api/queries";
 import type { Download } from "../../../shared/api/types";
 import { notify, problemText, type ToastHandle } from "../../../shared/notify";
 import { t } from "../../../shared/strings/ru";
-import { megabytes, percentOf, siteName } from "./format";
+import { amount, percentOf, siteName } from "./format";
 import {
   cancelDownload,
   fieldError,
@@ -26,13 +26,8 @@ function progressToast(download: Download, cancel: () => void) {
     title: t(reading ? "link.toast.reading" : "link.toast.downloading", { title: video.title }),
     description: t("link.toast.what", { site: siteName(video.site), quality: video.quality }),
     progress: reading ? 100 : percent,
-    progressLabel: reading
-      ? undefined
-      : t("link.toast.progress", {
-          done: megabytes(download.receivedBytes),
-          total: megabytes(video.bytes),
-          percent,
-        }),
+    // The toast shows the percent at the bar's end itself
+    progressLabel: reading ? undefined : amount(download),
     progressVariant: "rainbow" as const,
     action: { label: t("import.cancel"), onClick: cancel },
   };
@@ -80,7 +75,9 @@ export function LinkWatch() {
         continue;
       }
 
-      if (!running.current.has(id)) continue;
+      // An end is reported once, for a download seen on its way or just started here: its
+      // events may come before the reply that started it
+      if (!running.current.has(id) && id !== shownId) continue;
       running.current.delete(id);
       toasts.current.get(id)?.close();
       toasts.current.delete(id);

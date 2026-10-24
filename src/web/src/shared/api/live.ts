@@ -24,10 +24,13 @@ export function applyJob(client: QueryClient, job: Job) {
   client.setQueryData<Job[]>(keys.jobs, (list) => upsert(list, job, (j) => j.id === job.id));
 }
 
-export function applyDownload(client: QueryClient, download: Download) {
-  client.setQueryData<Download[]>(keys.downloads, (list) =>
-    upsert(list, download, (d) => d.id === download.id),
-  );
+/** `fresh`: a snapshot from the hub, always the latest. A reply to POST may come after the
+ *  first events of its download, so it only adds one the cache does not hold yet. */
+export function applyDownload(client: QueryClient, download: Download, fresh = true) {
+  client.setQueryData<Download[]>(keys.downloads, (list) => {
+    if (!fresh && list?.some((d) => d.id === download.id)) return list;
+    return upsert(list ?? [], download, (d) => d.id === download.id);
+  });
 }
 
 /** A download still on its way: queued, downloading or reading. */

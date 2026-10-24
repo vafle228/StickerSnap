@@ -154,7 +154,7 @@ export async function openLink(client: QueryClient, text?: string) {
     const download = await call(
       api.POST("/api/v1/downloads", { body: { url: video.url }, signal: abort.signal }),
     );
-    applyDownload(client, download);
+    applyDownload(client, download, false);
     useLinkImport.setState({ downloadId: download.id });
   } catch (error) {
     if (!abort.signal.aborted && !isAbort(error)) {
