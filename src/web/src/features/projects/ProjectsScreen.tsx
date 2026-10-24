@@ -5,12 +5,17 @@ import { mediaSrc } from "../../shared/api/client";
 import { useAppInfo, useProjects, useSettings, useUpdateSettings } from "../../shared/api/queries";
 import type { ProjectSummary } from "../../shared/api/types";
 import { notifyProblem } from "../../shared/notify";
-import { MenuPopover } from "../../shared/overlays";
+import { MenuPopover, Popover } from "../../shared/overlays";
 import { platform } from "../../shared/platform";
 import { t } from "../../shared/strings/ru";
 import { useProjectActions } from "./actions";
 import { useFileDrag } from "./drop";
 import { durationChip, projectMeta } from "./format";
+import { LinkField } from "./link/LinkField";
+import linkStyles from "./link/Link.module.css";
+import { useLinkActions, useLinkImport, useLinkPaste, useLinkZone } from "./link/linkImport";
+import { LinkProgress } from "./link/LinkProgress";
+import { useLinkBusy } from "./link/shown";
 import styles from "./ProjectsScreen.module.css";
 import { ReadingFile } from "./ReadingFile";
 import { useImport } from "./reading";
@@ -32,6 +37,18 @@ export function ProjectsScreen() {
   const openProject = useApp((s) => s.openProject);
   const [menu, setMenu] = useState<{ id: string; anchor: HTMLElement } | null>(null);
   const [renaming, setRenaming] = useState<string>();
+  // «По ссылке…» in the tile (artboard 20·2): the field in a popover, the download in it too
+  const [linkAnchor, setLinkAnchor] = useState<HTMLElement | null>(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const linkText = useLinkImport((s) => s.text);
+  const linkBusy = useLinkBusy();
+  const link = useLinkActions();
+  useLinkZone(linkOpen);
+  // Ctrl+V of a link: the popover opens with it and the download starts there
+  useLinkPaste(projects.isSuccess && (projects.data?.length ?? 0) > 0, (text) => {
+    setLinkOpen(true);
+    void link.open(text);
+  });
 
   useEffect(() => {
     if (projects.error) {
@@ -152,7 +169,25 @@ export function ProjectsScreen() {
                     dragging={over}
                     onClick={() => void actions.create()}
                     onFiles={(files) => files[0] && actions.openDropped(files[0])}
-                  />
+                    onText={(text) => {
+                      setLinkOpen(true);
+                      void link.open(text);
+                    }}
+                  >
+                    <span ref={setLinkAnchor}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        icon="link"
+                        className={linkStyles.tileLink}
+                        aria-haspopup="dialog"
+                        aria-expanded={linkOpen}
+                        onClick={() => setLinkOpen((open) => !open)}
+                      >
+                        {t("link.tile")}
+                      </Button>
+                    </span>
+                  </DropZone>
                 )}
               </li>
               {list.map((p) => (
@@ -196,6 +231,24 @@ export function ProjectsScreen() {
           </>
         )
       )}
+
+      <Popover
+        anchor={linkAnchor}
+        open={linkOpen}
+        placement="bottom"
+        // With a link typed in, a click past it does not throw the link away
+        keepOnOutside={linkText.trim() !== "" || linkBusy}
+        onClose={() => setLinkOpen(false)}
+      >
+        <div className={linkStyles.popover} role="dialog" aria-labelledby="link-popover">
+          <h2 id="link-popover">{t("link.popover")}</h2>
+          {linkBusy ? (
+            <LinkProgress />
+          ) : (
+            <LinkField layout="stacked" autoFocus onCancel={() => setLinkOpen(false)} />
+          )}
+        </div>
+      </Popover>
 
       <MenuPopover<Action>
         anchor={menu?.anchor ?? null}
