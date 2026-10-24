@@ -24,6 +24,10 @@ export const SCENARIOS = {
   "feedback-limit": "Лимит отзывов",
   "screen-crash": "Экран упал",
   "last-crash": "Сбой прошлого запуска",
+  "link-long": "Ссылка: длинный ролик",
+  "link-gone": "Ссылка: видео недоступно",
+  "link-broken": "Ссылка: загрузчик сломан",
+  "link-disk": "Ссылка: нет места",
 } as const;
 
 export type Scenario = keyof typeof SCENARIOS;

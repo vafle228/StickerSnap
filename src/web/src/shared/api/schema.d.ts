@@ -161,7 +161,7 @@ export interface paths {
         put?: never;
         /**
          * Отменить скачивание
-         * @description Артборд 20·3·9. После MVP. Недокачанный файл стирается, у скачивания `canceled`.
+         * @description Артборд 20·3·9. После MVP. Недокачанный файл стирается, у скачивания `canceled`. Нет такого — job_not_found.
          */
         post: operations["cancelDownload"];
         delete?: never;
