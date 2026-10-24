@@ -32,6 +32,7 @@ from stickersnap_bot.infrastructure.telegram.bot_profile import BotProfile
 from stickersnap_bot.infrastructure.telegram.chat_messages import BotChatMessages
 from stickersnap_bot.infrastructure.telegram.feedback_inbox import TelegramFeedbackInbox
 from stickersnap_bot.infrastructure.telegram.sticker_sets import BotStickerSets
+from stickersnap_bot.infrastructure.telemetry import instrument, start_telemetry
 
 
 def _now() -> datetime:
@@ -76,7 +77,7 @@ def build_app(settings: Settings) -> FastAPI:
     send_feedback = SendFeedback(unit_of_work, inbox, clock=_now)
     linking = Linking(unit_of_work, BotAppLinks(bot), notifications, LinkSignals(), clock=_now)
     publishing = Publishing(unit_of_work, sticker_sets, notifications, clock=_now)
-    return create_app(
+    app = create_app(
         bot,
         create_dispatcher(chat),
         delivery,
@@ -89,13 +90,23 @@ def build_app(settings: Settings) -> FastAPI:
         starting=[BotProfile(bot, settings.miniapp_url).apply],
         closing=[engine.dispose],
     )
+    if settings.otel_exporter_otlp_endpoint is not None:
+        instrument(app, engine)
+    return app
 
 
 def main() -> None:
     settings = Settings()
-    # before the app: the schema is ready when the first update or request arrives
-    migrate(settings.database_path)
-    uvicorn.run(build_app(settings), host=settings.host, port=settings.port)
+    # first: the migrations' logs and the Bot API's sessions are covered from the start
+    telemetry = start_telemetry(settings.otel_exporter_otlp_endpoint, settings.log_level)
+    try:
+        # before the app: the schema is ready when the first update or request arrives
+        migrate(settings.database_path)
+        # log_config=None: uvicorn's own loggers reach the root logger start_telemetry set up
+        uvicorn.run(build_app(settings), host=settings.host, port=settings.port, log_config=None)
+    finally:
+        # what is still buffered goes out before the container stops
+        telemetry.shutdown()
 
 
 def backup() -> None:

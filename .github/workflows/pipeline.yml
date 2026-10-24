@@ -191,6 +191,14 @@ jobs:
       # .env is written on the VPS by hand; an empty one stands in for it here
       - run: touch .env && DOMAIN=bot.example.com docker compose -f compose.prod.yaml config -q
         working-directory: docker/telegram
+      # The observability stack's configs, checked by the images the VPS runs (observability/compose.yaml)
+      - name: Observability configs
+        working-directory: docker/telegram/observability
+        run: |
+          docker run --rm -v "$PWD/prometheus:/cfg:ro" --entrypoint promtool prom/prometheus:v3.15.1 \
+            check config /cfg/prometheus.yml
+          docker run --rm -v "$PWD/loki:/cfg:ro" grafana/loki:3.7.9 -config.file=/cfg/loki.yaml -verify-config
+          docker run --rm -v "$PWD/alloy:/cfg:ro" grafana/alloy:v1.21.2 fmt /cfg/config.alloy > /dev/null
 
   # ─────────────────────── test · fast unit and integration tests ───────────────────────
 

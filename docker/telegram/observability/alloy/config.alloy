@@ -1,0 +1,92 @@
+// What the services send over OTLP (the bot, later the web server), sorted into the stores:
+// metrics to Prometheus, logs to Loki, traces to Tempo. Plus the VPS's own metrics.
+// Syntax: https://grafana.com/docs/alloy/latest/reference/components/
+
+otelcol.receiver.otlp "services" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    metrics = [otelcol.processor.memory_limiter.default.input]
+    logs    = [otelcol.processor.memory_limiter.default.input]
+    traces  = [otelcol.processor.memory_limiter.default.input]
+  }
+}
+
+// Refuses data before Alloy outgrows its container (mem_limit 256m in compose.yaml)
+otelcol.processor.memory_limiter "default" {
+  check_interval = "1s"
+  limit          = "200MiB"
+
+  output {
+    metrics = [otelcol.processor.batch.default.input]
+    logs    = [otelcol.processor.batch.default.input]
+    traces  = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    metrics = [otelcol.exporter.prometheus.default.input]
+    logs    = [otelcol.exporter.otlphttp.loki.input]
+    traces  = [otelcol.exporter.otlp.tempo.input]
+  }
+}
+
+// OTLP metrics as Prometheus series: http.server.request.duration → http_server_request_duration_seconds,
+// job = service.name
+otelcol.exporter.prometheus "default" {
+  forward_to = [prometheus.remote_write.local.receiver]
+}
+
+prometheus.remote_write "local" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
+}
+
+// Loki takes OTLP itself: service.name becomes the label service_name, trace_id and span_id
+// become structured metadata of the line
+otelcol.exporter.otlphttp "loki" {
+  client {
+    endpoint = "http://loki:3100/otlp"
+  }
+}
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:4317"
+
+    // inside the compose network
+    tls {
+      insecure = true
+    }
+  }
+}
+
+// The VPS: CPU, memory, disks, network, through the host's /proc, /sys and / mounted read only
+prometheus.exporter.unix "vps" {
+  procfs_path = "/host/proc"
+  sysfs_path  = "/host/sys"
+  rootfs_path = "/host/root"
+}
+
+prometheus.scrape "vps" {
+  targets         = prometheus.exporter.unix.vps.targets
+  forward_to      = [prometheus.remote_write.local.receiver]
+  scrape_interval = "30s"
+}
+
+// Alloy itself: what it received, refused and could not send
+prometheus.exporter.self "alloy" { }
+
+prometheus.scrape "alloy" {
+  targets         = prometheus.exporter.self.alloy.targets
+  forward_to      = [prometheus.remote_write.local.receiver]
+  scrape_interval = "30s"
+}

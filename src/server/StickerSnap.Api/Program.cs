@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Mvc;
 using StickerSnap.Api.Events;
 using StickerSnap.Api.Json;
+using StickerSnap.Api.Observability;
 using StickerSnap.Api.Problems;
 using StickerSnap.Api.Shell;
 using StickerSnap.Application;
@@ -64,6 +65,9 @@ public sealed class Program
         services.Configure<ShellOptions>(configuration.GetSection(ShellOptions.Section));
         services.AddSingleton<IHostInfo, ShellHostInfo>();
         services.AddHostedService<ParentWatch>();
+
+        // Traces, metrics and logs by OpenTelemetry: the web server only, never the desktop app.
+        services.AddObservability(configuration);
 
         // In development FFmpeg comes from tools/ffmpeg/<rid>, where npm run fetch:ffmpeg puts it.
         if (environment.IsDevelopment())

@@ -5,7 +5,8 @@ name: Deploy bot
 # Only a commit Pipeline passed is deployed, with what that run built and tested: the Mini App
 # comes from its artifact miniapp-dist. Builds the two images of docker/telegram, pushes them to
 # GitHub Packages (ghcr.io/<owner>/stickersnap-bot and -web, tagged with the commit and latest),
-# copies compose.prod.yaml to the VPS as ~/stickersnap/compose.yaml, restarts the service there
+# copies compose.prod.yaml to the VPS as ~/stickersnap/compose.yaml with the observability stack
+# beside it (~/stickersnap/observability: Alloy, Prometheus, Loki, Tempo), restarts the service there
 # and checks https://<BOT_DOMAIN>/health. The VPS keeps its .env (the token, DOMAIN, the other
 # secrets) beside compose.yaml, written there by hand; nothing secret is in git or in an image.
 #
@@ -119,13 +120,16 @@ jobs:
           printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
           printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  StrictHostKeyChecking yes\n' \
             "$VPS_HOST" "$VPS_USER" > ~/.ssh/config
-      - name: Copy the compose file
+      - name: Copy the compose files
         run: |
           ssh vps 'mkdir -p stickersnap/backups && test -f stickersnap/.env' || {
             echo "::error::~/stickersnap/.env is missing on the VPS: write it there first (the token, DOMAIN, WEBHOOK_SECRET, FEEDBACK_CHAT_ID)"
             exit 1
           }
           scp docker/telegram/compose.prod.yaml vps:stickersnap/compose.yaml
+          # the configs only: the stored metrics, logs and traces live in Docker volumes
+          ssh vps 'rm -rf stickersnap/observability'
+          scp -r docker/telegram/observability vps:stickersnap/observability
       - name: Restart the service
         env:
           TOKEN: ${{ github.token }}
@@ -135,7 +139,8 @@ jobs:
           ssh vps "cd stickersnap \
             && export TAG='$GITHUB_SHA' REGISTRY='$REGISTRY' \
             && docker compose pull --quiet \
-            && docker compose up -d --remove-orphans; \
+            && docker compose up -d --remove-orphans \
+            && docker compose restart alloy prometheus loki tempo; \
             status=\$?; docker logout ghcr.io; docker image prune -f >/dev/null; exit \$status"
       - name: The service answers
         run: |
