@@ -45,12 +45,18 @@ export function LinkField({ layout = "inline", onCancel, autoFocus, className }:
   );
 
   return (
-    <form className={cx(styles.form, stacked && styles.stacked, className)} onSubmit={submit}>
+    <form
+      className={cx(styles.form, stacked && styles.stacked, className)}
+      noValidate
+      onSubmit={submit}
+    >
       <div className={styles.row}>
         <TextField
           className={styles.field}
           icon="link"
-          type="url"
+          // Not type="url": a link without https:// or a wrong one gets our hint, not the browser's
+          type="text"
+          inputMode="url"
           aria-label={t("link.label")}
           placeholder={t("link.placeholder")}
           value={text}

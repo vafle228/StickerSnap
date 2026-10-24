@@ -164,7 +164,6 @@ export const ru = {
   "link.toast.downloading": "Скачиваю «{title}»",
   "link.toast.reading": "Читаю «{title}»",
   "link.toast.what": "{site} · {quality}",
-  "link.toast.progress": "{done} из {total} МБ · {percent} %",
   "link.toast.done": "Видео скачано",
   "link.toast.doneText": "«{title}» готово к работе",
   "link.diskFull.title": "Не хватает места для ролика",

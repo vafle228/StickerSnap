@@ -168,6 +168,9 @@
   gap: var(--space-3);
   width: 360px;
   padding: var(--space-4);
+  border-radius: var(--radius-float);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-float);
   box-sizing: border-box;
 }
 
