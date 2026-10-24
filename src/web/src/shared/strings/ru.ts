@@ -670,6 +670,15 @@ export const ru = {
   "error.bad_request.text": "Повторите действие. Если не поможет, перезапустите приложение.",
   "error.internal.title": "Что-то пошло не так",
   "error.internal.text": "Повторите действие. Если не поможет, перезапустите приложение.",
+  "error.link_unsupported.title": "Пока умею только YouTube и Giphy",
+  "error.link_unsupported.text": "Вставьте ссылку на видео с YouTube или Giphy.",
+  "error.video_unavailable.title": "Видео недоступно",
+  "error.video_unavailable.text": "Его скрыли, удалили или закрыли для вашей страны.",
+  "error.site_unreachable.title": "Не удалось скачать видео",
+  "error.site_unreachable.text": "Нет связи с {site}. Проверьте интернет.",
+  "error.site_changed.title": "{site} не отдаёт видео",
+  "error.site_changed.text":
+    "Скорее всего {site} что-то поменял. Обновите StickerSnap, когда выйдет исправление.",
 
   // «Сообщить об ошибке» (artboard 19)
   "report.short": "Сообщить",
