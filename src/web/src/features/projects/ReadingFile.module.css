@@ -13,26 +13,6 @@
   box-sizing: border-box;
 }
 
-.spinner {
-  flex: none;
-  animation: spin 0.9s linear infinite;
-}
-
-.track,
-.arc {
-  fill: none;
-  stroke-width: 4;
-}
-
-.track {
-  stroke: var(--border);
-}
-
-.arc {
-  stroke: var(--primary);
-  stroke-linecap: round;
-}
-
 .text {
   display: flex;
   flex-direction: column;
@@ -51,16 +31,4 @@
 .what {
   font: 500 13px/18px var(--font-sans);
   color: var(--ink-muted);
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation-duration: 2.4s;
-  }
 }
