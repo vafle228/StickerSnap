@@ -37,6 +37,10 @@ public static class ErrorCodes
         ErrorCode.TelegramError => true,
         ErrorCode.BadRequest => true,
         ErrorCode.Internal => true,
+        ErrorCode.LinkUnsupported => false,
+        ErrorCode.VideoUnavailable => false,
+        ErrorCode.SiteUnreachable => false,
+        ErrorCode.SiteChanged => true,
         _ => throw new ArgumentOutOfRangeException(nameof(code), code, "A code without reportable in the contract"),
     };
 }

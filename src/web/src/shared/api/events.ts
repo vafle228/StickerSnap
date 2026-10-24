@@ -19,8 +19,10 @@ export interface HubEvents {
   packChanged: Schemas["PackSummary"];
   /** после PATCH и после публикации (недавние эмодзи). Updates: тема, акцент, «Недавние» в выборе эмодзи */
   settingsChanged: Schemas["Settings"];
+  /** смена состояния и прогресс не чаще 10 раз в секунду. Updates: карточка скачивания в зоне импорта, поп-апы «Скачиваю…» и «Видео скачано» */
+  downloadUpdated: Schemas["Download"];
 }
 
 export type HubEvent = keyof HubEvents;
 
-export const HUB_EVENTS: readonly HubEvent[] = ["jobUpdated", "projectChanged", "projectRemoved", "accountChanged", "packChanged", "settingsChanged"];
+export const HUB_EVENTS: readonly HubEvent[] = ["jobUpdated", "projectChanged", "projectRemoved", "accountChanged", "packChanged", "settingsChanged", "downloadUpdated"];

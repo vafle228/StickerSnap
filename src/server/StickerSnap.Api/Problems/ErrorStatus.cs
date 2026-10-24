@@ -35,6 +35,10 @@ public static class ErrorStatus
         ErrorCode.TelegramError => StatusCodes.Status502BadGateway,
         ErrorCode.BadRequest => StatusCodes.Status400BadRequest,
         ErrorCode.Internal => StatusCodes.Status500InternalServerError,
+        ErrorCode.LinkUnsupported => StatusCodes.Status422UnprocessableEntity,
+        ErrorCode.VideoUnavailable => StatusCodes.Status422UnprocessableEntity,
+        ErrorCode.SiteUnreachable => StatusCodes.Status503ServiceUnavailable,
+        ErrorCode.SiteChanged => StatusCodes.Status502BadGateway,
         _ => throw new ArgumentOutOfRangeException(nameof(code), code, "A code without a status in the contract"),
     };
 }
