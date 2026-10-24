@@ -15,6 +15,7 @@ export const keys = {
   account: ["account"],
   packs: ["packs"],
   pack: (name: string) => ["pack", name],
+  downloads: ["downloads"],
 } as const;
 
 export function useAppInfo() {
@@ -114,6 +115,15 @@ export function useJobs() {
   return useQuery({
     queryKey: keys.jobs,
     queryFn: () => call(api.GET("/api/v1/jobs")),
+    staleTime: Infinity,
+  });
+}
+
+/** Downloads by link, newest first; downloadUpdated keeps them fresh (artboard 20). */
+export function useDownloads() {
+  return useQuery({
+    queryKey: keys.downloads,
+    queryFn: () => call(api.GET("/api/v1/downloads")),
     staleTime: Infinity,
   });
 }

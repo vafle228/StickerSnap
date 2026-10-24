@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { api, call } from "./client";
 import { createHub, type EventHub, type HubState } from "./hub";
 import { keys } from "./queries";
-import type { Job, PackSummary, ProjectSummary } from "./types";
+import type { Download, Job, PackSummary, ProjectSummary } from "./types";
 
 /* SignalR events land in the TanStack Query cache with setQueryData: every event is a whole
    snapshot, so a lost one breaks nothing (contract, «События SignalR»). After a reconnect the
@@ -24,6 +24,19 @@ export function applyJob(client: QueryClient, job: Job) {
   client.setQueryData<Job[]>(keys.jobs, (list) => upsert(list, job, (j) => j.id === job.id));
 }
 
+/** `fresh`: a snapshot from the hub, always the latest. A reply to POST may come after the
+ *  first events of its download, so it only adds one the cache does not hold yet. */
+export function applyDownload(client: QueryClient, download: Download, fresh = true) {
+  client.setQueryData<Download[]>(keys.downloads, (list) => {
+    if (!fresh && list?.some((d) => d.id === download.id)) return list;
+    return upsert(list ?? [], download, (d) => d.id === download.id);
+  });
+}
+
+/** A download still on its way: queued, downloading or reading. */
+export const isActive = (download: Download) =>
+  download.state === "queued" || download.state === "downloading" || download.state === "reading";
+
 const isRunning = (job: Job) => job.state === "queued" || job.state === "running";
 
 /** Wires the hub into the cache; returns the function that unwires it. */
@@ -39,6 +52,9 @@ export function connectLive(client: QueryClient, hub: EventHub): () => void {
         () => {}, // the next tick tries again
       );
     }
+    // Downloads have no snapshot of their own: the list is read again while one runs
+    const downloading = (client.getQueryData<Download[]>(keys.downloads) ?? []).some(isActive);
+    if (downloading) void client.invalidateQueries({ queryKey: keys.downloads });
   };
 
   const onState = (state: HubState) => {
@@ -47,6 +63,7 @@ export function connectLive(client: QueryClient, hub: EventHub): () => void {
       poll = undefined;
       if (wasConnected) {
         void client.invalidateQueries({ queryKey: keys.jobs });
+        void client.invalidateQueries({ queryKey: keys.downloads });
         void client.invalidateQueries({ queryKey: keys.projects });
         void client.invalidateQueries({ queryKey: keys.account });
       }
@@ -88,6 +105,7 @@ export function connectLive(client: QueryClient, hub: EventHub): () => void {
       void client.invalidateQueries({ queryKey: keys.pack(pack.name) });
     }),
     hub.on("settingsChanged", (settings) => client.setQueryData(keys.settings, settings)),
+    hub.on("downloadUpdated", (download) => applyDownload(client, download)),
   ];
 
   return () => {

@@ -41,6 +41,8 @@ tags:
     description: Приложение
   - name: sources
     description: Источники и проверка
+  - name: links
+    description: Импорт по ссылке
   - name: projects
     description: Проекты
   - name: media
@@ -94,6 +96,11 @@ x-events:
         $ref: '#/components/schemas/Settings'
       when: после PATCH и после публикации (недавние эмодзи)
       updates: тема, акцент, «Недавние» в выборе эмодзи
+    downloadUpdated:
+      payload:
+        $ref: '#/components/schemas/Download'
+      when: смена состояния и прогресс не чаще 10 раз в секунду
+      updates: карточка скачивания в зоне импорта, поп-апы «Скачиваю…» и «Видео скачано»
 
 paths:
   # ---------------------------------------------------------------- Приложение
@@ -224,6 +231,114 @@ paths:
           $ref: '#/components/responses/UnsupportedMediaType'
         '422':
           $ref: '#/components/responses/UnprocessableContent'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  # --------------------------------------------------------- Импорт по ссылке
+  /api/v1/links/probe:
+    post:
+      tags: [links]
+      operationId: probeLink
+      summary: Что за видео по ссылке YouTube или Giphy
+      description: |
+        Артборд 20·3·4. После MVP. Сайт, название, длина, превью и ожидаемый вес; ничего не скачивает.
+        Отмена «Узнаю о видео…» — обрыв запроса. Метка времени `?t=` и плейлист в ссылке
+        не мешают: `url` в ответе — ссылка на одно видео.
+        Не ссылка или чужой сайт — link_unsupported (`params.reason`: not_link, site);
+        видео не скачать — video_unavailable (`params.reason`: gone, live, adult, playlist);
+        нет связи с сайтом — site_unreachable (`params.site`); загрузчик не понял ответ — site_changed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkRequest'
+      responses:
+        '200':
+          description: Видео по ссылке
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkVideo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/downloads:
+    post:
+      tags: [links]
+      operationId: createDownload
+      summary: Скачать видео по ссылке и создать из него проект
+      description: |
+        Артборды 20·3·5, 20·3·6, 20·4. После MVP. Отвечает 202 и `Download`; прогресс и итог —
+        событие SignalR `downloadUpdated`. Второе скачивание ждёт первое в `queued`.
+        Качаем лучший MP4 или WEBM не выше 720p без звука; у гифки Giphy — её MP4,
+        у Giphy-стикера — WEBP, чтобы сохранить прозрачность. Длина не ограничена.
+        Скачав, сервер читает файл (`reading`), как `POST /api/v1/projects`, и называет проект
+        по названию ролика; `projectId` приходит с `succeeded`. Ошибки — в `error`:
+        коды probe, disk_full (`params.needBytes`, `params.freeBytes`), source_unreadable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkRequest'
+      responses:
+        '202':
+          description: Скачивание принято
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Download'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        default:
+          $ref: '#/components/responses/Problem'
+    get:
+      tags: [links]
+      operationId: listDownloads
+      summary: Идущие и недавно завершённые скачивания
+      description: |
+        Артборд 20·4. После MVP. Чтобы после F5 вернуть карточку и поп-ап.
+        Скачивания живут в памяти сервера; завершённые хранятся 10 минут.
+      responses:
+        '200':
+          description: Скачивания, новые сверху
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Download'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /api/v1/downloads/{downloadId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/DownloadId'
+    post:
+      tags: [links]
+      operationId: cancelDownload
+      summary: Отменить скачивание
+      description: Артборд 20·3·9. После MVP. Недокачанный файл стирается, у скачивания `canceled`. Нет такого — job_not_found.
+      responses:
+        '200':
+          description: Скачивание после отмены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Download'
+        '404':
+          $ref: '#/components/responses/NotFound'
         default:
           $ref: '#/components/responses/Problem'
 
@@ -1144,6 +1259,12 @@ components:
       schema:
         type: string
         format: uuid
+    DownloadId:
+      name: downloadId
+      in: path
+      required: true
+      schema:
+        type: string
     JobId:
       name: jobId
       in: path
@@ -1205,7 +1326,7 @@ components:
     UnprocessableContent:
       description: >-
         `source_unreadable`, `project_invalid`, `project_too_new`, `cannot_fit`,
-        `validation_failed`, `pack_name_invalid`, `not_our_pack`
+        `validation_failed`, `pack_name_invalid`, `not_our_pack`, `link_unsupported`, `video_unavailable`
       content:
         application/problem+json:
           schema:
@@ -1217,19 +1338,19 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     BadGateway:
-      description: '`telegram_error`, текст Bot API в `log`'
+      description: '`telegram_error`, текст Bot API в `log`; `site_changed`, вывод загрузчика в `log`'
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
     ServiceUnavailable:
-      description: '`network_unavailable`, `bot_unavailable`, `ffmpeg_missing`'
+      description: '`network_unavailable`, `bot_unavailable`, `ffmpeg_missing`, `site_unreachable`'
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
     InsufficientStorage:
-      description: '`save_failed` (`params.reason`), `disk_full`'
+      description: '`save_failed` (`params.reason`), `disk_full` (у скачивания по ссылке `params.needBytes`, `params.freeBytes`)'
       content:
         application/problem+json:
           schema:
@@ -2129,6 +2250,68 @@ components:
             type: string
 
     # ------------------------------------------------------ Фоновые задачи
+    # ----------------------------------------------------- Импорт по ссылке
+    LinkRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          description: Ссылка как её вставил человек
+
+    LinkSite:
+      type: string
+      enum: [youtube, giphy]
+
+    LinkVideo:
+      type: object
+      required: [site, url, title, durationSec, bytes, quality]
+      properties:
+        site:
+          $ref: '#/components/schemas/LinkSite'
+        url:
+          type: string
+          description: Ссылка на одно видео, без `?t=` и плейлиста
+        title:
+          type: string
+        durationSec:
+          type: number
+        thumbnailUrl:
+          type: string
+          description: Превью с сайта, https
+        bytes:
+          type: integer
+          description: Ожидаемый вес скачанного файла
+        quality:
+          type: string
+          description: «720p»; у Giphy «MP4» или «WEBP»
+
+    Download:
+      type: object
+      required: [id, video, state, receivedBytes, createdAt]
+      properties:
+        id:
+          type: string
+        video:
+          $ref: '#/components/schemas/LinkVideo'
+        state:
+          type: string
+          enum: [queued, downloading, reading, succeeded, failed, canceled]
+        receivedBytes:
+          type: integer
+        etaSec:
+          type: number
+          description: Сколько осталось, пока downloading
+        projectId:
+          type: string
+          format: uuid
+          description: 'succeeded: проект уже в «Проектах»'
+        error:
+          $ref: '#/components/schemas/Problem'
+        createdAt:
+          type: string
+          format: date-time
+
     JobKind:
       type: string
       enum: [preview, export, publish]
@@ -2486,6 +2669,10 @@ components:
         | telegram_error | 502 | yes |
         | bad_request | 400 | yes |
         | internal | 500 | yes |
+        | link_unsupported | 422 | no |
+        | video_unavailable | 422 | no |
+        | site_unreachable | 503 | no |
+        | site_changed | 502 | yes |
       enum:
         - source_unreadable
         - format_unsupported
@@ -2515,3 +2702,7 @@ components:
         - telegram_error
         - bad_request
         - internal
+        - link_unsupported
+        - video_unavailable
+        - site_unreachable
+        - site_changed

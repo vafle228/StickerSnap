@@ -6,6 +6,8 @@ import { PacksScreen } from "../features/packs/PacksScreen";
 import { PublishWatch } from "../features/packs/PublishWatch";
 import { useProjectActions } from "../features/projects/actions";
 import { useWindowDrop } from "../features/projects/drop";
+import { useLinkActions } from "../features/projects/link/linkImport";
+import { LinkWatch } from "../features/projects/link/LinkWatch";
 import { ProjectsScreen } from "../features/projects/ProjectsScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { t } from "../shared/strings/ru";
@@ -70,8 +72,10 @@ export function App() {
   const section = useApp((s) => s.section);
   useErrorCapture(section);
   const setSection = useApp((s) => s.setSection);
-  // A video dropped anywhere becomes a project, a .webm opens its check (R1, R8).
-  useWindowDrop(useProjectActions().openDropped);
+  // A video dropped anywhere becomes a project, a .webm opens its check (R1, R8), a link from a
+  // browser is downloaded (artboard 20).
+  const link = useLinkActions();
+  useWindowDrop(useProjectActions().openDropped, (text) => void link.open(text));
   // A send to a pack runs: a dot on «Мои паки» until it ends (artboard 12)
   const sending = (useJobs().data ?? []).some(
     (j) => j.kind === "publish" && (j.state === "running" || j.state === "queued"),
@@ -105,6 +109,7 @@ export function App() {
         )}
       </main>
       <PublishWatch />
+      <LinkWatch />
       <OverlayHost />
       <NotifyHost />
     </div>

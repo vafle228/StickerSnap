@@ -19,6 +19,8 @@ export interface PopoverProps {
   open: boolean;
   onClose: () => void;
   placement?: Placement;
+  /** A click outside leaves it open: a panel with typed text in it (artboard 20·2). Esc still closes */
+  keepOnOutside?: boolean;
   children: ReactNode;
 }
 
@@ -30,6 +32,7 @@ export function Popover({
   open,
   onClose,
   placement = "bottom-end",
+  keepOnOutside = false,
   children,
 }: PopoverProps) {
   const presence = usePresence(open);
@@ -55,7 +58,7 @@ export function Popover({
   });
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open || keepOnOutside) return undefined;
     const onDown = (e: MouseEvent) => {
       const target = e.target;
       if (!(target instanceof Node)) return;
@@ -64,7 +67,7 @@ export function Popover({
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
-  }, [open, anchor, refs.floating, close]);
+  }, [open, keepOnOutside, anchor, refs.floating, close]);
 
   if (!presence.mounted) return null;
   return createPortal(

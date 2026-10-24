@@ -39,6 +39,10 @@ export const PROBLEMS: Record<ErrorCode, { tone: Tone; form: ProblemForm }> = {
   telegram_error: { tone: "danger", form: "toast" },
   bad_request: { tone: "danger", form: "toast" },
   internal: { tone: "danger", form: "toast" },
+  link_unsupported: { tone: "danger", form: "field" },
+  video_unavailable: { tone: "danger", form: "field" },
+  site_unreachable: { tone: "danger", form: "toast" },
+  site_changed: { tone: "danger", form: "toast" },
 };
 
 /** The Problem behind any thrown value. A failure without one (no server, a 401, a bug in the

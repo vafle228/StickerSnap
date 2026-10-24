@@ -92,6 +92,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/links/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Что за видео по ссылке YouTube или Giphy
+         * @description Артборд 20·3·4. После MVP. Сайт, название, длина, превью и ожидаемый вес; ничего не скачивает.
+         *     Отмена «Узнаю о видео…» — обрыв запроса. Метка времени `?t=` и плейлист в ссылке
+         *     не мешают: `url` в ответе — ссылка на одно видео.
+         *     Не ссылка или чужой сайт — link_unsupported (`params.reason`: not_link, site);
+         *     видео не скачать — video_unavailable (`params.reason`: gone, live, adult, playlist);
+         *     нет связи с сайтом — site_unreachable (`params.site`); загрузчик не понял ответ — site_changed.
+         */
+        post: operations["probeLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/downloads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Идущие и недавно завершённые скачивания
+         * @description Артборд 20·4. После MVP. Чтобы после F5 вернуть карточку и поп-ап.
+         *     Скачивания живут в памяти сервера; завершённые хранятся 10 минут.
+         */
+        get: operations["listDownloads"];
+        put?: never;
+        /**
+         * Скачать видео по ссылке и создать из него проект
+         * @description Артборды 20·3·5, 20·3·6, 20·4. После MVP. Отвечает 202 и `Download`; прогресс и итог —
+         *     событие SignalR `downloadUpdated`. Второе скачивание ждёт первое в `queued`.
+         *     Качаем лучший MP4 или WEBM не выше 720p без звука; у гифки Giphy — её MP4,
+         *     у Giphy-стикера — WEBP, чтобы сохранить прозрачность. Длина не ограничена.
+         *     Скачав, сервер читает файл (`reading`), как `POST /api/v1/projects`, и называет проект
+         *     по названию ролика; `projectId` приходит с `succeeded`. Ошибки — в `error`:
+         *     коды probe, disk_full (`params.needBytes`, `params.freeBytes`), source_unreadable.
+         */
+        post: operations["createDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/downloads/{downloadId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                downloadId: components["parameters"]["DownloadId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Отменить скачивание
+         * @description Артборд 20·3·9. После MVP. Недокачанный файл стирается, у скачивания `canceled`. Нет такого — job_not_found.
+         */
+        post: operations["cancelDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects": {
         parameters: {
             query?: never;
@@ -1233,6 +1311,42 @@ export interface components {
             })[];
             recentEmoji: string[];
         };
+        LinkRequest: {
+            /** @description Ссылка как её вставил человек */
+            url: string;
+        };
+        /** @enum {string} */
+        LinkSite: "youtube" | "giphy";
+        LinkVideo: {
+            site: components["schemas"]["LinkSite"];
+            /** @description Ссылка на одно видео, без `?t=` и плейлиста */
+            url: string;
+            title: string;
+            durationSec: number;
+            /** @description Превью с сайта, https */
+            thumbnailUrl?: string;
+            /** @description Ожидаемый вес скачанного файла */
+            bytes: number;
+            /** @description «720p»; у Giphy «MP4» или «WEBP» */
+            quality: string;
+        };
+        Download: {
+            id: string;
+            video: components["schemas"]["LinkVideo"];
+            /** @enum {string} */
+            state: "queued" | "downloading" | "reading" | "succeeded" | "failed" | "canceled";
+            receivedBytes: number;
+            /** @description Сколько осталось, пока downloading */
+            etaSec?: number;
+            /**
+             * Format: uuid
+             * @description succeeded: проект уже в «Проектах»
+             */
+            projectId?: string;
+            error?: components["schemas"]["Problem"];
+            /** Format: date-time */
+            createdAt: string;
+        };
         /** @enum {string} */
         JobKind: "preview" | "export" | "publish";
         JobRequest: {
@@ -1449,9 +1563,13 @@ export interface components {
          *     | telegram_error | 502 | yes |
          *     | bad_request | 400 | yes |
          *     | internal | 500 | yes |
+         *     | link_unsupported | 422 | no |
+         *     | video_unavailable | 422 | no |
+         *     | site_unreachable | 503 | no |
+         *     | site_changed | 502 | yes |
          * @enum {string}
          */
-        ErrorCode: "source_unreadable" | "format_unsupported" | "source_not_found" | "project_not_found" | "project_invalid" | "project_too_new" | "save_failed" | "revision_conflict" | "disk_full" | "render_failed" | "cannot_fit" | "ffmpeg_missing" | "job_not_found" | "file_not_found" | "validation_failed" | "account_not_linked" | "bot_blocked" | "network_unavailable" | "bot_unavailable" | "pack_name_invalid" | "pack_name_taken" | "pack_full" | "pack_not_found" | "not_our_pack" | "rate_limited" | "telegram_error" | "bad_request" | "internal";
+        ErrorCode: "source_unreadable" | "format_unsupported" | "source_not_found" | "project_not_found" | "project_invalid" | "project_too_new" | "save_failed" | "revision_conflict" | "disk_full" | "render_failed" | "cannot_fit" | "ffmpeg_missing" | "job_not_found" | "file_not_found" | "validation_failed" | "account_not_linked" | "bot_blocked" | "network_unavailable" | "bot_unavailable" | "pack_name_invalid" | "pack_name_taken" | "pack_full" | "pack_not_found" | "not_our_pack" | "rate_limited" | "telegram_error" | "bad_request" | "internal" | "link_unsupported" | "video_unavailable" | "site_unreachable" | "site_changed";
     };
     responses: {
         /** @description Ошибка (`bad_request`, `internal` и прочие коды из `ErrorCode`) */
@@ -1508,7 +1626,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description `source_unreadable`, `project_invalid`, `project_too_new`, `cannot_fit`, `validation_failed`, `pack_name_invalid`, `not_our_pack` */
+        /** @description `source_unreadable`, `project_invalid`, `project_too_new`, `cannot_fit`, `validation_failed`, `pack_name_invalid`, `not_our_pack`, `link_unsupported`, `video_unavailable` */
         UnprocessableContent: {
             headers: {
                 [name: string]: unknown;
@@ -1526,7 +1644,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description `telegram_error`, текст Bot API в `log` */
+        /** @description `telegram_error`, текст Bot API в `log`; `site_changed`, вывод загрузчика в `log` */
         BadGateway: {
             headers: {
                 [name: string]: unknown;
@@ -1535,7 +1653,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description `network_unavailable`, `bot_unavailable`, `ffmpeg_missing` */
+        /** @description `network_unavailable`, `bot_unavailable`, `ffmpeg_missing`, `site_unreachable` */
         ServiceUnavailable: {
             headers: {
                 [name: string]: unknown;
@@ -1544,7 +1662,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description `save_failed` (`params.reason`), `disk_full` */
+        /** @description `save_failed` (`params.reason`), `disk_full` (у скачивания по ссылке `params.needBytes`, `params.freeBytes`) */
         InsufficientStorage: {
             headers: {
                 [name: string]: unknown;
@@ -1557,6 +1675,7 @@ export interface components {
     parameters: {
         /** @description id проекта — GUID, записан в самом .ssproj; реестр сервера только сопоставляет его с путём */
         ProjectId: string;
+        DownloadId: string;
         JobId: string;
         /** @description Имя пака в Telegram целиком, с хвостом `_by_StickerSnapAppBot` */
         PackName: string;
@@ -1695,6 +1814,107 @@ export interface operations {
             404: components["responses"]["NotFound"];
             415: components["responses"]["UnsupportedMediaType"];
             422: components["responses"]["UnprocessableContent"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    probeLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Видео по ссылке */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkVideo"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            422: components["responses"]["UnprocessableContent"];
+            502: components["responses"]["BadGateway"];
+            503: components["responses"]["ServiceUnavailable"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDownloads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Скачивания, новые сверху */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Download"][];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Скачивание принято */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Download"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            422: components["responses"]["UnprocessableContent"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                downloadId: components["parameters"]["DownloadId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Скачивание после отмены */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Download"];
+                };
+            };
+            404: components["responses"]["NotFound"];
             default: components["responses"]["Problem"];
         };
     };

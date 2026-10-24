@@ -85,6 +85,10 @@ const STATUS: Record<ErrorCode, number> = {
   telegram_error: 502,
   bad_request: 400,
   internal: 500,
+  link_unsupported: 422,
+  video_unavailable: 422,
+  site_unreachable: 503,
+  site_changed: 502,
 };
 
 /** The codes whose problem offers «Сообщить об ошибке» (contract, ErrorCode's reportable). */
@@ -97,6 +101,7 @@ const REPORTABLE: ReadonlySet<ErrorCode> = new Set<ErrorCode>([
   "telegram_error",
   "bad_request",
   "internal",
+  "site_changed",
 ]);
 
 let traces = 0;

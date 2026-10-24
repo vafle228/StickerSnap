@@ -35,4 +35,8 @@ public enum ErrorCode
     TelegramError,
     BadRequest,
     Internal,
+    LinkUnsupported,
+    VideoUnavailable,
+    SiteUnreachable,
+    SiteChanged,
 }

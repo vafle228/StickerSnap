@@ -37,25 +37,12 @@ export async function upload(db: MockDb, request: Request) {
   return { status: 201 as const, body: { uploadId } };
 }
 
-/** POST /api/v1/projects: a new project with one segment, named after its video. The format is
- *  told by the file (here: its extension); «Битый файл» finds no whole frame in any video. */
-export async function createProject(db: MockDb, source: SourceRef, request: Request) {
-  await wait(READ_MS, request.signal);
-  // «Отменить»: the request was dropped, nothing is created
-  if (request.signal.aborted) return problem("bad_request");
-  const found = fileOf(db, source);
-  if (!found) return problem("source_not_found");
-  const ext = extOf(found.name);
-  if (!isFormat(ext)) return problem("format_unsupported", { params: { ext } });
-  if (db.scenario === "import-broken") {
-    return problem("source_unreadable", {
-      log: `[mov,mp4,m4a,3gp,3g2,mj2 @ 0x55d0c8a1e2c0] moov atom not found\n${found.name}: Invalid data found when processing input`,
-    });
-  }
-
+/** A project with one segment from a video read by name (contract, POST /projects): the first
+ *  3 s in a centre square. Downloads by link make theirs the same way. */
+export function newProject(db: MockDb, fileName: string, sizeBytes?: number): Project {
   const template = structuredClone(db.template);
   const id = crypto.randomUUID();
-  const info = sourceOf(found.name, found.file?.size ?? template.source.sizeBytes, template.source);
+  const info = sourceOf(fileName, sizeBytes ?? template.source.sizeBytes, template.source);
   const whole = { x: 0, y: 0, width: info.width, height: info.height };
   const side = Math.min(info.width, info.height);
   const fps = info.fps.num / info.fps.den;
@@ -78,8 +65,8 @@ export async function createProject(db: MockDb, source: SourceRef, request: Requ
   const project: Project = {
     ...template,
     id,
-    name: projectName(found.name),
-    path: `${db.settings.folders.projects}/${projectName(found.name)}.ssproj`,
+    name: projectName(fileName),
+    path: `${db.settings.folders.projects}/${projectName(fileName)}.ssproj`,
     revision: 1,
     savedAt: new Date().toISOString(),
     source: info,
@@ -87,6 +74,26 @@ export async function createProject(db: MockDb, source: SourceRef, request: Requ
     scene: { ...template.scene, segments: [first] },
     exports: {},
   };
+  return project;
+}
+
+/** POST /api/v1/projects: a new project with one segment, named after its video. The format is
+ *  told by the file (here: its extension); «Битый файл» finds no whole frame in any video. */
+export async function createProject(db: MockDb, source: SourceRef, request: Request) {
+  await wait(READ_MS, request.signal);
+  // «Отменить»: the request was dropped, nothing is created
+  if (request.signal.aborted) return problem("bad_request");
+  const found = fileOf(db, source);
+  if (!found) return problem("source_not_found");
+  const ext = extOf(found.name);
+  if (!isFormat(ext)) return problem("format_unsupported", { params: { ext } });
+  if (db.scenario === "import-broken") {
+    return problem("source_unreadable", {
+      log: `[mov,mp4,m4a,3gp,3g2,mj2 @ 0x55d0c8a1e2c0] moov atom not found\n${found.name}: Invalid data found when processing input`,
+    });
+  }
+
+  const project = newProject(db, found.name, found.file?.size);
   db.projects.unshift(project);
   fakeHub.emit("projectChanged", summaryOf(project));
   return { status: 201 as const, body: project };

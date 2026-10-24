@@ -280,6 +280,11 @@ button.ss-badge:focus-visible { outline: 2px solid var(--focus); outline-offset:
 .ss-drop-action { margin-top: var(--space-1); pointer-events: none; }
 .ss-drop-note { margin: 0; font: 500 13px/18px var(--font-sans); color: var(--ink-muted); }
 .ss-drop[aria-busy="true"] { cursor: progress; }
+.ss-drop-group { cursor: default; }
+.ss-drop-hit { display: flex; flex-direction: column; align-items: center; gap: inherit; padding: 0; border: 0; border-radius: var(--radius-md); background: none; color: inherit; font: inherit; text-align: center; cursor: pointer; }
+.ss-drop-hit:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+.ss-drop-hit[aria-busy="true"] { cursor: progress; }
+.ss-drop-group > :not(.ss-drop-line, .ss-drop-hit) { position: relative; }
 
 /* EmojiChips */
 .ss-emojis { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }

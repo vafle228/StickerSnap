@@ -1,6 +1,7 @@
 import type {
   AccountLink,
   AppInfo,
+  Download,
   Job,
   Pack,
   PackSticker,
@@ -203,6 +204,8 @@ export interface MockDb {
   uploads: Map<string, File>;
   /** Rendered .webm files of previews and exports, by fileId */
   files: Map<string, Blob>;
+  /** Downloads by link (artboard 20), newest first */
+  downloads: Download[];
   account: AccountLink;
   packs: Pack[];
 }
@@ -355,6 +358,7 @@ export function createDb(scenario: Scenario): MockDb {
     jobs: new Map(scenario === "publish-errors" ? [[PUBLISH_JOB, waitingPublish()]] : []),
     uploads: new Map(),
     files: new Map(),
+    downloads: [],
     account,
     packs,
   };

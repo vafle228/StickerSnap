@@ -20,10 +20,17 @@ public sealed partial class ContractTests
     /// The contract's operations the server does not serve yet. The list only shrinks: the PR
     /// that brings an operation strikes it from here, or this test fails.
     /// </summary>
-    public static readonly IReadOnlySet<string> NotYetOnServer = new HashSet<string>();
+    public static readonly IReadOnlySet<string> NotYetOnServer = new HashSet<string>
+    {
+        // Import by link (artboard 20): the SPA is built on the demo data first
+        "probeLink",
+        "createDownload",
+        "listDownloads",
+        "cancelDownload",
+    };
 
     /// <summary>The events of x-events the hub does not send yet. The list only shrinks, as above.</summary>
-    private static readonly IReadOnlySet<string> EventsNotYetSent = new HashSet<string>();
+    private static readonly IReadOnlySet<string> EventsNotYetSent = new HashSet<string> { "downloadUpdated" };
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 

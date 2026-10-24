@@ -3,6 +3,7 @@ import { app, demoLink, packSummary, summaryOf, type MockDb } from "./data";
 import { fakeHub } from "./fakeHub";
 import { frameSprite } from "./frames";
 import { cancelJob, startJob } from "./jobs";
+import { cancelDownload, createDownload, probeLink } from "./links";
 import { createProject, estimate, file, upload, validate } from "./media";
 import { noContent, problem, route, webp } from "./route";
 import { runsAsDesktop } from "./scenarios";
@@ -65,6 +66,14 @@ export function handlers(db: MockDb) {
     // ------------------------------------------------------- Источники и проверка
     route("post", "/api/v1/uploads", ({ request }) => upload(db, request)),
     route("post", "/api/v1/validate", ({ body }) => validate(db, body.source)),
+
+    // ------------------------------------------------------------ Импорт по ссылке
+    route("post", "/api/v1/links/probe", ({ body, request }) => probeLink(db, body.url, request)),
+    route("post", "/api/v1/downloads", ({ body }) => createDownload(db, body.url)),
+    route("get", "/api/v1/downloads", () => ({ status: 200, body: db.downloads })),
+    route("post", "/api/v1/downloads/{downloadId}/cancel", ({ params }) =>
+      cancelDownload(db, params.downloadId),
+    ),
 
     // ---------------------------------------------------------------- Проекты
     route("get", "/api/v1/projects", () => ({
