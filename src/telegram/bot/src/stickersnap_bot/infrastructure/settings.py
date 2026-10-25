@@ -35,8 +35,17 @@ class Settings(BaseSettings):
     init_data_max_age: timedelta = timedelta(days=1)
     host: str = "127.0.0.1"
     port: int = 8080
+    # what reaches stdout (docker logs) and, with telemetry on, Loki
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+    # OpenTelemetry's OTLP/HTTP collector: traces, metrics and logs go there (Alloy beside the
+    # service on the VPS, http://alloy:4318; docker/telegram/observability). Not set: nothing is
+    # exported, as in development and tests. OTEL_SERVICE_NAME, OTEL_RESOURCE_ATTRIBUTES and the
+    # other OTEL_* variables are read by the SDK itself
+    otel_exporter_otlp_endpoint: str | None = None
 
-    @field_validator("feedback_chat_id", "miniapp_url", mode="before")
+    @field_validator(
+        "feedback_chat_id", "miniapp_url", "otel_exporter_otlp_endpoint", mode="before"
+    )
     @classmethod
     def _empty_is_none(cls, value: object) -> object:
         # .env.example leaves it empty

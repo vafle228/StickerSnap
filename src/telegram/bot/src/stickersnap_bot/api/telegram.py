@@ -1,12 +1,16 @@
 import secrets
+from collections.abc import Awaitable, Callable
 from typing import Annotated, Any
 
-from aiogram import Bot, Dispatcher, F, Router
+from aiogram import BaseMiddleware, Bot, Dispatcher, F, Router
+from aiogram.dispatcher.event.bases import UNHANDLED
 from aiogram.enums import ChatMemberStatus, ChatType
 from aiogram.filters import Command, CommandStart
-from aiogram.types import BotCommand, ChatMemberUpdated, Message, Update
+from aiogram.types import BotCommand, ChatMemberUpdated, Message, TelegramObject, Update
 from aiogram.types import User as TelegramUser
 from fastapi import APIRouter, Header, Response, status
+from opentelemetry import metrics, trace
+from opentelemetry.trace import SpanKind
 
 from stickersnap_bot.application.chat import BotChat, Incoming
 from stickersnap_bot.domain.users import TelegramProfile
@@ -24,8 +28,50 @@ _MEDIA = F.video | F.animation | F.document | F.video_note
 
 def create_dispatcher(chat: BotChat) -> Dispatcher:
     dispatcher = Dispatcher()
+    dispatcher.update.outer_middleware(UpdateTelemetry())
     dispatcher.include_router(_chat_router(chat))
     return dispatcher
+
+
+class UpdateTelemetry(BaseMiddleware):
+    """A span and a count for every update, whether it came by webhook (inside the request's span)
+    or by polling (a trace of its own). Without telemetry (infrastructure/telemetry.py) the tracer
+    and the meter are OpenTelemetry's no-op ones."""
+
+    def __init__(
+        self, tracer: trace.Tracer | None = None, meter: metrics.Meter | None = None
+    ) -> None:
+        self._tracer = tracer or trace.get_tracer(__name__)
+        self._updates = (meter or metrics.get_meter(__name__)).create_counter(
+            "stickersnap.bot.updates",
+            unit="{update}",
+            description="Telegram updates by type and outcome: handled, unhandled or error",
+        )
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
+        if not isinstance(event, Update):
+            return await handler(event, data)
+        kind = event.event_type
+        with self._tracer.start_as_current_span(
+            f"telegram {kind}",
+            kind=SpanKind.CONSUMER,
+            attributes={"telegram.update.type": kind, "telegram.update.id": event.update_id},
+        ) as span:
+            try:
+                result = await handler(event, data)
+            except Exception:
+                # the span records the exception itself
+                self._updates.add(1, {"telegram.update.type": kind, "outcome": "error"})
+                raise
+            outcome = "unhandled" if result is UNHANDLED else "handled"
+            span.set_attribute("telegram.update.outcome", outcome)
+            self._updates.add(1, {"telegram.update.type": kind, "outcome": outcome})
+            return result
 
 
 def _chat_router(chat: BotChat) -> Router:

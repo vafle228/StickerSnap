@@ -1,0 +1,33 @@
+# One Tempo (monolithic, no Kafka) for the services' traces, on the VPS's disk, kept 7 days.
+# Reference: https://grafana.com/docs/tempo/latest/configuration/
+target: all
+stream_over_http_enabled: true
+
+server:
+  http_listen_port: 3200
+  log_level: warn
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        # Alloy sends here (otelcol.exporter.otlp "tempo")
+        grpc:
+          endpoint: 0.0.0.0:4317
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/blocks
+
+overrides:
+  defaults:
+    compaction:
+      # how long a trace is kept
+      block_retention: 168h
+
+usage_report:
+  reporting_enabled: false

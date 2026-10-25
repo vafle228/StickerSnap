@@ -13,6 +13,7 @@ def _clean_environment(monkeypatch: pytest.MonkeyPatch) -> None:
         "WEBHOOK_SECRET",
         "FEEDBACK_CHAT_ID",
         "MINIAPP_URL",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -72,3 +73,15 @@ def test_an_empty_miniapp_url_is_none(
     monkeypatch.setenv("MINIAPP_URL", value)
 
     assert Settings().miniapp_url == url
+
+
+def test_telemetry_is_off_unless_a_collector_is_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BOT_TOKEN", "123:secret")
+    # .env.example leaves it empty
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+
+    assert Settings().otel_exporter_otlp_endpoint is None
+
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://alloy:4318")
+
+    assert Settings().otel_exporter_otlp_endpoint == "http://alloy:4318"
