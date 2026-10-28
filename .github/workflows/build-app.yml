@@ -31,6 +31,8 @@ on:
         default: ""
   push:
     tags: ["v*"]
+    # TEMPORARY: to try the workflow on this branch; removed before merge
+    branches: [feat/macos-installers]
 
 permissions:
   contents: read
