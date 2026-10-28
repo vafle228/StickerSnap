@@ -188,6 +188,79 @@ public sealed class PackServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Copies_any_pack_into_a_new_pack_named_by_its_title()
+    {
+        const string copy = "starye_koty_by_StickerSnapAppBot";
+        Taken(copy, false);
+        _telegram.CopyPackAsync("OldCats", copy, "Старые коты", Arg.Any<CancellationToken>()).Returns(
+            new PublishedPack(copy, "Старые коты", PackKind.Regular,
+            [
+                new PublishedSticker("F1", "U1", "😂", StickerFormat.Static),
+                new PublishedSticker("F2", "U2", "😴", StickerFormat.Video),
+            ]));
+
+        var view = await Service.CopyAsync("https://t.me/addstickers/OldCats", " Старые коты ", Cancel);
+
+        var expected = new Pack(copy, "Старые коты", PackKind.Regular, PresenceStatus.Ok, _clock.GetUtcNow(),
+        [
+            new PackSticker("U1", "F1", ["😂"], null, StickerFormat.Static),
+            new PackSticker("U2", "F2", ["😴"], null, StickerFormat.Video),
+        ]);
+        view.Pack.Should().BeEquivalentTo(expected);
+        _packs.Packs.Should().BeEquivalentTo([expected]);
+        PackEvents.Sent(_events).Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Takes_the_first_free_variant_of_a_taken_name()
+    {
+        Taken("koty_by_StickerSnapAppBot", true);
+        Taken("koty_2_by_StickerSnapAppBot", false);
+        _telegram.CopyPackAsync("OldCats", "koty_2_by_StickerSnapAppBot", "Коты", Arg.Any<CancellationToken>())
+            .Returns(new PublishedPack("koty_2_by_StickerSnapAppBot", "Коты", PackKind.Regular, [new PublishedSticker("F1", "U1", "😂")]));
+
+        var view = await Service.CopyAsync("OldCats", "Коты", Cancel);
+
+        view.Pack.Name.Should().Be("koty_2_by_StickerSnapAppBot");
+    }
+
+    [Fact]
+    public async Task A_title_without_letters_names_the_copy_after_its_source()
+    {
+        Taken("oldcats_by_StickerSnapAppBot", false);
+        _telegram.CopyPackAsync("OldCats", "oldcats_by_StickerSnapAppBot", "😺😺", Arg.Any<CancellationToken>())
+            .Returns(new PublishedPack("oldcats_by_StickerSnapAppBot", "😺😺", PackKind.Regular, [new PublishedSticker("F1", "U1", "😂")]));
+
+        var view = await Service.CopyAsync("OldCats", "😺😺", Cancel);
+
+        view.Pack.Name.Should().Be("oldcats_by_StickerSnapAppBot");
+    }
+
+    [Theory]
+    [InlineData("https://t.me/addstickers/", "Коты", "link")]
+    [InlineData("OldCats", "  ", "title")]
+    public async Task Refuses_a_copy_without_a_source_or_a_title(string link, string title, string field)
+    {
+        var copying = () => Service.CopyAsync(link, title, Cancel);
+
+        var refused = (await copying.Should().ThrowAsync<AppException>()).Which;
+        refused.Code.Should().Be(ErrorCode.BadRequest);
+        refused.Fields.Should().ContainKey(field);
+        _telegram.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Says_the_name_is_taken_when_no_variant_is_free()
+    {
+        _telegram.IsNameTakenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+
+        var copying = () => Service.CopyAsync("OldCats", "Коты", Cancel);
+
+        (await copying.Should().ThrowAsync<AppException>()).Which.Code.Should().Be(ErrorCode.PackNameTaken);
+        await _telegram.DidNotReceiveWithAnyArgs().CopyPackAsync(default!, default!, default!, Cancel);
+    }
+
+    [Fact]
     public async Task Keeps_the_projects_of_a_pack_added_again()
     {
         await WithKnownAsync();
@@ -265,6 +338,21 @@ public sealed class PackServiceTests : IDisposable
         File.ReadAllBytes(first.Path).Should().Equal(0x1A, 0x45, 0xDF, 0xA3);
         _cache.Made.Should().Be(1);
         await _telegram.Received(1).DownloadAsync("F1", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(StickerFormat.Static, ".webp", "image/webp")]
+    [InlineData(StickerFormat.Animated, ".tgs", "application/x-tgsticker")]
+    public async Task Serves_a_copied_stickers_file_as_what_it_is(StickerFormat format, string extension, string contentType)
+    {
+        await _packs.SaveAsync(Known() with { Stickers = [new PackSticker("U1", "F1", ["😂"], null, format)] }, Cancel);
+        _telegram.DownloadAsync("F1", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => File.WriteAllBytesAsync(call.ArgAt<string>(1), [1, 2, 3], Cancel));
+
+        var file = await Service.StickerMediaAsync(Cats, "U1", Cancel);
+
+        file.ContentType.Should().Be(contentType);
+        Path.GetExtension(file.Path).Should().Be(extension);
     }
 
     [Fact]

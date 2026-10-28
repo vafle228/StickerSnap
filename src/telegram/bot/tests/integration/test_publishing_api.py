@@ -2,6 +2,7 @@
 against src/contract/bot-service.yaml as in test_miniapp_api.py."""
 
 from collections.abc import AsyncIterator
+from dataclasses import replace
 
 import pytest
 from aiogram import Bot
@@ -11,7 +12,7 @@ from stickersnap_bot.api.app import Polling, create_app
 from stickersnap_bot.api.telegram import create_dispatcher
 from stickersnap_bot.application.errors import RateLimitedError
 from stickersnap_bot.application.publishing import MAX_STICKER_BYTES
-from stickersnap_bot.application.sticker_sets import StickerFile, StickerSet
+from stickersnap_bot.application.sticker_sets import StickerFile, StickerFormat, StickerSet
 from stickersnap_bot.domain.devices import Device, DeviceOs
 from stickersnap_bot.domain.packs import PackKind
 from stickersnap_bot.domain.secrets import hash_secret
@@ -29,6 +30,7 @@ from tests.fakes import (
     publishing,
     send_feedback,
     sign_in,
+    sticker,
 )
 from tests.integration.test_links_api import bearer, is_schema, problem
 from tests.integration.test_miniapp_api import conforms
@@ -123,7 +125,14 @@ async def test_a_desktop_publishes_a_pack(
         "name": CATS,
         "title": "Коты",
         "kind": "stickers",
-        "stickers": [{"id": "sticker-file1", "uniqueId": "unique-file1", "emoji": ["😂", "🐱"]}],
+        "stickers": [
+            {
+                "id": "sticker-file1",
+                "uniqueId": "unique-file1",
+                "emoji": ["😂", "🐱"],
+                "format": "video",
+            }
+        ],
     }
     assert added.status_code == 200
     assert [s["id"] for s in conforms(added, "PublishedPack")["stickers"]] == [
@@ -239,3 +248,38 @@ async def test_contract_codes_of_publishing(
     assert problem(waiting, 429) == "rate_limited"
     assert waiting.headers["Retry-After"] == "24"
     assert waiting.json()["params"] == {"retryAfterSec": 24}
+
+
+async def test_a_desktop_copies_a_pack_from_stickers(
+    client: AsyncClient, tables: Tables, sets: FakeStickerSets, messages: FakeChatMessages
+) -> None:
+    sets.sets["OldCats"] = StickerSet(
+        "OldCats",
+        "Коты",
+        PackKind.STICKERS,
+        (
+            replace(sticker(1), id="a", format=StickerFormat.STATIC),
+            replace(sticker(2), id="b"),
+        ),
+    )
+    copy = "old_cats_by_StickerSnapAppBot"
+    body = {"source": "OldCats", "name": copy, "title": "Старые коты"}
+
+    copied = await client.post("/v1/packs/copies", json=is_schema("CopyPackBody", body))
+    gone = await client.post("/v1/packs/copies", json={**body, "source": "Nothing"})
+    bad_name = await client.post("/v1/packs/copies", json={**body, "name": "old_by_OtherBot"})
+
+    assert copied.status_code == 201
+    assert conforms(copied, "PublishedPack") == {
+        "name": copy,
+        "title": "Старые коты",
+        "kind": "stickers",
+        "stickers": [
+            {"id": "sticker-a", "uniqueId": "unique-a", "emoji": ["😴"], "format": "static"},
+            {"id": "sticker-b", "uniqueId": "unique-b", "emoji": ["😴"], "format": "video"},
+        ],
+    }
+    assert tables.packs[copy].owner_id == ME
+    assert [m.message.title for m in messages.sent] == ["Пак «Старые коты» создан"]
+    assert problem(gone, 404) == "pack_not_found"
+    assert problem(bad_name, 422) == "pack_name_invalid"

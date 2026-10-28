@@ -150,16 +150,27 @@ internal sealed class JsonPackRepository(IOptions<DataOptions> options, ILogger<
     }
 
     /// <param name="FileUniqueId">Telegram's names, so the file says what the ids are</param>
-    private sealed record StoredSticker(string FileUniqueId, string FileId, IReadOnlyList<string> Emoji, StoredOrigin? Origin)
+    /// <param name="Format">Absent in a file from before pack copies: a video</param>
+    private sealed record StoredSticker(
+        string FileUniqueId,
+        string FileId,
+        IReadOnlyList<string> Emoji,
+        StoredOrigin? Origin,
+        StickerFormat Format = StickerFormat.Video)
     {
         public static StoredSticker From(PackSticker sticker) => new(
             sticker.Id,
             sticker.FileId,
             sticker.Emoji,
-            sticker.Origin is { } origin ? new StoredOrigin(origin.ProjectId, origin.ProjectName, origin.SegmentId) : null);
+            sticker.Origin is { } origin ? new StoredOrigin(origin.ProjectId, origin.ProjectName, origin.SegmentId) : null,
+            sticker.Format);
 
         public PackSticker ToSticker() => new(
-            FileUniqueId, FileId, Emoji, Origin is { } origin ? new StickerOrigin(origin.ProjectId, origin.ProjectName, origin.SegmentId) : null);
+            FileUniqueId,
+            FileId,
+            Emoji,
+            Origin is { } origin ? new StickerOrigin(origin.ProjectId, origin.ProjectName, origin.SegmentId) : null,
+            Format);
     }
 
     private sealed record StoredOrigin(Guid ProjectId, string ProjectName, string SegmentId);

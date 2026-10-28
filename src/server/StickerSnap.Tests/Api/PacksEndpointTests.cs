@@ -78,7 +78,7 @@ public sealed class PacksEndpointTests : IDisposable, IAsyncLifetime
         pack["link"]!.GetValue<string>().Should().Be($"https://t.me/addstickers/{Cats}");
         pack["coverUrl"]!.GetValue<string>().Should().Be($"/api/v1/packs/{Cats}/stickers/AgADc2/media");
         JsonNode.DeepEquals(pack["stickers"], JsonNode.Parse(
-            $$"""[{"id":"AgADc2","emoji":["😂"],"mediaUrl":"/api/v1/packs/{{Cats}}/stickers/AgADc2/media"},{"id":"AgADc3","emoji":[],"mediaUrl":"/api/v1/packs/{{Cats}}/stickers/AgADc3/media"}]""")).Should().BeTrue(pack["stickers"]!.ToJsonString());
+            $$"""[{"id":"AgADc2","emoji":["😂"],"mediaUrl":"/api/v1/packs/{{Cats}}/stickers/AgADc2/media","format":"video"},{"id":"AgADc3","emoji":[],"mediaUrl":"/api/v1/packs/{{Cats}}/stickers/AgADc3/media","format":"video"}]""")).Should().BeTrue(pack["stickers"]!.ToJsonString());
 
         var list = await Json(await client.GetAsync("/api/v1/packs", Cancel));
         list.AsArray().Should().ContainSingle();
@@ -172,6 +172,30 @@ public sealed class PacksEndpointTests : IDisposable, IAsyncLifetime
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync(Cancel)).Should().Be(
             """{"name":"kot_i_divan","fullName":"kot_i_divan_by_StickerSnapAppBot","problems":["taken"],"suggestion":"kot_i_divan_2"}""");
+    }
+
+    [Fact]
+    public async Task Copies_a_pack_of_another_bot_and_serves_its_static_stickers_as_webp()
+    {
+        const string copy = "starye_koty_by_StickerSnapAppBot";
+        _cloud.Answer($"GET /v1/pack-names/{copy}", $$"""{"name":"{{copy}}","taken":false}""");
+        _cloud.Answer("POST /v1/packs/copies", $$"""
+            {"name":"{{copy}}","title":"Старые коты","kind":"stickers","stickers":[
+            {"id":"F1","uniqueId":"U1","emoji":["😂"],"format":"static"}]}
+            """, HttpStatusCode.Created);
+        _cloud.Answer("GET /v1/stickers/F1/file", () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2]) });
+        var client = _server.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/packs/copy", new { link = "https://t.me/addstickers/OldCats", title = "Старые коты" }, Cancel);
+        var media = await client.GetAsync($"/api/v1/packs/{copy}/stickers/U1/media", Cancel);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var pack = await Json(response);
+        pack["name"]!.GetValue<string>().Should().Be(copy);
+        pack["stickers"]![0]!["format"]!.GetValue<string>().Should().Be("static");
+        (await client.GetStringAsync("/api/v1/packs", Cancel)).Should().Contain(copy);
+        media.Content.Headers.ContentType!.MediaType.Should().Be("image/webp");
     }
 
     [Fact]

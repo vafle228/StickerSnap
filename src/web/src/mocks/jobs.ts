@@ -335,6 +335,7 @@ function published(db: MockDb, job: Job, request: PublishRequest): Job {
         id: `sticker-${job.id}-${i}`,
         emoji: item.emoji,
         mediaUrl: `/api/v1/packs/${name}/stickers/sticker-${job.id}-${i}/media`,
+        format: "video",
         origin: project && {
           projectId: project.id,
           projectName: project.name,

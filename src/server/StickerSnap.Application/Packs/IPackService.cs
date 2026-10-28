@@ -33,6 +33,19 @@ public interface IPackService
     /// </exception>
     Task<PackView> ImportAsync(string link, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// POST /packs/copy, «Скопировать в StickerSnap»: a pack of anyone (@Stickers, another bot,
+    /// an old pack of ours the service does not know) copied into a new pack of the product bot
+    /// titled <paramref name="title"/>, and put on the list. The name comes from the title as in
+    /// «Новый пак», with the first free variant when it is taken. Sends packChanged.
+    /// </summary>
+    /// <exception cref="Core.Errors.AppException">
+    /// bad_request for a link without a pack name or an empty title; pack_name_taken when no
+    /// variant is free; pack_not_found when Telegram has no such pack; what
+    /// <see cref="SyncAsync"/> throws for Telegram
+    /// </exception>
+    Task<PackView> CopyAsync(string link, string title, CancellationToken cancellationToken);
+
     /// <summary>DELETE /packs/{pack}, «Убрать из списка»: the app forgets it, Telegram keeps it.</summary>
     /// <exception cref="Core.Errors.AppException">pack_not_found</exception>
     Task ForgetAsync(string name, CancellationToken cancellationToken);

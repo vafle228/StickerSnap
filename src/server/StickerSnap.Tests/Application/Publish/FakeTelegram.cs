@@ -79,6 +79,9 @@ internal sealed class FakeTelegram : IStickerPublisher
             return Snapshot(name)!;
         });
 
+    public Task<PublishedPack> CopyPackAsync(string source, string name, string title, CancellationToken cancellationToken) =>
+        throw new NotSupportedException();
+
     public Task<PublishedPack> AddStickerAsync(string pack, NewSticker sticker, CancellationToken cancellationToken) =>
         RunAsync("add", pack, cancellationToken, () =>
         {

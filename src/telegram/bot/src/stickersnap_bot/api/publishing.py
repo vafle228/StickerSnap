@@ -41,6 +41,15 @@ class NewPackBody(Body):
     stickers: list[InputStickerBody] = Field(min_length=1, max_length=MAX_STICKERS_AT_CREATION)
 
 
+class CopyPackBody(Body):
+    model_config = ConfigDict(extra="forbid")
+
+    # any set: from @Stickers, another bot or ours
+    source: str = Field(pattern=PACK_NAME)
+    name: str = Field(pattern=PACK_NAME)
+    title: str = Field(min_length=1, max_length=PACK_TITLE_MAX_LENGTH)
+
+
 class UploadedStickerBody(Body):
     id: str
 
@@ -49,6 +58,7 @@ class PublishedStickerBody(Body):
     id: str
     unique_id: str
     emoji: list[str]
+    format: Literal["static", "animated", "video"]
 
 
 class PublishedPackBody(Body):
@@ -69,7 +79,9 @@ def _pack(found: StickerSet) -> PublishedPackBody:
         title=found.title,
         kind=found.kind.value,
         stickers=[
-            PublishedStickerBody(id=s.id, unique_id=s.unique_id, emoji=list(s.emoji))
+            PublishedStickerBody(
+                id=s.id, unique_id=s.unique_id, emoji=list(s.emoji), format=s.format.value
+            )
             for s in found.stickers
         ],
     )
@@ -116,6 +128,13 @@ async def create_pack(
         [sticker.sticker() for sticker in body.stickers],
     )
     return _pack(made)
+
+
+@router.post("/packs/copies", status_code=status.HTTP_201_CREATED, operation_id="copyPack")
+async def copy_pack(
+    publishing: _PublishingDep, key: DeviceKey, body: CopyPackBody
+) -> PublishedPackBody:
+    return _pack(await publishing.copy(key, body.source, body.name, body.title))
 
 
 @router.get("/packs/{name}", operation_id="getPublishedPack")

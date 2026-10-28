@@ -22,6 +22,7 @@ from stickersnap_bot.application.sticker_sets import (
     NewSticker,
     SetSticker,
     StickerFile,
+    StickerFormat,
     StickerSet,
 )
 from stickersnap_bot.domain.packs import PackKind
@@ -172,11 +173,20 @@ def _sticker(sticker: Sticker) -> SetSticker:
         thumb_file_id=sticker.thumbnail.file_id if sticker.thumbnail else None,
         video_file_id=sticker.file_id,
         unique_id=sticker.file_unique_id,
+        format=_format(sticker),
     )
 
 
+def _format(sticker: Sticker) -> StickerFormat:
+    if sticker.is_video:
+        return StickerFormat.VIDEO
+    return StickerFormat.ANIMATED if sticker.is_animated else StickerFormat.STATIC
+
+
 def _input(sticker: NewSticker) -> InputSticker:
-    return InputSticker(sticker=sticker.file_id, format=_VIDEO, emoji_list=list(sticker.emoji))
+    return InputSticker(
+        sticker=sticker.file_id, format=sticker.format.value, emoji_list=list(sticker.emoji)
+    )
 
 
 def _refused(error: TelegramAPIError) -> ApplicationError:

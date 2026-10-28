@@ -10,7 +10,9 @@ Only packs in the service's registry are written to (Dmitriu chose this 2026-10-
 not say who owns a set, and deleteStickerFromSet does not check it at all.
 """
 
-from collections.abc import Sequence
+import asyncio
+from collections.abc import Awaitable, Callable, Sequence
+from functools import partial
 
 from stickersnap_bot.application.chat import Notifications
 from stickersnap_bot.application.clock import Clock
@@ -21,6 +23,7 @@ from stickersnap_bot.application.errors import (
     PackNameInvalidError,
     PackNameTakenError,
     PackNotFoundError,
+    RateLimitedError,
     StickerNotFoundError,
     TelegramUnavailableError,
     UnauthorizedError,
@@ -35,7 +38,7 @@ from stickersnap_bot.application.sticker_sets import (
     StickerSets,
 )
 from stickersnap_bot.domain.errors import InvalidValueError
-from stickersnap_bot.domain.packs import Pack, PackKind, pack_name
+from stickersnap_bot.domain.packs import Pack, PackKind, pack_name, pack_title
 from stickersnap_bot.domain.users import User
 
 # what Telegram takes for a video sticker, and the preset limit on the desktop
@@ -44,6 +47,12 @@ MAX_STICKER_BYTES = 256 * 1024
 MAX_STICKERS_AT_CREATION = 50
 # every WebM file starts with an EBML header
 _EBML_MAGIC = b"\x1a\x45\xdf\xa3"
+# how long a copy waits out Telegram's «too many requests» by itself; a longer wait is the caller's
+MAX_COPY_WAIT_SEC = 30
+# what a copied sticker answers to when Telegram gave it no emoji
+_NO_EMOJI = ("🙂",)
+
+type Sleep = Callable[[float], Awaitable[None]]
 
 
 class Publishing:
@@ -53,11 +62,13 @@ class Publishing:
         sticker_sets: StickerSets,
         notifications: Notifications,
         clock: Clock,
+        sleep: Sleep = asyncio.sleep,
     ) -> None:
         self._unit_of_work = unit_of_work
         self._sets = sticker_sets
         self._notifications = notifications
         self._clock = clock
+        self._sleep = sleep
 
     async def upload(self, device_key: str, webm: bytes) -> str:
         """The uploaded file's id; ValidationFailedError for a file Telegram would refuse."""
@@ -102,6 +113,61 @@ class Publishing:
         made = await self._set_after_change(pack.name)
         await self._notifications.pack_created(pack, len(made.stickers))
         return made
+
+    async def copy(self, device_key: str, source: str, name: str, title: str) -> StickerSet:
+        """A new pack of the key's owner with every sticker of `source`, any set at all, in its
+        order, kind, emoji and formats. Telegram lets only the bot that made a set change it, so a
+        set from @Stickers or another bot comes under the service only as a copy. The stickers go
+        by file id, nothing is downloaded. A repeat with the name of the owner's copy adds what
+        the copy still misses, so a copy stopped halfway is finished by asking again."""
+        owner = await self._owner(device_key)
+        try:
+            name = pack_name(name, await self._sets.bot_username())
+        except InvalidValueError as error:
+            raise PackNameInvalidError(str(error)) from error
+        try:
+            title = pack_title(title)
+        except InvalidValueError as error:
+            raise BadRequestError(str(error)) from error
+        _may_act_for(owner)
+        original = await self._sets.get(source)
+        if original is None or not original.stickers:
+            raise PackNotFoundError(source)
+        wanted = [NewSticker(s.id, s.emoji or _NO_EMOJI, s.format) for s in original.stickers][
+            : original.kind.limit
+        ]
+        async with self._unit_of_work() as uow:
+            pack = await uow.packs.get(name)
+        if pack is not None and pack.owner_id != owner.id:
+            raise PackNameTakenError(name)
+
+        made_now = pack is None
+        if pack is None:
+            pack = Pack.create(name, owner.id, title, original.kind, self._clock())
+            first = wanted[:MAX_STICKERS_AT_CREATION]
+            await self._patiently(
+                partial(self._sets.create, owner.id, name, pack.title, pack.kind, first)
+            )
+            async with self._unit_of_work() as uow:
+                await uow.packs.save(pack)
+                await uow.commit()
+            done = len(first)
+        else:
+            copied = await self._sets.get(name)
+            if copied is None:
+                raise PackNotFoundError(name)
+            done = len(copied.stickers)
+
+        for sticker in wanted[done:]:
+            await self._patiently(partial(self._sets.add, owner.id, name, sticker))
+        if not made_now and done < len(wanted):
+            pack = await self._touch(pack)
+        after = await self._set_after_change(name)
+        if made_now:
+            await self._notifications.pack_created(pack, len(after.stickers))
+        elif done < len(wanted):
+            await self._notifications.stickers_added(pack, len(wanted) - done, len(after.stickers))
+        return after
 
     async def get(self, device_key: str, name: str) -> StickerSet:
         owner = await self._owner(device_key)
@@ -178,6 +244,17 @@ class Publishing:
             # a device is made only for a user who confirmed it in the Mini App
             raise UnauthorizedError("the key's account is gone")
         return user
+
+    async def _patiently(self, change: Callable[[], Awaitable[None]]) -> None:
+        """One change of a copy; a short «too many requests» is waited out and tried again."""
+        while True:
+            try:
+                await change()
+                return
+            except RateLimitedError as error:
+                if error.retry_after_sec > MAX_COPY_WAIT_SEC:
+                    raise
+                await self._sleep(error.retry_after_sec)
 
     async def _touch(self, pack: Pack) -> Pack:
         touched = pack.touched(self._clock())

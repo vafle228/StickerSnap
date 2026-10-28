@@ -26,4 +26,7 @@ public sealed record TelegramLimits(
 
     /// <summary>The bot that creates the packs: their links end in _by_StickerSnapAppBot.</summary>
     public const string BotUsername = "StickerSnapAppBot";
+
+    /// <summary>The longest title of a pack.</summary>
+    public const int PackTitleMaxLength = 64;
 }

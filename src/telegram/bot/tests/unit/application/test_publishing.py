@@ -1,3 +1,4 @@
+from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from datetime import timedelta
 
@@ -10,12 +11,18 @@ from stickersnap_bot.application.errors import (
     PackNameInvalidError,
     PackNameTakenError,
     PackNotFoundError,
+    RateLimitedError,
     StickerNotFoundError,
     UnauthorizedError,
     ValidationFailedError,
 )
 from stickersnap_bot.application.publishing import MAX_STICKER_BYTES, Publishing
-from stickersnap_bot.application.sticker_sets import NewSticker, StickerFile
+from stickersnap_bot.application.sticker_sets import (
+    NewSticker,
+    StickerFile,
+    StickerFormat,
+    StickerSet,
+)
 from stickersnap_bot.domain.devices import Device, DeviceOs
 from stickersnap_bot.domain.packs import Pack, PackKind
 from stickersnap_bot.domain.secrets import hash_secret
@@ -27,6 +34,7 @@ from tests.fakes import (
     FakeStickerSets,
     Tables,
     publishing,
+    sticker,
     sticker_set,
 )
 
@@ -64,10 +72,19 @@ def clock() -> FakeClock:
 
 
 @pytest.fixture
+def slept() -> list[float]:
+    return []
+
+
+@pytest.fixture
 def service(
-    tables: Tables, sets: FakeStickerSets, messages: FakeChatMessages, clock: FakeClock
+    tables: Tables,
+    sets: FakeStickerSets,
+    messages: FakeChatMessages,
+    clock: FakeClock,
+    slept: list[float],
 ) -> Publishing:
-    return publishing(tables, sets, messages, clock)
+    return publishing(tables, sets, messages, clock, slept)
 
 
 def own(tables: Tables, sets: FakeStickerSets, count: int = 2, owner: int = ME) -> Pack:
@@ -370,3 +387,176 @@ async def test_downloads_a_stickers_file(service: Publishing, sets: FakeStickerS
         await service.download(KEY, "sticker9")
     with pytest.raises(UnauthorizedError):
         await service.download("revoked", "sticker1")
+
+
+# Copy
+
+OLD = "OldCats"
+COPY = "old_cats_by_StickerSnapAppBot"
+
+
+def old_pack(sets: FakeStickerSets, count: int, kind: PackKind = PackKind.STICKERS) -> StickerSet:
+    """A set made by @Stickers: static, animated and video stickers by turns."""
+    formats = list(StickerFormat)
+    found = StickerSet(
+        name=OLD,
+        title="Старые коты",
+        kind=kind,
+        stickers=tuple(replace(sticker(n), format=formats[n % 3]) for n in range(1, count + 1)),
+    )
+    sets.sets[OLD] = found
+    return found
+
+
+async def test_copies_any_pack_into_a_new_pack_of_the_keys_owner(
+    service: Publishing, tables: Tables, sets: FakeStickerSets, messages: FakeChatMessages
+) -> None:
+    old = old_pack(sets, 3, PackKind.EMOJI)
+
+    made = await service.copy(KEY, OLD, COPY, " Коты навсегда ")
+
+    [(method, owner, name, stickers)] = sets.calls
+    assert (method, owner, name) == ("create", ME, COPY)
+    assert stickers == tuple(NewSticker(s.id, s.emoji, s.format) for s in old.stickers)
+    assert (made.name, made.title, made.kind) == (COPY, "Коты навсегда", PackKind.EMOJI)
+    assert [s.format for s in made.stickers] == [s.format for s in old.stickers]
+    assert tables.packs[COPY] == Pack(COPY, ME, "Коты навсегда", PackKind.EMOJI, NOW, NOW)
+    assert sets.sets[OLD] == old
+    [notice] = messages.sent
+    assert notice.message.title == "Пак «Коты навсегда» создан"
+
+
+async def test_a_large_pack_is_made_with_fifty_and_filled_one_by_one(
+    service: Publishing, sets: FakeStickerSets
+) -> None:
+    old = old_pack(sets, 120)
+
+    made = await service.copy(KEY, OLD, COPY, "Коты")
+
+    assert [call[0] for call in sets.calls] == ["create"] + ["add"] * 70
+    assert sets.calls[0][3] == tuple(NewSticker(s.id, s.emoji, s.format) for s in old.stickers[:50])
+    assert [s.id for s in made.stickers] == [f"sticker-{s.id}" for s in old.stickers]
+
+
+async def test_a_sticker_without_emoji_gets_one(service: Publishing, sets: FakeStickerSets) -> None:
+    sets.sets[OLD] = StickerSet(OLD, "Коты", PackKind.STICKERS, (replace(sticker(1), emoji=()),))
+
+    made = await service.copy(KEY, OLD, COPY, "Коты")
+
+    assert made.stickers[0].emoji == ("🙂",)
+
+
+async def test_a_short_wait_is_waited_out(
+    service: Publishing, sets: FakeStickerSets, slept: list[float]
+) -> None:
+    old_pack(sets, 52)
+    sets.add = waiting_at(sets.add, 1, 3)  # type: ignore[method-assign,assignment]
+
+    made = await service.copy(KEY, OLD, COPY, "Коты")
+
+    assert slept == [3]
+    assert len(made.stickers) == 52
+
+
+async def test_a_long_wait_stops_the_copy_and_a_repeat_finishes_it(
+    service: Publishing,
+    tables: Tables,
+    sets: FakeStickerSets,
+    messages: FakeChatMessages,
+    slept: list[float],
+) -> None:
+    old_pack(sets, 53)
+    # the first add goes, the second meets a wait longer than the copy waits by itself
+    sets.add = waiting_at(sets.add, 2, 120)  # type: ignore[method-assign,assignment]
+
+    with pytest.raises(RateLimitedError):
+        await service.copy(KEY, OLD, COPY, "Коты")
+    assert len(sets.sets[COPY].stickers) == 51
+    assert COPY in tables.packs
+    assert slept == []
+
+    del sets.add
+    made = await service.copy(KEY, OLD, COPY, "Коты")
+
+    assert [s.unique_id for s in made.stickers][-2:] == ["unique-sticker52", "unique-sticker53"]
+    assert len(made.stickers) == 53
+    assert messages.sent[-1].message.title != "Пак «Коты» создан"
+
+
+def waiting_at(
+    add: Callable[[int, str, NewSticker], Awaitable[None]], call: int, wait: int
+) -> Callable[[int, str, NewSticker], Awaitable[None]]:
+    """`add` whose `call`-th call Telegram answers with «wait `wait` s»."""
+    made = 0
+
+    async def waiting(owner_id: int, name: str, new: NewSticker) -> None:
+        nonlocal made
+        made += 1
+        if made == call:
+            raise RateLimitedError(wait)
+        await add(owner_id, name, new)
+
+    return waiting
+
+
+async def test_a_repeat_of_a_finished_copy_changes_nothing(
+    service: Publishing, sets: FakeStickerSets, messages: FakeChatMessages
+) -> None:
+    old_pack(sets, 2)
+    await service.copy(KEY, OLD, COPY, "Коты")
+    calls, sent = list(sets.calls), list(messages.sent)
+
+    made = await service.copy(KEY, OLD, COPY, "Коты")
+
+    assert len(made.stickers) == 2
+    assert (sets.calls, messages.sent) == (calls, sent)
+
+
+async def test_a_copy_never_writes_into_someone_elses_pack(
+    service: Publishing, tables: Tables, sets: FakeStickerSets
+) -> None:
+    old_pack(sets, 2)
+    tables.packs[COPY] = Pack.create(COPY, SOMEONE, "Чужие", PackKind.STICKERS, NOW)
+    sets.sets[COPY] = sticker_set(COPY, 1)
+
+    with pytest.raises(PackNameTakenError):
+        await service.copy(KEY, OLD, COPY, "Коты")
+
+    assert sets.calls == []
+
+
+async def test_an_unknown_source_is_not_found(service: Publishing, sets: FakeStickerSets) -> None:
+    with pytest.raises(PackNotFoundError):
+        await service.copy(KEY, OLD, COPY, "Коты")
+
+    assert sets.calls == []
+
+
+@pytest.mark.parametrize(
+    ("name", "title", "error"),
+    [
+        ("old_cats_by_OtherBot", "Коты", PackNameInvalidError),
+        (COPY, "   ", BadRequestError),
+    ],
+)
+async def test_a_bad_name_or_title_copies_nothing(
+    service: Publishing, sets: FakeStickerSets, name: str, title: str, error: type[Exception]
+) -> None:
+    old_pack(sets, 2)
+
+    with pytest.raises(error):
+        await service.copy(KEY, OLD, name, title)
+
+    assert sets.calls == []
+
+
+async def test_a_stopped_bot_copies_nothing(
+    service: Publishing, tables: Tables, sets: FakeStickerSets
+) -> None:
+    stop_the_bot(tables)
+    old_pack(sets, 2)
+
+    with pytest.raises(BotBlockedError):
+        await service.copy(KEY, OLD, COPY, "Коты")
+
+    assert sets.calls == []

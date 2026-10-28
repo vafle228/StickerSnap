@@ -466,6 +466,52 @@ paths:
         "502":
           $ref: "#/components/responses/TelegramError"
 
+  /v1/packs/copies:
+    post:
+      tags: [publish]
+      operationId: copyPack
+      summary: Скопировать любой пак в новый пак бота
+      description: |
+        Telegram даёт менять пак только боту, который его создал, поэтому пак из @Stickers или
+        другого бота встаёт под сервис только копией. Все стикеры `source` в его порядке, с его
+        типом пака, первым эмодзи и форматом (static, animated, video) идут по file_id без
+        скачивания: первые 50 — createNewStickerSet, остальные — addStickerToSet. Ожидание 429
+        до 30 с сервис выжидает сам, дольше — 429 `rate_limited`. Пак записывается за владельцем
+        ключа, бот пишет «Пак создан». Повтор с `name` копии, которая уже ваша, докладывает
+        недостающие стикеры. Источника нет — 404 `pack_not_found`; имя чужое или занято —
+        409 `pack_name_taken`; имя без `_by_<бот>` — 422 `pack_name_invalid`.
+      security:
+        - deviceKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CopyPackBody"
+      responses:
+        "201":
+          description: Копия готова
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishedPack"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/BotBlocked"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "502":
+          $ref: "#/components/responses/TelegramError"
+
   /v1/packs/{name}:
     parameters:
       - $ref: "#/components/parameters/PackName"
@@ -638,8 +684,8 @@ paths:
       operationId: downloadSticker
       summary: Файл стикера
       description: |
-        .webm стикера, чтобы десктоп показывал его со своего диска. Нет такого файла — 404
-        `sticker_not_found`.
+        Файл стикера, чтобы десктоп показывал его со своего диска: .webm, а у стикеров
+        скопированного пака ещё .webp и .tgs. Нет такого файла — 404 `sticker_not_found`.
       security:
         - deviceKey: []
       responses:
@@ -647,6 +693,14 @@ paths:
           description: Файл
           content:
             video/webm:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            application/x-tgsticker:
               schema:
                 type: string
                 format: binary
@@ -1121,6 +1175,27 @@ components:
           items:
             $ref: "#/components/schemas/InputSticker"
 
+    CopyPackBody:
+      type: object
+      required: [source, name, title]
+      additionalProperties: false
+      properties:
+        source:
+          type: string
+          pattern: "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+          description: Имя любого набора в Telegram
+          examples: [OldCats]
+        name:
+          type: string
+          pattern: "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+          description: Имя копии, с суффиксом `_by_<бот>`
+          examples: [old_cats_by_StickerSnapAppBot]
+        title:
+          type: string
+          minLength: 1
+          maxLength: 64
+          examples: [Старые коты]
+
     PublishedPack:
       type: object
       required: [name, title, kind, stickers]
@@ -1141,7 +1216,7 @@ components:
 
     PublishedSticker:
       type: object
-      required: [id, uniqueId, emoji]
+      required: [id, uniqueId, emoji, format]
       properties:
         id:
           type: string
@@ -1155,6 +1230,12 @@ components:
           description: Пусто, если Telegram не сказал
           items:
             type: string
+        format:
+          type: string
+          enum: [static, animated, video]
+          description: |
+            Файл стикера: .webp, .tgs или .webm. Десктоп делает только video, другие бывают в
+            скопированном паке.
 
     Problem:
       type: object

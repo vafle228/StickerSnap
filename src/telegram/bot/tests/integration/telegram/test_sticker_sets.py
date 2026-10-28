@@ -20,7 +20,7 @@ from stickersnap_bot.application.errors import (
     StickerNotFoundError,
     TelegramUnavailableError,
 )
-from stickersnap_bot.application.sticker_sets import NewSticker
+from stickersnap_bot.application.sticker_sets import NewSticker, StickerFormat
 from stickersnap_bot.domain.packs import PackKind
 from stickersnap_bot.infrastructure.telegram.sticker_sets import BotStickerSets
 from tests.integration.telegram.bot_api import FakeBotApi, bad_request, ok
@@ -79,6 +79,25 @@ async def test_reads_a_set_in_telegrams_order(api: FakeBotApi, sets: BotStickerS
         ("a", "ua", "ta", ("😴",)),
         ("b", "ub", None, ("😴",)),
     ]
+
+
+async def test_tells_each_stickers_format(api: FakeBotApi, sets: BotStickerSets) -> None:
+    static, animated = sticker("s", None), sticker("a", None)
+    static["is_video"] = animated["is_video"] = False
+    animated["is_animated"] = True
+    api.answers["GetStickerSet"] = ok(
+        {
+            "name": "OldCats",
+            "title": "Старые коты",
+            "sticker_type": "regular",
+            "stickers": [static, animated, sticker("v", None)],
+        }
+    )
+
+    found = await sets.get("OldCats")
+
+    assert found is not None
+    assert [s.format for s in found.stickers] == list(StickerFormat)
 
 
 async def test_an_emoji_set_is_emoji(api: FakeBotApi, sets: BotStickerSets) -> None:
@@ -197,6 +216,18 @@ async def test_creates_a_set_of_video_stickers(api: FakeBotApi, sets: BotSticker
     assert method.sticker_type == "custom_emoji"
     [made] = method.stickers
     assert (made.sticker, made.format, made.emoji_list) == ("uploaded", "video", ["😂", "🐱"])
+
+
+async def test_a_copied_sticker_keeps_its_format(api: FakeBotApi, sets: BotStickerSets) -> None:
+    api.answers["CreateNewStickerSet"] = ok(True)
+    old = NewSticker("someone-elses-file", ("🐱",), StickerFormat.STATIC)
+
+    await sets.create(ME, CATS, "Котики", PackKind.STICKERS, [old])
+
+    [method] = api.methods
+    assert isinstance(method, CreateNewStickerSet)
+    [made] = method.stickers
+    assert (made.sticker, made.format) == ("someone-elses-file", "static")
 
 
 async def test_adds_and_replaces_for_the_owner(api: FakeBotApi, sets: BotStickerSets) -> None:

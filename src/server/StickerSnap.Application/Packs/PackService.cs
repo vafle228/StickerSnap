@@ -25,8 +25,6 @@ public sealed class PackService(
     /// <summary>How many variants of a taken name are tried: kot_divan_2 to kot_divan_9.</summary>
     public const int MaxVariant = 9;
 
-    private const string Webm = "video/webm";
-
     /// <summary>
     /// One change of the registry at a time: what Telegram said is written over the pack as it is
     /// then, not as it was before the network was asked. Never held while Telegram is asked.
@@ -81,6 +79,39 @@ public sealed class PackService(
     }
 
     /// <inheritdoc />
+    public async Task<PackView> CopyAsync(string link, string title, CancellationToken cancellationToken)
+    {
+        var source = PackNames.FromLink(link) ?? throw new AppException(ErrorCode.BadRequest, $"{link} names no pack")
+        {
+            Fields = new Dictionary<string, string[]> { ["link"] = ["no_pack"] },
+        };
+        var copyTitle = title.Trim();
+        if (copyTitle.Length is 0 or > Core.Telegram.TelegramLimits.PackTitleMaxLength)
+            throw new AppException(ErrorCode.BadRequest, $"A pack title is 1..{Core.Telegram.TelegramLimits.PackTitleMaxLength} characters")
+            {
+                Fields = new Dictionary<string, string[]> { ["title"] = ["length"] },
+            };
+
+        var name = await FreeNameAsync(CopyName(copyTitle, source), cancellationToken);
+        var published = await publisher.CopyPackAsync(source, PackNames.Full(name), copyTitle, cancellationToken);
+
+        Pack copied;
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            copied = Pack.Of(published, clock.GetUtcNow());
+            await packs.SaveAsync(copied, cancellationToken);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        await events.PackChangedAsync(copied, cancellationToken);
+        return await ViewAsync(copied, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task ForgetAsync(string name, CancellationToken cancellationToken)
     {
         await _gate.WaitAsync(cancellationToken);
@@ -123,9 +154,15 @@ public sealed class PackService(
 
         // By file_unique_id: the same file for as long as the sticker is in Telegram
         var key = MediaKeys.Of("pack-sticker", sticker.Id);
+        var (extension, contentType) = sticker.Format switch
+        {
+            StickerFormat.Static => ("webp", "image/webp"),
+            StickerFormat.Animated => ("tgs", "application/x-tgsticker"),
+            _ => ("webm", "video/webm"),
+        };
         var path = await cache.GetOrAddAsync(
-            key, "webm", (output, ct) => publisher.DownloadAsync(sticker.FileId, output, ct), cancellationToken);
-        return new MediaFile(path, Webm, key);
+            key, extension, (output, ct) => publisher.DownloadAsync(sticker.FileId, output, ct), cancellationToken);
+        return new MediaFile(path, contentType, key);
     }
 
     /// <inheritdoc />
@@ -168,6 +205,30 @@ public sealed class PackService(
             if (!await IsTakenAsync(variant, cancellationToken)) suggestion = variant;
         }
         return new PackNameCheck(own, PackNames.Full(own), [PackNameProblem.Taken], suggestion);
+    }
+
+    /// <summary>The copy's own name from its title; a title of no Latin or Cyrillic letters takes the source's name.</summary>
+    private static string CopyName(string title, string source)
+    {
+        var own = PackNames.FromTitle(title);
+        if (PackNames.Check(own).Count == 0) return own;
+        var fromSource = PackNames.FromTitle(source.EndsWith(PackNames.Suffix, StringComparison.OrdinalIgnoreCase)
+            ? source[..^PackNames.Suffix.Length]
+            : source);
+        return PackNames.Check(fromSource).Count == 0 ? fromSource : "stickers";
+    }
+
+    /// <summary><paramref name="own"/>, or its first free variant: kot_divan_2 to kot_divan_9.</summary>
+    /// <exception cref="AppException">pack_name_taken when none is free</exception>
+    private async Task<string> FreeNameAsync(string own, CancellationToken cancellationToken)
+    {
+        if (!await IsTakenAsync(own, cancellationToken)) return own;
+        for (var number = 2; number <= MaxVariant; number++)
+        {
+            var variant = PackNames.Variant(own, number);
+            if (!await IsTakenAsync(variant, cancellationToken)) return variant;
+        }
+        throw new AppException(ErrorCode.PackNameTaken, $"{own} and its variants are taken");
     }
 
     /// <summary>On the list already, or a pack of that name in Telegram: ours, someone else's or masks.</summary>

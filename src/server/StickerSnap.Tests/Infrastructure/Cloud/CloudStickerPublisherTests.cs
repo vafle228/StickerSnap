@@ -70,6 +70,23 @@ public sealed class CloudStickerPublisherTests : IDisposable, IAsyncLifetime
     }
 
     [Fact]
+    public async Task Copies_a_pack_and_keeps_the_format_of_each_sticker()
+    {
+        _service.Answer("POST /v1/packs/copies", """
+            {"name":"cats_by_StickerSnapAppBot","title":"Коты","kind":"stickers","stickers":[
+            {"id":"F1","uniqueId":"U1","emoji":["😂"],"format":"static"},
+            {"id":"F2","uniqueId":"U2","emoji":["😴"],"format":"animated"},
+            {"id":"F3","uniqueId":"U3","emoji":["🔥"]}]}
+            """, HttpStatusCode.Created);
+
+        var pack = await Publisher.CopyPackAsync("OldCats", Cats, "Коты", Cancel);
+
+        pack.Stickers.Select(sticker => sticker.Format).Should().Equal(StickerFormat.Static, StickerFormat.Animated, StickerFormat.Video);
+        SameJson(_service.Single("POST /v1/packs/copies").Body,
+            """{"source":"OldCats","name":"cats_by_StickerSnapAppBot","title":"Коты"}""");
+    }
+
+    [Fact]
     public async Task Adds_and_replaces_by_the_pack_and_the_old_stickers_id()
     {
         _service.Answer($"POST /v1/packs/{Cats}/stickers", PackJson).Answer($"PUT /v1/packs/{Cats}/stickers/CAAC-old", PackJson);

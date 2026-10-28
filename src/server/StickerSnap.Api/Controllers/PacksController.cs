@@ -54,6 +54,22 @@ public sealed class PacksController : ControllerBase
     public async Task<IActionResult> Import([FromBody] ImportPackRequest request, CancellationToken cancellationToken) =>
         Ok(Pack.From(await _service.ImportAsync(request.Link, cancellationToken), _jobs.List()));
 
+    /// <summary>«Скопировать в StickerSnap»: any pack copied into a new pack of @StickerSnapAppBot, then onto the list.</summary>
+    [HttpPost("copy", Name = "copyPack")]
+    [Produces("application/json")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(Pack), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
+    [ProducesDefaultResponseType(typeof(ProblemDetails))]
+    public async Task<IActionResult> Copy([FromBody] CopyPackRequest request, CancellationToken cancellationToken) =>
+        Ok(Pack.From(await _service.CopyAsync(request.Link, request.Title, cancellationToken), _jobs.List()));
+
     /// <summary>The link of a new pack from its title, what Telegram would refuse, and «Взять kot_divan_2».</summary>
     [HttpPost("name-check", Name = "checkPackName")]
     [Produces("application/json")]
@@ -121,11 +137,11 @@ public sealed class PacksController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>The sticker's .webm for its tile, downloaded from Telegram once and kept by the server.</summary>
+    /// <summary>The sticker's file for its tile (.webm, or .webp and .tgs in a copied pack), downloaded from Telegram once and kept by the server.</summary>
     /// <param name="pack">The whole name, with _by_StickerSnapAppBot</param>
     /// <param name="stickerId">file_unique_id from Telegram</param>
     [HttpGet("{pack}/stickers/{stickerId}/media", Name = "getPackStickerMedia")]
-    [ProducesResponseType(typeof(Stream), StatusCodes.Status200OK, Webm)]
+    [ProducesResponseType(typeof(Stream), StatusCodes.Status200OK, Webm, "image/webp", "application/x-tgsticker")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable, "application/problem+json")]

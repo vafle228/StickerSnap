@@ -194,6 +194,7 @@ function StickerCell({ sticker, index, menuOpen, onMenu, onOpenProject }: Sticke
       <span className={styles.stickerArt}>
         <StickerMedia
           src={sticker.mediaUrl}
+          format={sticker.format}
           index={index}
           playing
           shapeClassName={styles.stickerShape}

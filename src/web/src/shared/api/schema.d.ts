@@ -624,6 +624,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/packs/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * «Скопировать в StickerSnap»
+         * @description Окно «Добавить по ссылке», когда пак чужой (`not_our_pack`) или сервис его не знает
+         *     (`pack_not_found`, старый пак B24). Telegram даёт менять пак только создавшему его боту,
+         *     поэтому такой пак встаёт в «Мои паки» копией: облачный сервис делает новый пак
+         *     @StickerSnapAppBot со всеми стикерами источника в его порядке, с его эмодзи и форматом.
+         *     Имя копии — из названия, как в «Новом паке»; занято — первый свободный вариант `_2`…`_9`,
+         *     иначе 409 `pack_name_taken`. Ссылка без имени — 400 `bad_request` с `fields.link: ["no_pack"]`,
+         *     пустое название — `fields.title: ["length"]`; источника нет — 404 `pack_not_found`.
+         *     Отправляет `packChanged`.
+         */
+        post: operations["copyPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/packs/name-check": {
         parameters: {
             query?: never;
@@ -1255,6 +1282,12 @@ export interface components {
             id: string;
             emoji: string[];
             mediaUrl: string;
+            /**
+             * @description Что отдаёт mediaUrl: .webp, .tgs или .webm. Приложение делает только video, другие
+             *     бывают в скопированном паке.
+             * @enum {string}
+             */
+            format: "static" | "animated" | "video";
             /** @description Пусто для стикеров, опубликованных не отсюда */
             origin?: {
                 /** Format: uuid */
@@ -1267,6 +1300,12 @@ export interface components {
         ImportPackRequest: {
             /** @description Ссылка на пак, https://t.me/addstickers/<name> */
             link: string;
+        };
+        CopyPackRequest: {
+            /** @description Ссылка на любой пак, https://t.me/addstickers/<name> */
+            link: string;
+            /** @description Название копии */
+            title: string;
         };
         PackNameCheckRequest: {
             title: string;
@@ -2554,6 +2593,38 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    copyPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopyPackRequest"];
+            };
+        };
+        responses: {
+            /** @description Копия в списке паков */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pack"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
+            502: components["responses"]["BadGateway"];
+            503: components["responses"]["ServiceUnavailable"];
+            default: components["responses"]["Problem"];
+        };
+    };
     checkPackName: {
         parameters: {
             query?: never;
@@ -2704,13 +2775,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Файл стикера */
+            /** @description Файл стикера, по его format */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "video/webm": string;
+                    "image/webp": string;
+                    "application/x-tgsticker": string;
                 };
             };
             404: components["responses"]["NotFound"];

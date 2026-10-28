@@ -108,6 +108,9 @@ internal sealed class CloudClient(HttpClient http, IOptions<CloudOptions> option
     public Task<CloudPack> CreatePackAsync(NewPackBody body, CancellationToken cancellationToken) =>
         PackAsync("createPack", HttpMethod.Post, "v1/packs", Body(body), cancellationToken);
 
+    public Task<CloudPack> CopyPackAsync(CopyPackBody body, CancellationToken cancellationToken) =>
+        PackAsync("copyPack", HttpMethod.Post, "v1/packs/copies", Body(body), cancellationToken);
+
     /// <returns>Null for a pack that is not this user's or not in the messenger: pack_not_found</returns>
     public async Task<CloudPack?> GetPackAsync(string name, CancellationToken cancellationToken)
     {

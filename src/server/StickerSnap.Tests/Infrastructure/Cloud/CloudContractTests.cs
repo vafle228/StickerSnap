@@ -39,6 +39,7 @@ public sealed class CloudContractTests : IDisposable
         { typeof(UploadedSticker), "UploadedSticker" },
         { typeof(InputSticker), "InputSticker" },
         { typeof(NewPackBody), "NewPackBody" },
+        { typeof(CopyPackBody), "CopyPackBody" },
         { typeof(CloudPack), "PublishedPack" },
         { typeof(CloudSticker), "PublishedSticker" },
         { typeof(PackNameState), "PackNameState" },
@@ -51,6 +52,7 @@ public sealed class CloudContractTests : IDisposable
         { typeof(DeviceOs), "DeviceOs" },
         { typeof(FeedbackType), "FeedbackType" },
         { typeof(CloudPackKind), "PackKind" },
+        { typeof(StickerSnap.Core.Packs.StickerFormat), "PublishedSticker.format" },
         { typeof(LinkStatus), "LinkState.status" },
     };
 
@@ -130,6 +132,7 @@ public sealed class CloudContractTests : IDisposable
             .Answer("POST /v1/feedback", """{"id":1}""", HttpStatusCode.Created)
             .Answer("POST /v1/stickers/upload", """{"id":"f"}""", HttpStatusCode.Created)
             .Answer("POST /v1/packs", PackJson, HttpStatusCode.Created)
+            .Answer("POST /v1/packs/copies", PackJson, HttpStatusCode.Created)
             .Answer($"GET /v1/packs/{Pack}", PackJson)
             .Answer($"GET /v1/pack-names/{Pack}", $$"""{"name":"{{Pack}}","taken":true}""")
             .Answer($"POST /v1/packs/{Pack}/stickers", PackJson)
@@ -146,6 +149,7 @@ public sealed class CloudContractTests : IDisposable
         await client.SendFeedbackAsync(new FeedbackRequest(FeedbackType.Idea, "t", false, null, Guid.NewGuid(), null, null, null, null), null, Cancel);
         using (var webm = new MemoryStream([0x1A, 0x45, 0xDF, 0xA3])) await client.UploadStickerAsync(webm, Cancel);
         await client.CreatePackAsync(new NewPackBody(Pack, "T", CloudPackKind.Stickers, [sticker]), Cancel);
+        await client.CopyPackAsync(new CopyPackBody("OldCats", Pack, "T"), Cancel);
         await client.GetPackAsync(Pack, Cancel);
         await client.IsPackNameTakenAsync(Pack, Cancel);
         await client.AddStickerAsync(Pack, sticker, Cancel);

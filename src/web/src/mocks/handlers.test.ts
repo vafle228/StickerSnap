@@ -291,6 +291,20 @@ describe("demo server", () => {
       expect(check).toMatchObject({ problems: ["taken"], suggestion: "kot_divan_2" });
     });
 
+    it("copies any pack into a new pack named after its title", async () => {
+      use("ok");
+      const body = { link: "https://t.me/addstickers/OldCats", title: "Кот и диван" };
+      const copy = await call(api.POST("/api/v1/packs/copy", { body }));
+      expect(copy).toMatchObject({
+        name: "kot_i_divan_by_StickerSnapAppBot",
+        title: "Кот и диван",
+      });
+      expect(copy.stickers.every((s) => s.format === "static")).toBe(true);
+      expect(
+        await failure(call(api.POST("/api/v1/packs/copy", { body: { ...body, title: " " } }))),
+      ).toBe("bad_request");
+    });
+
     it("imports only packs of our bot", async () => {
       use("ok");
       const link = "https://t.me/addstickers/someone_elses_pack";
