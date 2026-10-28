@@ -339,6 +339,7 @@ def _from_file(sticker: NewSticker) -> SetSticker:
         thumb_file_id=None,
         video_file_id=f"sticker-{sticker.file_id}",
         unique_id=f"unique-{sticker.file_id}",
+        format=sticker.format,
     )
 
 
@@ -497,11 +498,19 @@ def publishing(
     sets: FakeStickerSets | None = None,
     messages: FakeChatMessages | None = None,
     clock: FakeClock | None = None,
+    slept: list[float] | None = None,
 ) -> Publishing:
+    """`slept` records the waits a copy makes instead of sleeping."""
     clock = clock or FakeClock()
+    waits = slept if slept is not None else []
+
+    async def sleep(seconds: float) -> None:
+        waits.append(seconds)
+
     return Publishing(
         fake_unit_of_work(tables),
         sets or FakeStickerSets(),
         notifications(tables, messages, clock=clock),
         clock=clock,
+        sleep=sleep,
     )
