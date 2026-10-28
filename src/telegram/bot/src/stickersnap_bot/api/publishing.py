@@ -58,6 +58,7 @@ class PublishedStickerBody(Body):
     id: str
     unique_id: str
     emoji: list[str]
+    format: Literal["static", "animated", "video"]
 
 
 class PublishedPackBody(Body):
@@ -78,7 +79,9 @@ def _pack(found: StickerSet) -> PublishedPackBody:
         title=found.title,
         kind=found.kind.value,
         stickers=[
-            PublishedStickerBody(id=s.id, unique_id=s.unique_id, emoji=list(s.emoji))
+            PublishedStickerBody(
+                id=s.id, unique_id=s.unique_id, emoji=list(s.emoji), format=s.format.value
+            )
             for s in found.stickers
         ],
     )

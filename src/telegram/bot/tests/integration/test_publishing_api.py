@@ -2,6 +2,7 @@
 against src/contract/bot-service.yaml as in test_miniapp_api.py."""
 
 from collections.abc import AsyncIterator
+from dataclasses import replace
 
 import pytest
 from aiogram import Bot
@@ -11,7 +12,7 @@ from stickersnap_bot.api.app import Polling, create_app
 from stickersnap_bot.api.telegram import create_dispatcher
 from stickersnap_bot.application.errors import RateLimitedError
 from stickersnap_bot.application.publishing import MAX_STICKER_BYTES
-from stickersnap_bot.application.sticker_sets import StickerFile, StickerSet
+from stickersnap_bot.application.sticker_sets import StickerFile, StickerFormat, StickerSet
 from stickersnap_bot.domain.devices import Device, DeviceOs
 from stickersnap_bot.domain.packs import PackKind
 from stickersnap_bot.domain.secrets import hash_secret
@@ -29,7 +30,7 @@ from tests.fakes import (
     publishing,
     send_feedback,
     sign_in,
-    sticker_set,
+    sticker,
 )
 from tests.integration.test_links_api import bearer, is_schema, problem
 from tests.integration.test_miniapp_api import conforms
@@ -124,7 +125,14 @@ async def test_a_desktop_publishes_a_pack(
         "name": CATS,
         "title": "Коты",
         "kind": "stickers",
-        "stickers": [{"id": "sticker-file1", "uniqueId": "unique-file1", "emoji": ["😂", "🐱"]}],
+        "stickers": [
+            {
+                "id": "sticker-file1",
+                "uniqueId": "unique-file1",
+                "emoji": ["😂", "🐱"],
+                "format": "video",
+            }
+        ],
     }
     assert added.status_code == 200
     assert [s["id"] for s in conforms(added, "PublishedPack")["stickers"]] == [
@@ -245,7 +253,15 @@ async def test_contract_codes_of_publishing(
 async def test_a_desktop_copies_a_pack_from_stickers(
     client: AsyncClient, tables: Tables, sets: FakeStickerSets, messages: FakeChatMessages
 ) -> None:
-    sets.sets["OldCats"] = sticker_set("OldCats", 2)
+    sets.sets["OldCats"] = StickerSet(
+        "OldCats",
+        "Коты",
+        PackKind.STICKERS,
+        (
+            replace(sticker(1), id="a", format=StickerFormat.STATIC),
+            replace(sticker(2), id="b"),
+        ),
+    )
     copy = "old_cats_by_StickerSnapAppBot"
     body = {"source": "OldCats", "name": copy, "title": "Старые коты"}
 
@@ -259,8 +275,8 @@ async def test_a_desktop_copies_a_pack_from_stickers(
         "title": "Старые коты",
         "kind": "stickers",
         "stickers": [
-            {"id": "sticker-sticker1", "uniqueId": "unique-sticker1", "emoji": ["😴"]},
-            {"id": "sticker-sticker2", "uniqueId": "unique-sticker2", "emoji": ["😴"]},
+            {"id": "sticker-a", "uniqueId": "unique-a", "emoji": ["😴"], "format": "static"},
+            {"id": "sticker-b", "uniqueId": "unique-b", "emoji": ["😴"], "format": "video"},
         ],
     }
     assert tables.packs[copy].owner_id == ME

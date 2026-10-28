@@ -769,6 +769,12 @@ export interface components {
             uniqueId: string;
             /** @description Пусто, если Telegram не сказал */
             emoji: string[];
+            /**
+             * @description Файл стикера: .webp, .tgs или .webm. Десктоп делает только video, другие бывают в
+             *     скопированном паке.
+             * @enum {string}
+             */
+            format: "static" | "animated" | "video";
         };
         /** @description RFC 9457 Problem Details. `title` и `detail` — английский для журнала, в интерфейс не попадают. */
         Problem: {

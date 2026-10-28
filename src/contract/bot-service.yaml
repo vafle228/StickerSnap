@@ -1216,7 +1216,7 @@ components:
 
     PublishedSticker:
       type: object
-      required: [id, uniqueId, emoji]
+      required: [id, uniqueId, emoji, format]
       properties:
         id:
           type: string
@@ -1230,6 +1230,12 @@ components:
           description: Пусто, если Telegram не сказал
           items:
             type: string
+        format:
+          type: string
+          enum: [static, animated, video]
+          description: |
+            Файл стикера: .webp, .tgs или .webm. Десктоп делает только video, другие бывают в
+            скопированном паке.
 
     Problem:
       type: object
