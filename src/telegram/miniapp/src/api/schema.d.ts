@@ -343,6 +343,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/packs/copies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Скопировать любой пак в новый пак бота
+         * @description Telegram даёт менять пак только боту, который его создал, поэтому пак из @Stickers или
+         *     другого бота встаёт под сервис только копией. Все стикеры `source` в его порядке, с его
+         *     типом пака, первым эмодзи и форматом (static, animated, video) идут по file_id без
+         *     скачивания: первые 50 — createNewStickerSet, остальные — addStickerToSet. Ожидание 429
+         *     до 30 с сервис выжидает сам, дольше — 429 `rate_limited`. Пак записывается за владельцем
+         *     ключа, бот пишет «Пак создан». Повтор с `name` копии, которая уже ваша, докладывает
+         *     недостающие стикеры. Источника нет — 404 `pack_not_found`; имя чужое или занято —
+         *     409 `pack_name_taken`; имя без `_by_<бот>` — 422 `pack_name_invalid`.
+         */
+        post: operations["copyPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/packs/{name}": {
         parameters: {
             query?: never;
@@ -458,8 +485,8 @@ export interface paths {
         };
         /**
          * Файл стикера
-         * @description .webm стикера, чтобы десктоп показывал его со своего диска. Нет такого файла — 404
-         *     `sticker_not_found`.
+         * @description Файл стикера, чтобы десктоп показывал его со своего диска: .webm, а у стикеров
+         *     скопированного пака ещё .webp и .tgs. Нет такого файла — 404 `sticker_not_found`.
          */
         get: operations["downloadSticker"];
         put?: never;
@@ -711,6 +738,20 @@ export interface components {
             title: string;
             kind: components["schemas"]["PackKind"];
             stickers: components["schemas"]["InputSticker"][];
+        };
+        CopyPackBody: {
+            /**
+             * @description Имя любого набора в Telegram
+             * @example OldCats
+             */
+            source: string;
+            /**
+             * @description Имя копии, с суффиксом `_by_<бот>`
+             * @example old_cats_by_StickerSnapAppBot
+             */
+            name: string;
+            /** @example Старые коты */
+            title: string;
         };
         PublishedPack: {
             /** @example reactions_call_by_StickerSnapAppBot */
@@ -1267,6 +1308,38 @@ export interface operations {
             502: components["responses"]["TelegramError"];
         };
     };
+    copyPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopyPackBody"];
+            };
+        };
+        responses: {
+            /** @description Копия готова */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishedPack"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["BotBlocked"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+            429: components["responses"]["RateLimited"];
+            502: components["responses"]["TelegramError"];
+        };
+    };
     getPublishedPack: {
         parameters: {
             query?: never;
@@ -1436,6 +1509,8 @@ export interface operations {
                 };
                 content: {
                     "video/webm": string;
+                    "image/webp": string;
+                    "application/x-tgsticker": string;
                 };
             };
             401: components["responses"]["Unauthorized"];
