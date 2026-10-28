@@ -128,15 +128,11 @@ test("shows a send Telegram asked to wait for, with «Повторить сей�
   await expect(wait.getByRole("button", { name: "Повторить сейчас" })).toBeVisible();
 });
 
-test("adds a pack of our bot by its link and refuses another bot's", async ({ page }) => {
+test("adds a pack of our bot by its link", async ({ page }) => {
   await openPacks(page, "ok");
   await page.getByRole("button", { name: "Добавить по ссылке…" }).click();
   const dialog = page.getByRole("dialog", { name: "Добавить по ссылке" });
   const field = dialog.getByRole("textbox", { name: "Ссылка на пак" });
-
-  await field.fill("https://t.me/addstickers/Animals_by_OtherBot");
-  await dialog.getByRole("button", { name: "Добавить" }).click();
-  await expect(dialog).toContainText("Это не пак StickerSnap");
 
   await field.fill("t.me/addstickers/kot_divan_by_StickerSnapAppBot");
   await dialog.getByRole("button", { name: "Добавить" }).click();
@@ -144,4 +140,22 @@ test("adds a pack of our bot by its link and refuses another bot's", async ({ pa
   await expect(dialog).toHaveCount(0);
   await expect(page.getByText("Пак «Кот и диван» добавлен")).toBeVisible();
   await expect(page.getByRole("region", { name: "Кот и диван" })).toBeVisible();
+});
+
+test("copies a pack of another bot into a new pack of ours", async ({ page }) => {
+  await openPacks(page, "ok");
+  await page.getByRole("button", { name: "Добавить по ссылке…" }).click();
+  const dialog = page.getByRole("dialog", { name: "Добавить по ссылке" });
+
+  await dialog.getByRole("textbox", { name: "Ссылка на пак" }).fill("t.me/addstickers/OldCats");
+  await dialog.getByRole("button", { name: "Добавить" }).click();
+  const copy = page.getByRole("dialog", { name: "Скопировать в StickerSnap" });
+  await expect(copy).toContainText("Telegram не даёт нашему боту его менять");
+  await expect(copy.getByRole("button", { name: "Скопировать" })).toBeDisabled();
+  await copy.getByRole("textbox", { name: "Название копии" }).fill("Старые коты");
+  await copy.getByRole("button", { name: "Скопировать" }).click();
+
+  await expect(copy).toHaveCount(0);
+  await expect(page.getByText("Пак «Старые коты» скопирован")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Старые коты" })).toBeVisible();
 });

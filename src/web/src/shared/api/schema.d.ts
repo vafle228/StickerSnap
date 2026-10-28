@@ -1282,6 +1282,12 @@ export interface components {
             id: string;
             emoji: string[];
             mediaUrl: string;
+            /**
+             * @description Что отдаёт mediaUrl: .webp, .tgs или .webm. Приложение делает только video, другие
+             *     бывают в скопированном паке.
+             * @enum {string}
+             */
+            format: "static" | "animated" | "video";
             /** @description Пусто для стикеров, опубликованных не отсюда */
             origin?: {
                 /** Format: uuid */
@@ -2769,13 +2775,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Файл стикера */
+            /** @description Файл стикера, по его format */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "video/webm": string;
+                    "image/webp": string;
+                    "application/x-tgsticker": string;
                 };
             };
             404: components["responses"]["NotFound"];

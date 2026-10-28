@@ -39,9 +39,8 @@ export function usePackActions() {
       }
     };
 
-    /** «Добавить по ссылке…»: throws, so the window can show what is wrong with the link. */
-    const importPack = async (link: string) => {
-      const pack = await call(api.POST("/api/v1/packs/import", { body: { link } }));
+    /** A pack the server answered with onto the list, opened. */
+    const putNew = (pack: Pack) => {
       client.setQueryData(keys.pack(pack.name), pack);
       // A Pack is a PackSummary with its stickers, as putPack keeps it too
       client.setQueryData<PackSummary[]>(keys.packs, (list = []) =>
@@ -52,6 +51,15 @@ export function usePackActions() {
       usePacksUi.getState().openPack(pack.name);
       return pack;
     };
+
+    /** «Добавить по ссылке…»: throws, so the window can show what is wrong with the link. */
+    const importPack = async (link: string) =>
+      putNew(await call(api.POST("/api/v1/packs/import", { body: { link } })));
+
+    /** «Скопировать в StickerSnap»: a pack the bot may not change, copied into a new one of ours.
+     *  Throws, so the window can show what went wrong. */
+    const copyPack = async (link: string, title: string) =>
+      putNew(await call(api.POST("/api/v1/packs/copy", { body: { link, title } })));
 
     /** «Убрать из списка» (7-8): the app forgets the pack, Telegram is not touched. */
     const forget = async (pack: PackSummary) => {
@@ -155,6 +163,6 @@ export function usePackActions() {
       return job;
     };
 
-    return { sync, importPack, forget, removeSticker, revealWebm, retry, publish };
+    return { sync, importPack, copyPack, forget, removeSticker, revealWebm, retry, publish };
   }, [client]);
 }

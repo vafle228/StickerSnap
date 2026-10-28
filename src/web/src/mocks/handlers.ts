@@ -1,4 +1,11 @@
-import type { AccountLink, Job, PackNameCheck, Settings } from "../shared/api/types";
+import type {
+  AccountLink,
+  Job,
+  Pack,
+  PackNameCheck,
+  PackSticker,
+  Settings,
+} from "../shared/api/types";
 import { app, demoLink, packSummary, summaryOf, type MockDb } from "./data";
 import { fakeHub } from "./fakeHub";
 import { frameSprite } from "./frames";
@@ -316,6 +323,43 @@ export function handlers(db: MockDb) {
       if (!name.endsWith(BOT_TAIL)) return problem("not_our_pack");
       const pack = findPack(name);
       return pack ? { status: 200, body: pack } : problem("pack_not_found");
+    }),
+    route("post", "/api/v1/packs/copy", ({ body }) => {
+      if (offline) return problem("network_unavailable");
+      const source = body.link.split("/").pop() ?? "";
+      if (!source) return problem("bad_request");
+      if (!body.title.trim()) return problem("bad_request");
+      const own = linkOf(body.title) || source.toLowerCase();
+      const variant = [own, ...[2, 3, 4, 5, 6, 7, 8, 9].map((n) => `${own}_${n}`)].find(
+        (name) => !findPack(`${name}${BOT_TAIL}`),
+      );
+      if (!variant) return problem("pack_name_taken");
+      const name = `${variant}${BOT_TAIL}`;
+      // A pack from @Stickers: pictures, as most old packs are
+      const stickers = ["😺", "😹", "😻"].map((emoji, i): PackSticker => {
+        const id = `${variant}-${i + 1}`;
+        return {
+          id,
+          emoji: [emoji],
+          mediaUrl: `/api/v1/packs/${name}/stickers/${id}/media`,
+          format: "static",
+        };
+      });
+      const pack: Pack = {
+        name,
+        title: body.title.trim(),
+        type: "regular",
+        count: stickers.length,
+        limit: 120,
+        coverUrl: stickers[0]?.mediaUrl,
+        status: "ok",
+        checkedAt: new Date().toISOString(),
+        link: `https://t.me/addstickers/${name}`,
+        stickers,
+      };
+      db.packs.push(pack);
+      fakeHub.emit("packChanged", packSummary(pack));
+      return { status: 200, body: pack };
     }),
     route("post", "/api/v1/packs/name-check", ({ body }) => {
       if (offline) return problem("network_unavailable");

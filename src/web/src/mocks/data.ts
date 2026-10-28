@@ -174,6 +174,7 @@ function stickers(packName: string, list: [emoji: string[], origin?: PackSticker
       id,
       emoji,
       mediaUrl: `/api/v1/packs/${packName}_by_${BOT}/stickers/${id}/media`,
+      format: "video",
       origin,
     };
   });
