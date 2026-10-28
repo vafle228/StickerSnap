@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="Status" src="https://img.shields.io/badge/status-in%20development-b9a6ff">
-  <img alt="Platforms" src="https://img.shields.io/badge/platforms-Windows%20%7C%20Linux-8fb8ff">
+  <img alt="Platforms" src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-8fb8ff">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-React-f7a8d8">
   <img alt=".NET" src="https://img.shields.io/badge/ASP.NET%20Core-local%20server-4a4ff0">
   <img alt="FFmpeg" src="https://img.shields.io/badge/FFmpeg-%E2%89%A5%209.0-ffb38a">
@@ -46,7 +46,23 @@ StickerSnap does that for you:
 
 ## Download
 
-> StickerSnap is in early development. Builds for Windows and Linux will appear on the [Releases](../../releases) page.
+> StickerSnap is in early development. Builds for Windows, macOS and Linux will appear on the [Releases](../../releases) page.
+
+### Installing on macOS
+
+A release has two files for a Mac: `StickerSnap-<version>-mac-arm64.dmg` for Apple Silicon (M1 and
+newer) and `StickerSnap-<version>-mac-x64.dmg` for Intel. Open the .dmg and drag StickerSnap into
+Applications.
+
+The app is not signed with an Apple certificate yet, so on the first launch macOS says it cannot
+verify the developer. Allow it once: System Settings → Privacy & Security → "StickerSnap was
+blocked" → Open Anyway. If macOS says the app "is damaged", take it out of quarantine in Terminal:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/StickerSnap.app
+```
+
+Windows warns as well for now (SmartScreen): More info → Run anyway.
 
 ## Build from source
 
@@ -114,6 +130,9 @@ dotnet test --solution StickerSnap.slnx --filter-not-trait Category=Slow # the f
 
 `npm run fetch:ffmpeg` downloads the LGPL build of FFmpeg 9.0 with libvpx that the server renders
 with, pinned by version and SHA-256 (`tools/fetch-ffmpeg.mjs`); the binaries are never committed.
+There is no such build for macOS: on a Mac it builds the same FFmpeg commit with libvpx from source
+(`tools/build-ffmpeg.mjs`, about ten minutes, needs the Xcode Command Line Tools, pkg-config and,
+on Intel, nasm).
 `npm run fetch:ytdlp` does the same for yt-dlp, which imports videos by YouTube links
 (`tools/fetch-ytdlp.mjs`); Giphy needs no tool. The server finds both through
 `StickerSnap__FfmpegDir` and `StickerSnap__YtDlpDir`, next to itself, or on PATH. Tests on the real
@@ -132,7 +151,7 @@ npm run dev -w src/web -- --port 5176   # Vite for the window below
 npm run dev -w src/desktop              # in another terminal: the window over Vite and the demo data, no server
 npm run package -w src/desktop          # the production app, unpacked, in src/desktop/release
 npm run package -w src/desktop -- --dev # «StickerSnap Dev» with the dev bar and demo scenarios, in release/dev
-npm run package -w src/desktop -- --installer   # installers: NSIS on Windows, AppImage and deb on Linux
+npm run package -w src/desktop -- --installer   # installers: NSIS on Windows, dmg and zip on macOS, AppImage and deb on Linux
 ```
 
 VS Code has the same four builds in Terminal → Run Task («Приложение: прод», «Приложение: dev»,
@@ -140,12 +159,13 @@ VS Code has the same four builds in Terminal → Run Task («Приложени�
 `npm run build:dev` with `--dev`), publishes the self-contained server and runs electron-builder,
 taking a Node 24 from npx when the installed one is older. The production SPA never carries the demo
 data or the dev bar: `npm run check:prod-build` checks `src/server/StickerSnap.Api/wwwroot`, and CI runs it after
-every build. CI packages only production: the installers for both systems come from the manual
+every build. CI packages only production: the installers for every system come from the manual
 workflow «Build app» (GitHub → Actions → Build app → Run workflow → pick a branch → Run, or a tag
 `v*`); they are attached to the run under Artifacts. It builds only a commit Pipeline passed, and
 takes the production SPA from that Pipeline run. To give the app to other people, run it on main with
-«Publish release» ticked: it tags the commit `v<version>` and publishes a GitHub Release with both
-installers on the repository's Releases page. The version is the one typed in, or the latest
+«Publish release» ticked: it tags the commit `v<version>` and publishes a GitHub Release with the
+installers on the repository's Releases page: Windows, Linux, and macOS for Apple Silicon and Intel
+(not signed yet: the release notes tell how to open it, as "Installing on macOS" above). The version is the one typed in, or the latest
 release with its patch number raised; the build fails before packaging when that version is
 already released. Each installer carries the pinned FFmpeg and yt-dlp next to the
 server (`npm run fetch:ffmpeg` and `npm run fetch:ytdlp`, which `npm run package` runs too); the smoke test checks the app
@@ -299,7 +319,7 @@ query string.
 - [ ] Stage 0: proof of concept (render pipeline, Bot API upload)
 - [ ] Editor and timeline
 - [ ] Packs and publishing
-- [ ] MVP release for Windows and Linux
+- [ ] MVP release for Windows, macOS and Linux
 
 ## License
 
