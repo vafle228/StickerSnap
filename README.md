@@ -253,7 +253,13 @@ only (9090, 3100, 3200), and a Grafana in Docker joins the network `stickersnap-
 reads them by name. `observability/grafana/datasources.yaml` is the Grafana provisioning file for
 the three data sources and the links between them. «Deploy bot» copies the folder to
 `~/stickersnap/observability` and restarts the stack with the service; the data lives in Docker
-volumes. `include` needs Docker Compose 2.20 or newer on the VPS.
+volumes.
+
+Telemetry on the VPS is behind a flag, **off by default**: the Actions variable `TELEMETRY`
+(Settings → Secrets and variables → Actions). Set to `on`, «Deploy bot» starts the stack (the
+compose profile `telemetry`) and points the bot at Alloy. Unset or anything else, the bot exports
+nothing and the deploy removes the stack together with its volumes, so it takes no disk; turning
+it back on starts from empty stores. `include` needs Docker Compose 2.20 or newer on the VPS.
 
 Locally `docker compose -f docker/telegram/observability/compose.dev.yaml up` runs Grafana with
 the three stores in one container (grafana/otel-lgtm): set `OTEL_EXPORTER_OTLP_ENDPOINT=
