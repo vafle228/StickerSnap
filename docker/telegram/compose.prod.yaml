@@ -1,6 +1,7 @@
 # The bot service on the VPS: Caddy (HTTPS, the Mini App) in front of the service, the daily
-# backup of its database, and the service's logs, traces and metrics (observability/compose.yaml:
-# Alloy, Prometheus, Loki and Tempo for the Grafana on the VPS). The deploy workflow
+# backup of its database, and, behind the telemetry flag, the service's logs, traces and metrics
+# (observability/compose.yaml: Alloy, Prometheus, Loki and Tempo for the Grafana on the VPS). The
+# deploy workflow
 # (.github/workflows/deploy-bot.yml) copies this file to the VPS as compose.yaml, and the folder
 # observability beside it, and runs it with the images it pushed:
 #   TAG=<commit> docker compose pull && TAG=<commit> docker compose up -d
@@ -37,8 +38,9 @@ services:
       BOT_MODE: webhook
       WEBHOOK_BASE_URL: https://${DOMAIN}
       MINIAPP_URL: https://${DOMAIN}/
-      # traces, metrics and logs to Alloy (observability/compose.yaml)
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
+      # traces, metrics and logs to Alloy (observability/compose.yaml) when the deploy turns the
+      # telemetry flag on; empty, the default: nothing is exported
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: stickersnap-bot
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment.name=production
     # No ports: only Caddy reaches the service, over the compose network

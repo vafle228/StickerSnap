@@ -10,9 +10,14 @@
 # (9090, 3100, 3200); a Grafana in Docker joins the network stickersnap-telemetry and reads them as
 # prometheus:9090, loki:3100 and tempo:3200. grafana/datasources.yaml sets them up with the links
 # between them (a log line → its trace, a span → its logs). Nothing here is open to the internet.
+#
+# Behind a flag: every service is in the profile telemetry, so a plain `docker compose up` leaves
+# the stack off. The deploy turns it on with COMPOSE_PROFILES=telemetry when the Actions variable
+# TELEMETRY is "on" (.github/workflows/deploy-bot.yml).
 
 services:
   alloy:
+    profiles: [telemetry]
     image: grafana/alloy:v1.21.2
     command:
       - run
@@ -36,6 +41,7 @@ services:
     restart: unless-stopped
 
   prometheus:
+    profiles: [telemetry]
     image: prom/prometheus:v3.15.1
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -54,6 +60,7 @@ services:
     restart: unless-stopped
 
   loki:
+    profiles: [telemetry]
     image: grafana/loki:3.7.9
     command: ["-config.file=/etc/loki/loki.yaml"]
     volumes:
@@ -66,6 +73,7 @@ services:
     restart: unless-stopped
 
   tempo:
+    profiles: [telemetry]
     image: grafana/tempo:3.1.1
     command: ["-config.file=/etc/tempo/tempo.yaml"]
     volumes:
