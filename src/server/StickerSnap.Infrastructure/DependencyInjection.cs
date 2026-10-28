@@ -7,6 +7,7 @@ using StickerSnap.Application.Diagnostics;
 using StickerSnap.Application.Exports;
 using StickerSnap.Application.Feedback;
 using StickerSnap.Application.Files;
+using StickerSnap.Application.Links;
 using StickerSnap.Application.Media;
 using StickerSnap.Application.Packs;
 using StickerSnap.Application.ProjectMedia;
@@ -18,6 +19,7 @@ using StickerSnap.Infrastructure.Cloud;
 using StickerSnap.Infrastructure.Diagnostics;
 using StickerSnap.Infrastructure.Ffmpeg;
 using StickerSnap.Infrastructure.Files;
+using StickerSnap.Infrastructure.Links;
 using StickerSnap.Infrastructure.Packs;
 using StickerSnap.Infrastructure.Projects;
 using StickerSnap.Infrastructure.Settings;
@@ -66,6 +68,18 @@ public static class DependencyInjection
         services.AddSingleton<IStickerRenderer, FfmpegStickerRenderer>();
         services.AddSingleton<IEditorMedia, FfmpegEditorMedia>();
         services.AddSingleton<IStickerHeader, WebmStickerHeader>();
+
+        // Videos by link: YouTube through yt-dlp, Giphy by its own addresses. Another downloader is registered here instead
+        services.Configure<YtDlpOptions>(configuration.GetSection(YtDlpOptions.Section));
+        services.AddSingleton<IYtDlpLocator, YtDlpLocator>();
+        services.AddSingleton<IVideoSite, YtDlpVideoSite>();
+        services.AddHttpClient(GiphySite.ClientName, client =>
+        {
+            client.Timeout = GiphySite.Timeout;
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("StickerSnap");
+        });
+        services.AddSingleton<IVideoSite, GiphySite>();
+        services.AddSingleton<IVideoSites, VideoSites>();
 
         // The cloud service holds the bot's token; this computer holds only its own key. Linking,
         // publishing and feedback all go through it: the desktop never calls the Bot API
