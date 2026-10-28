@@ -4,7 +4,7 @@ using StickerSnap.Infrastructure.Storage;
 namespace StickerSnap.Tests.Infrastructure.Storage;
 
 /// <summary>
-/// «Удалить с диска»: the FreeDesktop trash in a temporary home on any system, the Windows recycle
+/// «Удалить с диска»: the FreeDesktop and the macOS trash in a temporary home on any system, the Windows recycle
 /// bin for real on Windows only.
 /// </summary>
 public sealed class TrashTests : IDisposable
@@ -62,6 +62,28 @@ public sealed class TrashTests : IDisposable
         var gone = Path.Combine(_root.FullName, "gone.ssproj");
 
         await new FreedesktopTrash(TrashDir, _clock).MoveToTrashAsync(gone, Cancel);
+
+        Directory.Exists(TrashDir).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Moves_the_file_into_the_mac_trash_and_names_a_second_one_as_finder_does()
+    {
+        var trash = new MacTrash(TrashDir);
+        await trash.MoveToTrashAsync(await ProjectFileAsync("a", "cat.ssproj"), Cancel);
+        var second = await ProjectFileAsync("b", "cat.ssproj");
+
+        await trash.MoveToTrashAsync(second, Cancel);
+
+        File.Exists(second).Should().BeFalse();
+        Directory.GetFiles(TrashDir).Select(Path.GetFileName)
+            .Should().BeEquivalentTo(["cat.ssproj", "cat 2.ssproj"]);
+    }
+
+    [Fact]
+    public async Task Has_nothing_to_move_into_the_mac_trash_for_a_file_that_is_already_gone()
+    {
+        await new MacTrash(TrashDir).MoveToTrashAsync(Path.Combine(_root.FullName, "gone.ssproj"), Cancel);
 
         Directory.Exists(TrashDir).Should().BeFalse();
     }

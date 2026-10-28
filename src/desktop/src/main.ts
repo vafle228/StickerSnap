@@ -6,6 +6,7 @@ import { app, BrowserWindow, dialog, Menu, nativeTheme, session } from "electron
 import type { LastCrash } from "./bridge.js";
 import { beginLaunch, serverCrash, windowCrash } from "./crash.js";
 import { registerIpc } from "./ipc.js";
+import { applicationMenu } from "./menu.js";
 import {
   choosePort,
   newToken,
@@ -63,7 +64,8 @@ async function launchServer(): Promise<RunningServer> {
 }
 
 async function start() {
-  Menu.setApplicationMenu(null);
+  const menu = applicationMenu(process.platform);
+  Menu.setApplicationMenu(menu && Menu.buildFromTemplate(menu));
   state = readState(stateFile);
   nativeTheme.themeSource = state.theme;
   crash = beginLaunch(state, new Date());

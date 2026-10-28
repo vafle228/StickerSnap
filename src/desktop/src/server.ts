@@ -25,9 +25,9 @@ export interface Layout {
   exists: (path: string) => boolean;
 }
 
-/** The .NET runtime id the server is published for: win-x64, linux-x64 */
+/** The .NET runtime id the server is published for: win-x64, linux-x64, osx-arm64 */
 export const runtimeId = (platform: NodeJS.Platform, arch: string) =>
-  `${platform === "win32" ? "win" : platform}-${arch}`;
+  `${{ win32: "win", darwin: "osx" }[platform as string] ?? platform}-${arch}`;
 
 /** The installed app runs its published server from resources/server, with FFmpeg and yt-dlp next
  *  to it. From the repository it takes the one `npm run server` published into server-dist, or

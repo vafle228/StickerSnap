@@ -2,7 +2,7 @@ name: Pinned yt-dlp
 description: The pinned yt-dlp for a runtime id in tools/yt-dlp, from the cache when it is there
 inputs:
   rid:
-    description: win-x64, linux-x64 (tools/fetch-ytdlp.mjs)
+    description: win-x64, linux-x64, osx-arm64, osx-x64 (tools/fetch-ytdlp.mjs)
     default: linux-x64
 runs:
   using: composite

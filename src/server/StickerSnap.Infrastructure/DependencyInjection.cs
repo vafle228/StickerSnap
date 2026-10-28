@@ -53,9 +53,9 @@ public static class DependencyInjection
         services.AddSingleton<IRenderedFiles, RenderedFileStore>();
         services.AddSingleton<IStickerFolder, StickerFolder>();
         services.AddSingleton<IMediaCache, MediaCache>();
-        // The desktop builds are Windows and Linux; every other Unix keeps the same trash as Linux
-        services.AddSingleton<ITrash>(provider => OperatingSystem.IsWindows()
-            ? new WindowsRecycleBin()
+        // The desktop builds are Windows, macOS and Linux; every other Unix keeps the same trash as Linux
+        services.AddSingleton<ITrash>(provider => OperatingSystem.IsWindows() ? new WindowsRecycleBin()
+            : OperatingSystem.IsMacOS() ? MacTrash.ForUser()
             : FreedesktopTrash.ForUser(provider.GetRequiredService<TimeProvider>()));
 
         services.Configure<FfmpegOptions>(configuration.GetSection(FfmpegOptions.Section));

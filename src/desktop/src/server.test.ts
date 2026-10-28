@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   choosePort,
   newToken,
+  runtimeId,
   serverCommand,
   ServerStartError,
   startServer,
@@ -42,6 +43,15 @@ const ECHO_ENV = `
   }).listen(Number(url.port), url.hostname);
 `;
 
+describe("the runtime id the server is published for", () => {
+  it("is .NET's name of the system and the architecture", () => {
+    expect(runtimeId("win32", "x64")).toBe("win-x64");
+    expect(runtimeId("linux", "x64")).toBe("linux-x64");
+    expect(runtimeId("darwin", "arm64")).toBe("osx-arm64");
+    expect(runtimeId("darwin", "x64")).toBe("osx-x64");
+  });
+});
+
 describe("where the server comes from", () => {
   it("runs the published server from the installed app's resources", () => {
     const cmd = serverCommand(layout({ packaged: true, platform: "win32", resourcesPath: "R" }));
@@ -79,6 +89,22 @@ describe("where the server comes from", () => {
     const there = [join(ffmpeg, "ffmpeg"), join(ytDlp, "yt-dlp")];
     const cmd = serverCommand(layout({ exists: (p) => there.includes(p) }));
     expect(cmd.env).toEqual({ StickerSnap__FfmpegDir: ffmpeg, StickerSnap__YtDlpDir: ytDlp });
+  });
+
+  it("takes the server, FFmpeg and yt-dlp of a Mac by their osx runtime id", () => {
+    const dir = join("/repo/src/desktop", "server-dist", "osx-arm64");
+    const ffmpeg = join("/repo", "tools", "ffmpeg", "osx-arm64");
+    const ytDlp = join("/repo", "tools", "yt-dlp", "osx-arm64");
+    const there = [join(dir, "StickerSnap.Api"), join(ffmpeg, "ffmpeg"), join(ytDlp, "yt-dlp")];
+    const cmd = serverCommand(
+      layout({ platform: "darwin", arch: "arm64", exists: (p) => there.includes(p) }),
+    );
+    expect(cmd).toEqual({
+      command: join(dir, "StickerSnap.Api"),
+      args: [],
+      cwd: dir,
+      env: { StickerSnap__FfmpegDir: ffmpeg, StickerSnap__YtDlpDir: ytDlp },
+    });
   });
 
   it("leaves the installed app to find the FFmpeg next to its server", () => {

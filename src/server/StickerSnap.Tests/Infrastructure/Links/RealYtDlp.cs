@@ -82,7 +82,7 @@ public sealed class RealYtDlp : IAsyncLifetime
         var configured = Environment.GetEnvironmentVariable("StickerSnap__YtDlpDir");
         if (!string.IsNullOrWhiteSpace(configured)) return configured;
 
-        var rid = $"{(OperatingSystem.IsWindows() ? "win" : "linux")}-{RuntimeInformation.OSArchitecture.ToString().ToLowerInvariant()}";
+        var rid = RuntimeInformation.RuntimeIdentifier;
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {
             var fetched = Path.Combine(directory.FullName, "tools", "yt-dlp", rid);

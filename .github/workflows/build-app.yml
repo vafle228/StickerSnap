@@ -1,8 +1,8 @@
 name: Build app
 
 # The GitLab "play" button: Actions → "Build app" → "Run workflow" → pick a branch → Run.
-# Builds the Windows and Linux installers from that branch, smoke-tests each unpacked app and
-# attaches them to the run (Artifacts at the bottom of the run page). Also runs on a tag v*.
+# Builds the Windows, Linux and macOS (Apple Silicon and Intel) installers from that branch,
+# smoke-tests each unpacked app and attaches them to the run (Artifacts at the bottom of the run page). Also runs on a tag v*.
 #
 # Only a commit "Pipeline" passed gets installers, and they carry what that run built and tested:
 # the production SPA comes from its artifact spa-dist, nothing is built twice and the tests are not
@@ -10,7 +10,8 @@ name: Build app
 # waits for it. The server is published here, self-contained and single-file for each system:
 # that is another build than Pipeline's portable `dotnet build`, so there is nothing to take over.
 # The pinned FFmpeg and yt-dlp go in next to the server (tools/fetch-ffmpeg.mjs and
-# tools/fetch-ytdlp.mjs, checked by SHA-256).
+# tools/fetch-ytdlp.mjs, checked by SHA-256; a Mac builds the same FFmpeg from source, cached).
+# The Mac apps are signed ad hoc, not with an Apple certificate: the release notes tell how to open them.
 # Shared setup steps live in .github/actions.
 #
 # "Publish release" (main only) also publishes a GitHub Release with the installers, so anyone can
@@ -112,7 +113,8 @@ jobs:
     name: Installer
     needs: [version, pipeline]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    # A Mac without FFmpeg in the cache builds it first
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
@@ -130,6 +132,21 @@ jobs:
             installers: |
               src/desktop/release/*.AppImage
               src/desktop/release/*.deb
+          # Each Mac on its own runner, so the smoke test runs the very app it built
+          - name: macOS Apple Silicon
+            os: macos-15
+            rid: osx-arm64
+            app: release/mac-arm64/StickerSnap.app/Contents/MacOS/StickerSnap
+            installers: |
+              src/desktop/release/*.dmg
+              src/desktop/release/*.zip
+          - name: macOS Intel
+            os: macos-15-intel
+            rid: osx-x64
+            app: release/mac/StickerSnap.app/Contents/MacOS/StickerSnap
+            installers: |
+              src/desktop/release/*.dmg
+              src/desktop/release/*.zip
     steps:
       - uses: actions/checkout@v7
 
@@ -213,7 +230,7 @@ jobs:
             src/desktop/test-results
           retention-days: 7
 
-  # Tags the commit and publishes the release with both systems' installers
+  # Tags the commit and publishes the release with every system's installers
   release:
     name: Release
     needs: [version, package]
@@ -231,7 +248,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           TAG: v${{ needs.version.outputs.version }}
+          # Above the generated list of changes
+          NOTES: |
+            - **Windows:** `StickerSnap-Setup-*.exe`. The installer is not signed yet: SmartScreen warns: More info → Run anyway.
+            - **Linux:** `.AppImage` or `.deb`.
+            - **macOS:** `*-mac-arm64.dmg` for Apple Silicon (M1 and newer), `*-mac-x64.dmg` for Intel. Open the .dmg and drag StickerSnap into Applications. The app is not signed with an Apple certificate yet: on the first launch open System Settings → Privacy & Security → Open Anyway. If macOS says the app is damaged, run in Terminal: `xattr -dr com.apple.quarantine /Applications/StickerSnap.app`
         run: |
           gh release create "$TAG" installers/* -R "$REPO" --target "$GITHUB_SHA" \
-            --title "StickerSnap ${TAG#v}" --generate-notes
+            --title "StickerSnap ${TAG#v}" --notes "$NOTES" --generate-notes
           echo "✅ Released: https://github.com/$REPO/releases/tag/$TAG" >> "$GITHUB_STEP_SUMMARY"

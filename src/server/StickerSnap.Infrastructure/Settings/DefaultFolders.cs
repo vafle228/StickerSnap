@@ -4,7 +4,7 @@ namespace StickerSnap.Infrastructure.Settings;
 
 /// <summary>
 /// The folders of a first launch (plan, R22): Documents\StickerSnap\Проекты and …\Стикеры on
-/// Windows, ~/StickerSnap/Проекты and …/Стикеры on Linux. Nothing is created until it is used.
+/// Windows, ~/StickerSnap/Проекты and …/Стикеры on Linux and macOS. Nothing is created until it is used.
 /// </summary>
 internal static class DefaultFolders
 {
