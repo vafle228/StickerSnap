@@ -1,4 +1,4 @@
-# Installers for Windows and Linux (plan, stage 1b): npm run dist -w src/desktop after
+# Installers for Windows, Linux and macOS (plan, stage 1b): npm run dist -w src/desktop after
 # `npm run build` (the SPA into the server's wwwroot), `npm run server -w src/desktop` and
 # `npm run fetch:ffmpeg` and `npm run fetch:ytdlp` (the pinned FFmpeg and yt-dlp into tools/).
 # npm run package does all of it.
@@ -19,30 +19,30 @@ files:
 
 # The self-contained server with the SPA in its wwwroot, outside the asar archive: it runs as is.
 # The pinned FFmpeg and yt-dlp lie next to it, where the server looks before PATH (FfmpegLocator.cs,
-# YtDlpLocator.cs).
-extraResources:
-  - from: server-dist/${os}-${arch}
-    to: server
-  - from: ../../tools/ffmpeg/${os}-${arch}
-    to: server
-    filter: ["ffmpeg", "ffmpeg.exe", "ffprobe", "ffprobe.exe"]
-  # FFmpeg is LGPL: its license goes with it
-  - from: ../../tools/ffmpeg/${os}-${arch}/LICENSE.txt
-    to: server/FFmpeg-LICENSE.txt
-  # yt-dlp for the import by link (YouTube), with its license and those of what it bundles
-  - from: ../../tools/yt-dlp/${os}-${arch}
-    to: server
-    filter: ["yt-dlp", "yt-dlp.exe"]
-  - from: ../../tools/yt-dlp/${os}-${arch}/LICENSE.txt
-    to: server/yt-dlp-LICENSE.txt
-  - from: ../../tools/yt-dlp/${os}-${arch}/THIRD_PARTY_LICENSES.txt
-    to: server/yt-dlp-THIRD_PARTY_LICENSES.txt
-
+# YtDlpLocator.cs). The folders are named by the .NET runtime id, which is ${os}-${arch} on Windows
+# and Linux; a Mac's is osx-${arch}, not mac-${arch}, so mac has the same list of its own.
 win:
   target:
     - target: nsis
       arch: [x64]
   icon: assets/icon.ico
+  extraResources: &resources
+    - from: server-dist/${os}-${arch}
+      to: server
+    - from: ../../tools/ffmpeg/${os}-${arch}
+      to: server
+      filter: ["ffmpeg", "ffmpeg.exe", "ffprobe", "ffprobe.exe"]
+    # FFmpeg is LGPL: its license goes with it
+    - from: ../../tools/ffmpeg/${os}-${arch}/LICENSE.txt
+      to: server/FFmpeg-LICENSE.txt
+    # yt-dlp for the import by link (YouTube), with its license and those of what it bundles
+    - from: ../../tools/yt-dlp/${os}-${arch}
+      to: server
+      filter: ["yt-dlp", "yt-dlp.exe"]
+    - from: ../../tools/yt-dlp/${os}-${arch}/LICENSE.txt
+      to: server/yt-dlp-LICENSE.txt
+    - from: ../../tools/yt-dlp/${os}-${arch}/THIRD_PARTY_LICENSES.txt
+      to: server/yt-dlp-THIRD_PARTY_LICENSES.txt
 
 nsis:
   oneClick: false
@@ -63,6 +63,37 @@ linux:
   executableName: stickersnap
   synopsis: Telegram video sticker editor
   artifactName: StickerSnap-${version}-${arch}.${ext}
+  extraResources: *resources
+
+# One build for the Mac it runs on (arm64 or x64), a .dmg to install and a .zip of the app.
+# Not signed with an Apple certificate yet: identity "-" signs it ad hoc, without which an Apple
+# Silicon Mac does not start it at all; Gatekeeper still asks once (README, «Установка на macOS»).
+# No hardened runtime: the .NET server compiles code as it runs.
+mac:
+  target: [dmg, zip]
+  icon: assets/icon.png
+  category: public.app-category.graphics-design
+  identity: "-"
+  hardenedRuntime: false
+  artifactName: StickerSnap-${version}-mac-${arch}.${ext}
+  extraResources:
+    - from: server-dist/osx-${arch}
+      to: server
+    - from: ../../tools/ffmpeg/osx-${arch}
+      to: server
+      filter: ["ffmpeg", "ffprobe"]
+    - from: ../../tools/ffmpeg/osx-${arch}/LICENSE.txt
+      to: server/FFmpeg-LICENSE.txt
+    - from: ../../tools/yt-dlp/osx-${arch}
+      to: server
+      filter: ["yt-dlp"]
+    - from: ../../tools/yt-dlp/osx-${arch}/LICENSE.txt
+      to: server/yt-dlp-LICENSE.txt
+    - from: ../../tools/yt-dlp/osx-${arch}/THIRD_PARTY_LICENSES.txt
+      to: server/yt-dlp-THIRD_PARTY_LICENSES.txt
+
+dmg:
+  artifactName: StickerSnap-${version}-mac-${arch}.${ext}
 
 deb:
   packageName: stickersnap

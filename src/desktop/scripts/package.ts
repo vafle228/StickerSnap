@@ -3,7 +3,8 @@
    Production by default: the SPA's production build, checked for dev tools, as «StickerSnap».
    --dev: the SPA's dev build with the demo scenarios and the dev bar, as «StickerSnap Dev» with
    its own id, profile and file names, so it never mixes with the real app. --installer: the NSIS
-   installer (Windows) or AppImage and deb (Linux); without it the unpacked app, quicker.
+   installer (Windows), dmg and zip (macOS) or AppImage and deb (Linux); without it the unpacked
+   app, quicker.
    CI builds only production (workflow «Desktop»). */
 import { execFileSync, execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -34,6 +35,8 @@ const DEV_CONFIG = [
   "-c.linux.executableName=stickersnap-dev",
   "-c.linux.artifactName=StickerSnap-Dev-${version}-${arch}.${ext}",
   "-c.deb.packageName=stickersnap-dev",
+  "-c.mac.artifactName=StickerSnap-Dev-${version}-mac-${arch}.${ext}",
+  "-c.dmg.artifactName=StickerSnap-Dev-${version}-mac-${arch}.${ext}",
 ];
 
 run(dev ? "npm run build:dev" : "npm run build");
