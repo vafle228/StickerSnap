@@ -7,9 +7,19 @@ refusals each method names.
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Protocol
 
 from stickersnap_bot.domain.packs import PackKind
+
+
+class StickerFormat(StrEnum):
+    """What a sticker's file is: the desktop makes only video stickers, a copied pack may hold
+    any of the three."""
+
+    STATIC = "static"
+    ANIMATED = "animated"
+    VIDEO = "video"
 
 
 @dataclass(frozen=True)
@@ -22,6 +32,7 @@ class SetSticker:
     video_file_id: str
     # file_unique_id: the same for every bot and over time, what the desktop's packs.json keeps
     unique_id: str
+    format: StickerFormat = StickerFormat.VIDEO
 
 
 @dataclass(frozen=True)
@@ -43,10 +54,12 @@ class StickerFile:
 
 @dataclass(frozen=True)
 class NewSticker:
-    """A sticker to put into a set: an uploaded .webm and the emoji it answers to."""
+    """A sticker to put into a set: an uploaded .webm, or any sticker's file id when a set is
+    copied, and the emoji it answers to."""
 
     file_id: str
     emoji: tuple[str, ...]
+    format: StickerFormat = StickerFormat.VIDEO
 
 
 class StickerSets(Protocol):
@@ -78,7 +91,7 @@ class StickerSets(Protocol):
         kind: PackKind,
         stickers: Sequence[NewSticker],
     ) -> None:
-        """A new set of video stickers; PackNameTakenError when the name is taken."""
+        """A new set; PackNameTakenError when the name is taken."""
         ...
 
     async def add(self, owner_id: int, name: str, sticker: NewSticker) -> None:
