@@ -117,7 +117,7 @@ with, pinned by version and SHA-256 (`tools/fetch-ffmpeg.mjs`); the binaries are
 `npm run fetch:ytdlp` does the same for yt-dlp, which imports videos by YouTube links
 (`tools/fetch-ytdlp.mjs`); Giphy needs no tool. The server finds both through
 `StickerSnap__FfmpegDir` and `StickerSnap__YtDlpDir`, next to itself, or on PATH. Tests on the real
-sites are left out everywhere but by hand: `dotnet test … -- --filter-trait Category=Online`, worth a
+sites are left out everywhere but by hand (`dotnet test --solution StickerSnap.slnx --filter-trait Category=Online`), worth a
 run after moving to a newer yt-dlp.
 
 ### Desktop app
