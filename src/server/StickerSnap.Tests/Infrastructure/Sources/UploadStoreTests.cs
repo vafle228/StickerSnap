@@ -118,4 +118,34 @@ public sealed class UploadStoreTests : IDisposable
             return read > 0 ? read : throw new IOException("The client closed the connection");
         }
     }
+
+    [Fact]
+    public async Task Reserves_an_upload_the_server_fills_itself()
+    {
+        var slot = _store.Reserve("Кот смотрит в окно.webm");
+        await File.WriteAllBytesAsync(slot.Path, Rest, Cancel);
+
+        _store.Find(slot.UploadId).Should().Be(slot.Path);
+        var kept = await _store.KeepAsync(slot.UploadId, Cancel);
+        Path.GetFileName(kept).Should().Be("Кот смотрит в окно.webm");
+    }
+
+    [Fact]
+    public async Task Discards_an_upload_with_whatever_was_written_into_it()
+    {
+        var slot = _store.Reserve("cat.webm");
+        await File.WriteAllBytesAsync(slot.Path + ".part", Head, Cancel);
+
+        _store.Discard(slot.UploadId);
+        _store.Discard("not-a-guid");
+
+        FilesLeft().Should().BeEmpty();
+        _store.Find(slot.UploadId).Should().BeNull();
+    }
+
+    [Fact]
+    public void Tells_the_room_left_on_its_disk()
+    {
+        _store.FreeBytes().Should().BePositive();
+    }
 }

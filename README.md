@@ -81,6 +81,7 @@ Requires Node.js 20 and the .NET 10 SDK.
 ```sh
 npm install
 npm run fetch:ffmpeg                              # the pinned FFmpeg into tools/ffmpeg/<rid>
+npm run fetch:ytdlp                               # the pinned yt-dlp into tools/yt-dlp/<rid>
 dotnet run --project src/server/StickerSnap.Api   # API on http://127.0.0.1:5180
 npm run dev                                       # SPA with HMR on http://127.0.0.1:5173, proxies /api and /hubs
 ```
@@ -113,6 +114,11 @@ dotnet test --solution StickerSnap.slnx --filter-not-trait Category=Slow # the f
 
 `npm run fetch:ffmpeg` downloads the LGPL build of FFmpeg 9.0 with libvpx that the server renders
 with, pinned by version and SHA-256 (`tools/fetch-ffmpeg.mjs`); the binaries are never committed.
+`npm run fetch:ytdlp` does the same for yt-dlp, which imports videos by YouTube links
+(`tools/fetch-ytdlp.mjs`); Giphy needs no tool. The server finds both through
+`StickerSnap__FfmpegDir` and `StickerSnap__YtDlpDir`, next to itself, or on PATH. Tests on the real
+sites are left out everywhere but by hand (`dotnet test --solution StickerSnap.slnx --filter-trait Category=Online`), worth a
+run after moving to a newer yt-dlp.
 
 ### Desktop app
 
@@ -141,8 +147,8 @@ takes the production SPA from that Pipeline run. To give the app to other people
 «Publish release» ticked: it tags the commit `v<version>` and publishes a GitHub Release with both
 installers on the repository's Releases page. The version is the one typed in, or the latest
 release with its patch number raised; the build fails before packaging when that version is
-already released. Each installer carries the pinned FFmpeg next to the
-server (`npm run fetch:ffmpeg`, which `npm run package` runs too); the smoke test checks the app
+already released. Each installer carries the pinned FFmpeg and yt-dlp next to the
+server (`npm run fetch:ffmpeg` and `npm run fetch:ytdlp`, which `npm run package` runs too); the smoke test checks the app
 renders with it and not with an FFmpeg on PATH.
 
 The development window opens `http://127.0.0.1:5176/?mock=desktop`; F12 opens the developer tools

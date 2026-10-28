@@ -29,9 +29,10 @@ export interface Layout {
 export const runtimeId = (platform: NodeJS.Platform, arch: string) =>
   `${platform === "win32" ? "win" : platform}-${arch}`;
 
-/** The installed app runs its published server from resources/server, with FFmpeg next to it.
- *  From the repository it takes the one `npm run server` published into server-dist, or builds
- *  and runs the source, and points it at the FFmpeg `npm run fetch:ffmpeg` put in tools/ffmpeg. */
+/** The installed app runs its published server from resources/server, with FFmpeg and yt-dlp next
+ *  to it. From the repository it takes the one `npm run server` published into server-dist, or
+ *  builds and runs the source, and points it at the FFmpeg and yt-dlp `npm run fetch:ffmpeg` and
+ *  `npm run fetch:ytdlp` put in tools/. */
 export function serverCommand(layout: Layout): ServerCommand {
   const windows = layout.platform === "win32";
   const exe = windows ? "StickerSnap.Api.exe" : "StickerSnap.Api";
@@ -41,10 +42,18 @@ export function serverCommand(layout: Layout): ServerCommand {
     return { command: join(dir, exe), args: [], cwd: dir };
   }
 
-  const ffmpeg = join(layout.appPath, "..", "..", "tools", "ffmpeg", rid);
-  const env = layout.exists(join(ffmpeg, windows ? "ffmpeg.exe" : "ffmpeg"))
-    ? { env: { StickerSnap__FfmpegDir: ffmpeg } }
-    : {};
+  const tools = join(layout.appPath, "..", "..", "tools");
+  const ffmpeg = join(tools, "ffmpeg", rid);
+  const ytDlp = join(tools, "yt-dlp", rid);
+  const dirs = {
+    ...(layout.exists(join(ffmpeg, windows ? "ffmpeg.exe" : "ffmpeg"))
+      ? { StickerSnap__FfmpegDir: ffmpeg }
+      : {}),
+    ...(layout.exists(join(ytDlp, windows ? "yt-dlp.exe" : "yt-dlp"))
+      ? { StickerSnap__YtDlpDir: ytDlp }
+      : {}),
+  };
+  const env = Object.keys(dirs).length > 0 ? { env: dirs } : {};
   const dir = join(layout.appPath, "server-dist", rid);
   if (layout.exists(join(dir, exe))) {
     return { command: join(dir, exe), args: [], cwd: dir, ...env };

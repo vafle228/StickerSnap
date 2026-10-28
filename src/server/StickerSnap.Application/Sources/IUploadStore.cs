@@ -28,4 +28,21 @@ public interface IUploadStore
     /// <returns>Where the file is now</returns>
     /// <exception cref="Core.Errors.AppException">source_not_found for an id it does not know; save_failed</exception>
     Task<string> KeepAsync(string uploadId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// A new upload for a file the server writes itself, such as a video downloaded by link: an
+    /// empty place for <paramref name="fileName"/>, which the caller fills and then refers to by the id.
+    /// </summary>
+    /// <param name="fileName">A safe name of one file, its extension the format the content will be</param>
+    /// <exception cref="Core.Errors.AppException">save_failed, disk_full</exception>
+    UploadSlot Reserve(string fileName);
+
+    /// <summary>Removes an upload nobody will take, whatever is in it; an id it does not know is left alone.</summary>
+    void Discard(string uploadId);
+
+    /// <summary>How many bytes are free on the disk uploads are kept on.</summary>
+    long FreeBytes();
 }
+
+/// <summary>An upload reserved by <see cref="IUploadStore.Reserve"/>: its id, and where its file is to be written.</summary>
+public sealed record UploadSlot(string UploadId, string Path);

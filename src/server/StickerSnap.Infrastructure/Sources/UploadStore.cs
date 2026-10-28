@@ -77,6 +77,35 @@ internal sealed class UploadStore(
         return Task.FromResult(Path.Combine(kept, Path.GetFileName(file)));
     }
 
+    public UploadSlot Reserve(string fileName)
+    {
+        ClearExpired();
+
+        var id = Guid.NewGuid().ToString("N");
+        var folder = Path.Combine(UploadsDir, id);
+        try
+        {
+            Directory.CreateDirectory(folder);
+        }
+        catch (Exception exception) when (IoErrors.IsIoError(exception))
+        {
+            throw IoErrors.Of(exception, folder);
+        }
+        return new UploadSlot(id, Path.Combine(folder, fileName));
+    }
+
+    public void Discard(string uploadId)
+    {
+        if (FolderOf(UploadsDir, uploadId) is { } folder && !TryDelete(folder))
+            logger.LogWarning("Could not remove the upload {Folder}; it goes with the expired ones", folder);
+    }
+
+    public long FreeBytes()
+    {
+        Directory.CreateDirectory(UploadsDir);
+        return new DriveInfo(Path.GetFullPath(UploadsDir)).AvailableFreeSpace;
+    }
+
     /// <summary>The folder of an upload; null for an id that is not a GUID, so no id reaches outside the store.</summary>
     private static string? FolderOf(string root, string uploadId) =>
         Guid.TryParse(uploadId, out var id) ? Path.Combine(root, id.ToString("N")) : null;
