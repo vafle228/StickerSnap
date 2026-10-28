@@ -4,7 +4,8 @@
 // others). Sites change and yt-dlp follows them, so move to a newer release when downloads
 // break: change VERSION and the hashes (SHA2-256SUMS of the release).
 // The binaries are never committed (.gitignore: yt-dlp/); packaging takes them from here.
-// Usage: node tools/fetch-ytdlp.mjs [win-x64|linux-x64|win-arm64|linux-arm64] [--force]
+// Usage: node tools/fetch-ytdlp.mjs [win-x64|linux-x64|win-arm64|linux-arm64|osx-arm64|osx-x64]
+//   [--force]
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -28,13 +29,21 @@ const EXECUTABLES = {
     file: "yt-dlp_linux_aarch64",
     sha256: "e87e9533e89fe5889abaa21f5114dfe7756d6aa6219b83551add04d48b18e483",
   },
+  // One universal executable for both Macs
+  "osx-arm64": {
+    file: "yt-dlp_macos",
+    sha256: "0f922c15ccc0b83eefa1c8bc9104e434318c4bf16e408e1ee93b7745a6efe0aa",
+  },
+  "osx-x64": {
+    file: "yt-dlp_macos",
+    sha256: "0f922c15ccc0b83eefa1c8bc9104e434318c4bf16e408e1ee93b7745a6efe0aa",
+  },
 };
 
 const args = process.argv.slice(2);
 const force = args.includes("--force");
-const rid =
-  args.find((arg) => !arg.startsWith("--")) ??
-  `${process.platform === "win32" ? "win" : process.platform}-${process.arch}`;
+const host = { win32: "win", darwin: "osx" }[process.platform] ?? process.platform;
+const rid = args.find((arg) => !arg.startsWith("--")) ?? `${host}-${process.arch}`;
 const executable = EXECUTABLES[rid];
 if (!executable) {
   console.error(`No pinned yt-dlp for ${rid}; known: ${Object.keys(EXECUTABLES).join(", ")}.`);
