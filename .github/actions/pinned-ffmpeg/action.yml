@@ -2,15 +2,23 @@ name: Pinned FFmpeg
 description: The pinned FFmpeg build for a runtime id in tools/ffmpeg, from the cache when it is there
 inputs:
   rid:
-    description: win-x64, linux-x64 (tools/fetch-ffmpeg.mjs)
+    description: win-x64, linux-x64, osx-arm64, osx-x64 (tools/fetch-ffmpeg.mjs)
     default: linux-x64
 runs:
   using: composite
   steps:
-    # The pinned build and its SHA-256 live in the script, so the script is the cache key
-    - uses: actions/cache@v6
+    # The pinned build and its SHA-256 live in the script, the macOS build's recipe next to it,
+    # so the scripts are the cache key
+    - id: cache
+      uses: actions/cache@v6
       with:
         path: tools/ffmpeg/${{ inputs.rid }}
-        key: ffmpeg-${{ inputs.rid }}-${{ hashFiles('tools/fetch-ffmpeg.mjs') }}
+        key: ffmpeg-${{ inputs.rid }}-${{ hashFiles('tools/fetch-ffmpeg.mjs', 'tools/build-ffmpeg.mjs') }}
+    # A Mac builds FFmpeg from source: pkg-config finds libvpx, nasm assembles the x86-64 code
+    - if: runner.os == 'macOS' && steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        command -v pkg-config >/dev/null || brew install pkgconf
+        if [ "$(uname -m)" = x86_64 ]; then command -v nasm >/dev/null || brew install nasm; fi
     - run: node tools/fetch-ffmpeg.mjs ${{ inputs.rid }}
       shell: bash
