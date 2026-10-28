@@ -13,6 +13,7 @@
     "build:dev": "npm run build:dev -w src/web",
     "check:prod-build": "node tools/check-prod-build.mjs",
     "fetch:ffmpeg": "node tools/fetch-ffmpeg.mjs",
+    "fetch:ytdlp": "node tools/fetch-ytdlp.mjs",
     "lint": "npm run lint -w src/ds -w src/web",
     "typecheck": "npm run typecheck -w src/ds -w src/web",
     "test": "npm run test -w src/ds -w src/web",

@@ -1,0 +1,16 @@
+name: Pinned yt-dlp
+description: The pinned yt-dlp for a runtime id in tools/yt-dlp, from the cache when it is there
+inputs:
+  rid:
+    description: win-x64, linux-x64 (tools/fetch-ytdlp.mjs)
+    default: linux-x64
+runs:
+  using: composite
+  steps:
+    # The pinned release and its SHA-256 live in the script, so the script is the cache key
+    - uses: actions/cache@v6
+      with:
+        path: tools/yt-dlp/${{ inputs.rid }}
+        key: ytdlp-${{ inputs.rid }}-${{ hashFiles('tools/fetch-ytdlp.mjs') }}
+    - run: node tools/fetch-ytdlp.mjs ${{ inputs.rid }}
+      shell: bash

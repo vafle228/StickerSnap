@@ -48,6 +48,9 @@ public sealed class HubEventPublisher(
     public Task PackChangedAsync(Core.Packs.Pack pack, CancellationToken cancellationToken) =>
         SendAsync("packChanged", PackSummary.From(pack, services.GetRequiredService<IJobService>().List()), cancellationToken);
 
+    public Task DownloadUpdatedAsync(Core.Links.Download download, CancellationToken cancellationToken) =>
+        SendAsync("downloadUpdated", Download.From(download), cancellationToken);
+
     private async Task SendAsync(string name, object payload, CancellationToken cancellationToken)
     {
         try

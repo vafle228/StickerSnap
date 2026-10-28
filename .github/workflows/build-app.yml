@@ -9,7 +9,8 @@ name: Build app
 # repeated. When Pipeline is still running on the commit (a tag pushed with a new commit), this
 # waits for it. The server is published here, self-contained and single-file for each system:
 # that is another build than Pipeline's portable `dotnet build`, so there is nothing to take over.
-# The pinned FFmpeg goes in next to the server (tools/fetch-ffmpeg.mjs, checked by SHA-256).
+# The pinned FFmpeg and yt-dlp go in next to the server (tools/fetch-ffmpeg.mjs and
+# tools/fetch-ytdlp.mjs, checked by SHA-256).
 # Shared setup steps live in .github/actions.
 #
 # "Publish release" (main only) also publishes a GitHub Release with the installers, so anyone can
@@ -168,6 +169,9 @@ jobs:
       - run: npm run server -w src/desktop -- ${{ matrix.rid }}
 
       - uses: ./.github/actions/pinned-ffmpeg
+        with:
+          rid: ${{ matrix.rid }}
+      - uses: ./.github/actions/pinned-ytdlp
         with:
           rid: ${{ matrix.rid }}
 
