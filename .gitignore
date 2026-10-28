@@ -79,6 +79,8 @@ ffmpeg/
 ffmpeg.exe
 ffprobe.exe
 ffmpeg-*/
+# the pinned yt-dlp of the import by link (tools/fetch-ytdlp.mjs)
+yt-dlp/
 *.webm
 !.github/**/*.webm
 # small samples the server tests read as resources
