@@ -7,6 +7,7 @@ using StickerSnap.Application.Exports;
 using StickerSnap.Application.Feedback;
 using StickerSnap.Application.Files;
 using StickerSnap.Application.Jobs;
+using StickerSnap.Application.Links;
 using StickerSnap.Application.Packs;
 using StickerSnap.Application.ProjectMedia;
 using StickerSnap.Application.Projects;
@@ -51,5 +52,7 @@ public static class DependencyInjection
         .AddSingleton<SourceFiles>()
         .AddSingleton<SourceImport>()
         .AddSingleton<IUploadService, UploadService>()
+        .AddSingleton<ILinkService, LinkService>()
+        .AddSingleton<IDownloadService, DownloadService>()
         .AddSingleton<IValidationService, ValidationService>();
 }

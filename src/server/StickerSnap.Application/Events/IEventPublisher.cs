@@ -1,6 +1,7 @@
 using StickerSnap.Application.Projects;
 using StickerSnap.Core.Account;
 using StickerSnap.Core.Jobs;
+using StickerSnap.Core.Links;
 using StickerSnap.Core.Packs;
 using StickerSnap.Core.Settings;
 
@@ -30,4 +31,7 @@ public interface IEventPublisher
 
     /// <summary>packChanged: a check with Telegram, «Добавить по ссылке», a deleted sticker, and later a sent one.</summary>
     Task PackChangedAsync(Pack pack, CancellationToken cancellationToken);
+
+    /// <summary>downloadUpdated: a download by link moved on, no more than 10 times a second; its end always.</summary>
+    Task DownloadUpdatedAsync(Download download, CancellationToken cancellationToken);
 }

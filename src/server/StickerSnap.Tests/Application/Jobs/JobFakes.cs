@@ -108,4 +108,6 @@ internal sealed class RecordingPublisher : IEventPublisher
     public Task ProjectRemovedAsync(Guid id, CancellationToken cancellationToken) => Task.CompletedTask;
 
     public Task PackChangedAsync(StickerSnap.Core.Packs.Pack pack, CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task DownloadUpdatedAsync(StickerSnap.Core.Links.Download download, CancellationToken cancellationToken) => Task.CompletedTask;
 }
