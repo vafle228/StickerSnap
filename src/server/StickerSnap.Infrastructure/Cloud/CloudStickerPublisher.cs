@@ -51,6 +51,9 @@ internal sealed class CloudStickerPublisher(CloudClient client) : IStickerPublis
         return (await client.CreatePackAsync(body, cancellationToken)).ToPublishedPack();
     }
 
+    public async Task<PublishedPack> CopyPackAsync(string source, string name, string title, CancellationToken cancellationToken) =>
+        (await client.CopyPackAsync(new CopyPackBody(source, name, title), cancellationToken)).ToPublishedPack();
+
     public async Task<PublishedPack> AddStickerAsync(string pack, NewSticker sticker, CancellationToken cancellationToken) =>
         (await client.AddStickerAsync(pack, Input(sticker), cancellationToken)).ToPublishedPack();
 

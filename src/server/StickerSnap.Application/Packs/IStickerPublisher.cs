@@ -42,6 +42,17 @@ public interface IStickerPublisher
         IReadOnlyList<NewSticker> stickers,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// A new pack of the user with every sticker of <paramref name="source"/>, a pack of anyone,
+    /// in its order, kind and emoji: the messenger lets only the bot that made a pack change it,
+    /// so a pack from elsewhere comes under the app only as a copy. A repeat with the name of the
+    /// user's copy adds what the copy still misses.
+    /// </summary>
+    /// <param name="name">The copy's full name, with the bot's suffix</param>
+    /// <returns>The copy when it is done</returns>
+    /// <exception cref="Core.Errors.AppException">pack_not_found when the messenger has no <paramref name="source"/></exception>
+    Task<PublishedPack> CopyPackAsync(string source, string name, string title, CancellationToken cancellationToken);
+
     /// <summary>Puts <paramref name="sticker"/> at the end of the pack.</summary>
     /// <returns>The pack right after the change</returns>
     /// <exception cref="Core.Errors.AppException">pack_full when the pack has no room left</exception>

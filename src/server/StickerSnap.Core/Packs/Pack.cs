@@ -43,8 +43,8 @@ public sealed record Pack(
 
         var known = Stickers.DistinctBy(sticker => sticker.Id).ToDictionary(sticker => sticker.Id);
         var stickers = published.Stickers.Select(sticker => known.TryGetValue(sticker.UniqueId, out var kept)
-            ? kept with { FileId = sticker.Id, Emoji = EmojiOf(kept.Emoji, sticker.Emoji) }
-            : new PackSticker(sticker.UniqueId, sticker.Id, sticker.Emoji is { } emoji ? [emoji] : [], null));
+            ? kept with { FileId = sticker.Id, Emoji = EmojiOf(kept.Emoji, sticker.Emoji), Format = sticker.Format }
+            : new PackSticker(sticker.UniqueId, sticker.Id, sticker.Emoji is { } emoji ? [emoji] : [], null, sticker.Format));
 
         return new Pack(published.Name, published.Title, published.Kind, PresenceStatus.Ok, now, [.. stickers]);
     }
@@ -82,7 +82,13 @@ public sealed record Pack(
 /// <param name="FileId">What the bot deletes and downloads it by, as of the last check</param>
 /// <param name="Emoji">The emoji it answers to, the first one first</param>
 /// <param name="Origin">Null for a sticker sent from elsewhere, such as @Stickers</param>
-public sealed record PackSticker(string Id, string FileId, IReadOnlyList<string> Emoji, StickerOrigin? Origin);
+/// <param name="Format">What its file is: a video, unless the pack was copied from elsewhere</param>
+public sealed record PackSticker(
+    string Id,
+    string FileId,
+    IReadOnlyList<string> Emoji,
+    StickerOrigin? Origin,
+    StickerFormat Format = StickerFormat.Video);
 
 /// <param name="ProjectName">The project's name when the sticker was sent, for when the project is gone</param>
 public sealed record StickerOrigin(Guid ProjectId, string ProjectName, string SegmentId);

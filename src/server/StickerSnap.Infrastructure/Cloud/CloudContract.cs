@@ -76,18 +76,22 @@ internal sealed record InputSticker(string File, IReadOnlyList<string> Emoji);
 
 internal sealed record NewPackBody(string Name, string Title, CloudPackKind Kind, IReadOnlyList<InputSticker> Stickers);
 
+internal sealed record CopyPackBody(string Source, string Name, string Title);
+
 internal sealed record CloudPack(string Name, string Title, CloudPackKind Kind, IReadOnlyList<CloudSticker> Stickers)
 {
     public PublishedPack ToPublishedPack() => new(
         Name,
         Title,
         Kind == CloudPackKind.Emoji ? PackKind.CustomEmoji : PackKind.Regular,
-        [.. Stickers.Select(sticker => new PublishedSticker(sticker.Id, sticker.UniqueId, sticker.Emoji.FirstOrDefault()))]);
+        [.. Stickers.Select(sticker => new PublishedSticker(
+            sticker.Id, sticker.UniqueId, sticker.Emoji.FirstOrDefault(), sticker.Format ?? StickerFormat.Video))]);
 }
 
 internal sealed record PackNameState(string Name, bool Taken);
 
-internal sealed record CloudSticker(string Id, string UniqueId, IReadOnlyList<string> Emoji);
+/// <param name="Format">Null from a service older than pack copies: a video</param>
+internal sealed record CloudSticker(string Id, string UniqueId, IReadOnlyList<string> Emoji, StickerFormat? Format = null);
 
 /// <summary>RFC 9457 Problem Details with the service's code; the words are English, for the log.</summary>
 internal sealed record CloudProblem(string? Code, string? Title, string? Detail, Dictionary<string, System.Text.Json.JsonElement>? Params);

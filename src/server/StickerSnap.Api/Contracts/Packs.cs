@@ -82,13 +82,20 @@ public sealed record Pack(
 
 /// <param name="Id">file_unique_id from Telegram</param>
 /// <param name="Origin">None for a sticker not sent from here</param>
-public sealed record PackSticker(string Id, IReadOnlyList<string> Emoji, string MediaUrl, StickerOrigin? Origin)
+/// <param name="Format">What mediaUrl gives: .webm, .webp or .tgs</param>
+public sealed record PackSticker(
+    string Id,
+    IReadOnlyList<string> Emoji,
+    string MediaUrl,
+    StickerOrigin? Origin,
+    Core.Packs.StickerFormat Format)
 {
     public static PackSticker From(string pack, PackStickerView view) => new(
         view.Sticker.Id,
         view.Sticker.Emoji,
         PackUrls.Media(pack, view.Sticker.Id),
-        view.Origin is { } origin ? new StickerOrigin(origin.ProjectId, origin.ProjectName, origin.SegmentId, origin.ProjectStatus) : null);
+        view.Origin is { } origin ? new StickerOrigin(origin.ProjectId, origin.ProjectName, origin.SegmentId, origin.ProjectStatus) : null,
+        view.Sticker.Format);
 }
 
 public sealed record StickerOrigin(Guid ProjectId, string ProjectName, string SegmentId, PresenceStatus ProjectStatus);
@@ -97,6 +104,12 @@ public sealed record StickerOrigin(Guid ProjectId, string ProjectName, string Se
 /// <param name="Link">https://t.me/addstickers/&lt;name&gt;</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ImportPackRequest(string Link);
+
+/// <summary>POST /api/v1/packs/copy (schema CopyPackRequest).</summary>
+/// <param name="Link">https://t.me/addstickers/&lt;name&gt; of any pack</param>
+/// <param name="Title">The copy's title, 1 to 64 characters</param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record CopyPackRequest(string Link, string Title);
 
 /// <summary>POST /api/v1/packs/name-check (schema PackNameCheckRequest).</summary>
 /// <param name="Name">What the user typed over the suggested link; the title's link without it</param>

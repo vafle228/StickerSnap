@@ -987,6 +987,50 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
 
+  /api/v1/packs/copy:
+    post:
+      tags: [packs]
+      operationId: copyPack
+      summary: «Скопировать в StickerSnap»
+      description: |
+        Окно «Добавить по ссылке», когда пак чужой (`not_our_pack`) или сервис его не знает
+        (`pack_not_found`, старый пак B24). Telegram даёт менять пак только создавшему его боту,
+        поэтому такой пак встаёт в «Мои паки» копией: облачный сервис делает новый пак
+        @StickerSnapAppBot со всеми стикерами источника в его порядке, с его эмодзи и форматом.
+        Имя копии — из названия, как в «Новом паке»; занято — первый свободный вариант `_2`…`_9`,
+        иначе 409 `pack_name_taken`. Ссылка без имени — 400 `bad_request` с `fields.link: ["no_pack"]`,
+        пустое название — `fields.title: ["length"]`; источника нет — 404 `pack_not_found`.
+        Отправляет `packChanged`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CopyPackRequest'
+      responses:
+        '200':
+          description: Копия в списке паков
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pack'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/Problem'
+
   /api/v1/packs/name-check:
     post:
       tags: [packs]
@@ -1121,9 +1165,17 @@ paths:
         не уходит, открытый раньше стикер показывается без сети.
       responses:
         '200':
-          description: Файл стикера
+          description: Файл стикера, по его format
           content:
             video/webm:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            application/x-tgsticker:
               schema:
                 type: string
                 format: binary
@@ -2118,7 +2170,7 @@ components:
 
     PackSticker:
       type: object
-      required: [id, emoji, mediaUrl]
+      required: [id, emoji, mediaUrl, format]
       properties:
         id:
           type: string
@@ -2129,6 +2181,12 @@ components:
             type: string
         mediaUrl:
           type: string
+        format:
+          type: string
+          enum: [static, animated, video]
+          description: |
+            Что отдаёт mediaUrl: .webp, .tgs или .webm. Приложение делает только video, другие
+            бывают в скопированном паке.
         origin:
           type: object
           description: Пусто для стикеров, опубликованных не отсюда
@@ -2151,6 +2209,19 @@ components:
         link:
           type: string
           description: Ссылка на пак, https://t.me/addstickers/<name>
+
+    CopyPackRequest:
+      type: object
+      required: [link, title]
+      properties:
+        link:
+          type: string
+          description: Ссылка на любой пак, https://t.me/addstickers/<name>
+        title:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Название копии
 
     PackNameCheckRequest:
       type: object
