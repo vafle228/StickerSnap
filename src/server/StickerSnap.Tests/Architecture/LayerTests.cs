@@ -63,6 +63,20 @@ public sealed class LayerTests
     }
 
     /// <summary>
+    /// The use cases download videos by link through IVideoSites; which downloader does it (yt-dlp
+    /// today) only the Infrastructure knows, so another one can replace it there.
+    /// </summary>
+    [Fact]
+    public void Core_and_application_do_not_name_a_video_downloader()
+    {
+        Types().That().Are(Core).Or().Are(Application)
+            .Should().NotHaveNameMatching(@"(?i)(yt-?dlp|youtube-?dl)")
+            .AndShould().NotResideInNamespaceMatching(@"(?i)(yt-?dlp|youtube-?dl)")
+            .WithoutRequiringPositiveResults()
+            .Check(Server);
+    }
+
+    /// <summary>
     /// The use cases reach the messenger and the cloud service through IStickerPublisher and
     /// IDeviceLinking; how they are carried (HTTP today) only the Infrastructure knows.
     /// </summary>
