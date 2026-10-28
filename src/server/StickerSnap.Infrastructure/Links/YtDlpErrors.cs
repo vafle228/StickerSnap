@@ -26,7 +26,8 @@ internal static class YtDlpErrors
         "getaddrinfo failed", "Name or service not known", "Temporary failure in name resolution", "nodename nor servname",
         "timed out", "Connection refused", "Network is unreachable", "No route to host", "Connection reset",
         "Connection aborted", "Remote end closed connection", "Failed to resolve", "Unable to connect",
-        "No address associated", "Errno 11001", "Errno 10060", "Errno 10061", "Errno 10065",
+        "No address associated", "Failed to establish a new connection", "Errno 11001", "Errno 10060", "Errno 10061",
+        "Errno 10065", "WinError 11001", "WinError 10060", "WinError 10061", "WinError 10065",
     ];
 
     private static readonly string[] NoSpace = ["No space left on device", "Errno 28", "There is not enough space on the disk"];

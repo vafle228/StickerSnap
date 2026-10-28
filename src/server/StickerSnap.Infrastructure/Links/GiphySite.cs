@@ -153,8 +153,12 @@ internal sealed partial class GiphySite(
         HttpResponseMessage response;
         try
         {
+            // Giphy answers 406 to a request that names no client
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.UserAgent.ParseAdd("StickerSnap");
+            request.Headers.Accept.ParseAdd("*/*");
             response = await clients.CreateClient(ClientName)
-                .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         }
         catch (HttpRequestException exception)
         {
@@ -214,6 +218,6 @@ internal sealed partial class GiphySite(
     private static partial Regex Share();
 
     /// <summary>«… GIF», «… Sticker», «… GIF by Baywatch Movie».</summary>
-    [GeneratedRegex(@"\s+(GIF|Sticker)(\s+by\s+.+)?$", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(^|\s+)(GIF|Sticker)(\s+by\s+.+)?$", RegexOptions.IgnoreCase)]
     private static partial Regex Kind();
 }

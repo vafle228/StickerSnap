@@ -73,11 +73,7 @@ public static class DependencyInjection
         services.Configure<YtDlpOptions>(configuration.GetSection(YtDlpOptions.Section));
         services.AddSingleton<IYtDlpLocator, YtDlpLocator>();
         services.AddSingleton<IVideoSite, YtDlpVideoSite>();
-        services.AddHttpClient(GiphySite.ClientName, client =>
-        {
-            client.Timeout = GiphySite.Timeout;
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("StickerSnap");
-        });
+        services.AddHttpClient(GiphySite.ClientName, client => client.Timeout = GiphySite.Timeout);
         services.AddSingleton<IVideoSite, GiphySite>();
         services.AddSingleton<IVideoSites, VideoSites>();
 
