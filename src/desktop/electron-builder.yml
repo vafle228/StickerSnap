@@ -1,6 +1,7 @@
 # Installers for Windows and Linux (plan, stage 1b): npm run dist -w src/desktop after
 # `npm run build` (the SPA into the server's wwwroot), `npm run server -w src/desktop` and
-# `npm run fetch:ffmpeg` (the pinned FFmpeg into tools/ffmpeg). npm run package does all of it.
+# `npm run fetch:ffmpeg` and `npm run fetch:ytdlp` (the pinned FFmpeg and yt-dlp into tools/).
+# npm run package does all of it.
 appId: app.stickersnap.desktop
 productName: StickerSnap
 copyright: Copyright © 2026 StickerSnap
@@ -17,7 +18,8 @@ files:
   - assets/icon.ico
 
 # The self-contained server with the SPA in its wwwroot, outside the asar archive: it runs as is.
-# The pinned FFmpeg lies next to it, where the server looks before PATH (FfmpegLocator.cs).
+# The pinned FFmpeg and yt-dlp lie next to it, where the server looks before PATH (FfmpegLocator.cs,
+# YtDlpLocator.cs).
 extraResources:
   - from: server-dist/${os}-${arch}
     to: server
@@ -27,6 +29,14 @@ extraResources:
   # FFmpeg is LGPL: its license goes with it
   - from: ../../tools/ffmpeg/${os}-${arch}/LICENSE.txt
     to: server/FFmpeg-LICENSE.txt
+  # yt-dlp for the import by link (YouTube), with its license and those of what it bundles
+  - from: ../../tools/yt-dlp/${os}-${arch}
+    to: server
+    filter: ["yt-dlp", "yt-dlp.exe"]
+  - from: ../../tools/yt-dlp/${os}-${arch}/LICENSE.txt
+    to: server/yt-dlp-LICENSE.txt
+  - from: ../../tools/yt-dlp/${os}-${arch}/THIRD_PARTY_LICENSES.txt
+    to: server/yt-dlp-THIRD_PARTY_LICENSES.txt
 
 win:
   target:

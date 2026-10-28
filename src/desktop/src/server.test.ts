@@ -73,6 +73,14 @@ describe("where the server comes from", () => {
     expect(cmd.env).toEqual({ StickerSnap__FfmpegDir: ffmpeg });
   });
 
+  it("points it at the yt-dlp in tools/yt-dlp as well", () => {
+    const ffmpeg = join("/repo", "tools", "ffmpeg", "linux-x64");
+    const ytDlp = join("/repo", "tools", "yt-dlp", "linux-x64");
+    const there = [join(ffmpeg, "ffmpeg"), join(ytDlp, "yt-dlp")];
+    const cmd = serverCommand(layout({ exists: (p) => there.includes(p) }));
+    expect(cmd.env).toEqual({ StickerSnap__FfmpegDir: ffmpeg, StickerSnap__YtDlpDir: ytDlp });
+  });
+
   it("leaves the installed app to find the FFmpeg next to its server", () => {
     const cmd = serverCommand(layout({ packaged: true, exists: () => true }));
     expect(cmd.env).toBeUndefined();

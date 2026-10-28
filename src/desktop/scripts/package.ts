@@ -40,6 +40,7 @@ run(dev ? "npm run build:dev" : "npm run build");
 if (!dev) run("npm run check:prod-build");
 run("npm run server", desktop);
 run("npm run fetch:ffmpeg");
+run("npm run fetch:ytdlp");
 run("npm run build", desktop);
 execFileSync(
   toolNode(),
