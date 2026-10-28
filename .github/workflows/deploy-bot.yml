@@ -7,13 +7,16 @@ name: Deploy bot
 # GitHub Packages (ghcr.io/<owner>/stickersnap-bot and -web, tagged with the commit and latest),
 # copies compose.prod.yaml to the VPS as ~/stickersnap/compose.yaml with the observability stack
 # beside it (~/stickersnap/observability: Alloy, Prometheus, Loki, Tempo), restarts the service there
-# and checks https://<BOT_DOMAIN>/health. The VPS keeps its .env (the token, DOMAIN, the other
+# and checks https://<BOT_DOMAIN>/health. The observability stack runs only when the variable
+# TELEMETRY is "on"; otherwise the service exports nothing and the stack is removed from the VPS
+# together with its stored data, so it takes no disk. The VPS keeps its .env (the token, DOMAIN, the other
 # secrets) beside compose.yaml, written there by hand; nothing secret is in git or in an image.
 #
 # Set up once in Settings → Secrets and variables → Actions:
 #   secrets   VPS_HOST, VPS_USER, VPS_SSH_KEY (the private deploy key), VPS_KNOWN_HOSTS
 #             (`ssh-keyscan <VPS_HOST>`: the deploy talks only to that server)
 #   variable  BOT_DOMAIN, like bot.example.com (also gives the installers their service address)
+#   variable  TELEMETRY: "on" runs the observability stack; unset or anything else: telemetry off
 on:
   workflow_dispatch:
 
@@ -99,6 +102,7 @@ jobs:
       VPS_USER: ${{ secrets.VPS_USER }}
       DOMAIN: ${{ vars.BOT_DOMAIN }}
       REGISTRY: ${{ needs.images.outputs.registry }}
+      TELEMETRY: ${{ vars.TELEMETRY }}
     steps:
       - uses: actions/checkout@v7
       - name: Settings are in place
@@ -135,13 +139,27 @@ jobs:
           TOKEN: ${{ github.token }}
           ACTOR: ${{ github.actor }}
         run: |
+          stack="alloy prometheus loki tempo"
+          if [ "$TELEMETRY" = on ]; then
+            # the profile starts the stack (observability/compose.yaml), the endpoint turns the bot's export on
+            profile="export COMPOSE_PROFILES=telemetry OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318"
+            after="docker compose restart $stack"
+          else
+            # off: the stack goes away with its stored metrics, logs and traces
+            profile=":"
+            after="docker compose --profile telemetry rm -sf $stack \
+              && docker volume rm -f $(printf 'stickersnap-bot_%s-data ' $stack) \
+              && { docker network rm stickersnap-telemetry >/dev/null 2>&1 || true; }"
+          fi
           echo "$TOKEN" | ssh vps "docker login ghcr.io -u '$ACTOR' --password-stdin"
           ssh vps "cd stickersnap \
-            && export TAG='$GITHUB_SHA' REGISTRY='$REGISTRY' \
+            && export TAG='$GITHUB_SHA' REGISTRY='$REGISTRY' && $profile \
             && docker compose pull --quiet \
             && docker compose up -d --remove-orphans \
-            && docker compose restart alloy prometheus loki tempo; \
+            && $after; \
             status=\$?; docker logout ghcr.io; docker image prune -f >/dev/null; exit \$status"
+          [ "$TELEMETRY" = on ] && state=on || state=off
+          echo "Telemetry: $state" >> "$GITHUB_STEP_SUMMARY"
       - name: The service answers
         run: |
           curl -fsS --retry 12 --retry-delay 5 --retry-all-errors "https://$DOMAIN/health"

@@ -191,6 +191,19 @@ jobs:
       # .env is written on the VPS by hand; an empty one stands in for it here
       - run: touch .env && DOMAIN=bot.example.com docker compose -f compose.prod.yaml config -q
         working-directory: docker/telegram
+      # Telemetry is behind a flag (deploy-bot.yml, variable TELEMETRY): off by default, the stack
+      # does not run and the bot exports nothing; the profile turns both on
+      - name: Telemetry flag
+        working-directory: docker/telegram
+        env:
+          DOMAIN: bot.example.com
+        run: |
+          off=$(docker compose -f compose.prod.yaml config --services | sort | tr '\n' ' ')
+          [ "$off" = "backup bot web " ] || { echo "::error::Telemetry off runs: $off"; exit 1; }
+          docker compose -f compose.prod.yaml config --format json \
+            | jq -e '.services.bot.environment.OTEL_EXPORTER_OTLP_ENDPOINT == ""' > /dev/null
+          on=$(COMPOSE_PROFILES=telemetry docker compose -f compose.prod.yaml config --services | sort | tr '\n' ' ')
+          [ "$on" = "alloy backup bot loki prometheus tempo web " ] || { echo "::error::Telemetry on runs: $on"; exit 1; }
       # The observability stack's configs, checked by the images the VPS runs (observability/compose.yaml)
       - name: Observability configs
         working-directory: docker/telegram/observability
