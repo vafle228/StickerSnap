@@ -33,9 +33,6 @@ StickerSnap does that for you:
 3. **Get a valid sticker.** The app renders WEBM VP9 and tunes quality until the file fits the 256 KB limit.
 4. **Publish to Telegram.** Create a new pack or add to an existing one through the shared bot [@StickerSnapAppBot](https://t.me/StickerSnapAppBot). No bot token or BotFather setup needed on your side.
 
-<!-- SCREENSHOT: editor -->
-<!-- <p align="center"><img src=".github/assets/screenshot-editor.png" alt="StickerSnap editor" width="85%"></p> -->
-
 ## Features
 
 - Editor with a timeline, trim handles and live preview
@@ -46,11 +43,12 @@ StickerSnap does that for you:
 
 ## Download
 
-> StickerSnap is in early development. Builds for Windows, macOS and Linux will appear on the [Releases](../../releases) page.
+StickerSnap is in development. Check the [Releases](../../releases) page for downloads, or build
+the Windows, macOS or Linux app locally using the instructions below.
 
 ### Installing on macOS
 
-A release has two files for a Mac: `StickerSnap-<version>-mac-arm64.dmg` for Apple Silicon (M1 and
+The macOS builds produce `StickerSnap-<version>-mac-arm64.dmg` for Apple Silicon (M1 and
 newer) and `StickerSnap-<version>-mac-x64.dmg` for Intel. Open the .dmg and drag StickerSnap into
 Applications.
 
@@ -62,71 +60,101 @@ blocked" → Open Anyway. If macOS says the app "is damaged", take it out of qua
 xattr -dr com.apple.quarantine /Applications/StickerSnap.app
 ```
 
-Windows warns as well for now (SmartScreen): More info → Run anyway.
+Unsigned Windows installers may also show a SmartScreen warning: More info → Run anyway.
+
+## Project documentation
+
+- [AGENTS.md](AGENTS.md): project architecture, development workflow and verification requirements.
+- [TASKS.md](TASKS.md): the current backlog and task status.
+- [Design system](docs/design-system.html): the local HTML reference, built from `src/ds`.
+- [SPA testing guide](src/web/TESTING.md): test layers, commands and real-server E2E.
+- API sources of truth: [local server](src/contract/openapi.yaml) and [bot service](src/contract/bot-service.yaml).
 
 ## Build from source
 
-<!-- TODO: fill in once the repository has code -->
-
 Requirements:
 
-- Node.js LTS
-- .NET SDK
-- FFmpeg 9.0 or newer in `PATH`
+- Node.js 24 (see `.nvmrc`) and npm
+- .NET 10 SDK
+- The pinned FFmpeg build, downloaded by `npm run fetch:ffmpeg`
+- The pinned yt-dlp build, downloaded by `npm run fetch:ytdlp`, for importing YouTube links
+- Python 3.13 and uv when working on the bot service
+- On macOS: Xcode Command Line Tools, pkg-config and, on Intel, nasm for the FFmpeg source build
 
 ```bash
 git clone https://github.com/vafle228/StickerSnap.git
 cd StickerSnap
-# commands will be added with the first code
+npm ci
+npm run package -w src/desktop
 ```
+
+The packaging command builds the SPA, publishes the server, fetches FFmpeg and yt-dlp and produces an
+unpacked desktop app in `src/desktop/release`. Add `-- --installer` to build an installer.
 
 ## How it works
 
 ```
 Electron + React UI  ──HTTP──▶  ASP.NET Core local server  ──▶  FFmpeg (WEBM VP9 render)
                                          │
-                                         └──▶  Telegram Bot API (@StickerSnapAppBot)
+                                         └──HTTPS──▶  Python bot service  ──▶  Telegram Bot API
+                                                            ▲
+                                                            │ HTTPS
+                                                     Telegram Mini App
 ```
 
-The project (clips, trims, scene layout) is a JSON file. The local server turns it into an FFmpeg command, renders the sticker, checks it against Telegram's limits and uploads it to your pack.
+The project (clips, trims, scene layout) is a JSON file. The local server turns it into an FFmpeg
+command, renders and validates the sticker, then publishes through the bot service. The service
+holds the bot token; the desktop holds only its own device key.
 
 ## Development
 
-Requires Node.js 20 and the .NET 10 SDK.
+Requires Node.js 24 and the .NET 10 SDK. Follow [AGENTS.md](AGENTS.md) for the development process.
 
 ```sh
-npm install
+npm ci
 npm run fetch:ffmpeg                              # the pinned FFmpeg into tools/ffmpeg/<rid>
 npm run fetch:ytdlp                               # the pinned yt-dlp into tools/yt-dlp/<rid>
 dotnet run --project src/server/StickerSnap.Api   # API on http://127.0.0.1:5180
 npm run dev                                       # SPA with HMR on http://127.0.0.1:5173, proxies /api and /hubs
 ```
 
+Run the API and Vite in separate terminals.
+
 `npm run build` puts the SPA into `src/server/StickerSnap.Api/wwwroot`, and the server then serves
 it on its own port.
 The design system is the workspace package `src/ds` (`@stickersnap/ds`), shared by the SPA and the
 Telegram Mini App: tokens, fonts, global CSS and components, imported from `@stickersnap/ds`.
 Design tokens come from `src/ds/src/tokens.json`; after changing it run `npm run gen:tokens`.
+Rebuild the [HTML design-system reference](docs/design-system.html) with `npm run build:design-system`
+after changing the shared design system.
 The dev server shows all the components in both themes and five accents at http://127.0.0.1:5173/?showcase.
 Without the server, http://127.0.0.1:5173/?mock runs the SPA on demo data (MSW and a fake SignalR hub,
 typed by the API contract). In dev builds a bar on top of the window switches between the real
 server and the demo scenarios such as `?mock=offline`; production builds have neither.
-The API contract is `src/contract/openapi.yaml`; after changing it run `npm run gen:api`.
-Unit tests run with `npm test`.
+The API contracts are `src/contract/openapi.yaml` and `src/contract/bot-service.yaml`; after changing
+them run `npm run gen:api`, `npm run check:api` and `npm run typecheck:api`.
+`npm test` runs the shared design-system and SPA tests. Desktop, Mini App and bot tests have
+separate commands below; it is not a test run for the entire repository.
 
 ### Server
 
 The server is its own .NET solution, `src/server/StickerSnap.slnx`, in Clean Architecture:
 `StickerSnap.Core` (the domain), `StickerSnap.Application` (use cases and the repository and
-service interfaces they need), `StickerSnap.Infrastructure` (JSON-file storage, FFmpeg, the Bot
-API) and `StickerSnap.Api` (the ASP.NET host). Dependencies point inwards only, and
+service interfaces they need), `StickerSnap.Infrastructure` (JSON-file storage, FFmpeg, the cloud
+service client) and `StickerSnap.Api` (the ASP.NET host). Dependencies point inwards only, and
 `StickerSnap.Tests` checks that. Package versions live in `src/server/Directory.Packages.props`.
 
 ```sh
 cd src/server
-dotnet test --solution StickerSnap.slnx                                  # every server test
-dotnet test --solution StickerSnap.slnx --filter-not-trait Category=Slow # the fast ones, as CI
+dotnet test --solution StickerSnap.slnx --filter-not-trait Category=Online # tests without real external sites
+dotnet test --solution StickerSnap.slnx --filter-not-trait Category=Slow # fast tests only
 ```
+
+CI's `Pipeline` runs the already-built xUnit v3 executable directly:
+`dotnet StickerSnap.Tests.dll -trait- "Category=Slow"` for fast tests and
+`dotnet StickerSnap.Tests.dll -trait "Category=Slow" -trait- "Category=Online"` for real FFmpeg
+and local yt-dlp tests, from `src/server/StickerSnap.Tests/bin/Release/net10.0`.
+Both jobs belong to the same workflow. The slow job downloads both pinned tools.
 
 `npm run fetch:ffmpeg` downloads the LGPL build of FFmpeg 9.0 with libvpx that the server renders
 with, pinned by version and SHA-256 (`tools/fetch-ffmpeg.mjs`); the binaries are never committed.
@@ -135,9 +163,11 @@ There is no such build for macOS: on a Mac it builds the same FFmpeg commit with
 on Intel, nasm).
 `npm run fetch:ytdlp` does the same for yt-dlp, which imports videos by YouTube links
 (`tools/fetch-ytdlp.mjs`); Giphy needs no tool. The server finds both through
-`StickerSnap__FfmpegDir` and `StickerSnap__YtDlpDir`, next to itself, or on PATH. Tests on the real
-sites are left out everywhere but by hand (`dotnet test --solution StickerSnap.slnx --filter-trait Category=Online`), worth a
-run after moving to a newer yt-dlp.
+`StickerSnap__FfmpegDir` and `StickerSnap__YtDlpDir`, next to itself, or on PATH.
+Tests on real YouTube and Giphy are tagged `Category=Online` and `Category=Slow`; CI excludes them.
+Run them explicitly after changing yt-dlp or investigating a site change:
+`dotnet test --solution StickerSnap.slnx --filter-trait Category=Online`.
+An unfiltered `dotnet test` includes these network tests too.
 
 ### Desktop app
 
@@ -149,6 +179,7 @@ gives it `window.stickersnap` for system dialogs, paths and the file manager.
 ```sh
 npm run dev -w src/web -- --port 5176   # Vite for the window below
 npm run dev -w src/desktop              # in another terminal: the window over Vite and the demo data, no server
+npm test -w src/desktop                 # shell unit tests
 npm run package -w src/desktop          # the production app, unpacked, in src/desktop/release
 npm run package -w src/desktop -- --dev # «StickerSnap Dev» with the dev bar and demo scenarios, in release/dev
 npm run package -w src/desktop -- --installer   # installers: NSIS on Windows, dmg and zip on macOS, AppImage and deb on Linux
@@ -189,7 +220,7 @@ never reaches git or the image.
 
 ```sh
 cd src/telegram/bot
-uv sync                                   # Python and the locked dependencies into src/telegram/bot/.venv
+uv sync --locked                          # Python and the locked dependencies into src/telegram/bot/.venv
 uv run --env-file ../../../.env stickersnap-bot   # polling, /health on http://127.0.0.1:8080
 uv run pytest                             # tests, as CI
 uv run ruff check . && uv run mypy && uv run lint-imports
@@ -316,14 +347,13 @@ query string.
 
 ## Roadmap
 
-- [ ] Stage 0: proof of concept (render pipeline, Bot API upload)
-- [ ] Editor and timeline
-- [ ] Packs and publishing
-- [ ] MVP release for Windows, macOS and Linux
+See [TASKS.md](TASKS.md) for the current backlog. Implemented behavior is documented in
+[AGENTS.md](AGENTS.md) and verified against the code; task completion and release status are
+recorded separately.
 
 ## License
 
-<!-- TODO: choose a license (MIT is a common default) -->
+A license has not yet been selected for this repository.
 
 ---
 

@@ -11,6 +11,7 @@
     "dev": "npm run dev -w src/web",
     "build": "npm run build -w src/web",
     "build:dev": "npm run build:dev -w src/web",
+    "build:design-system": "node tools/build-design-system.mjs",
     "check:prod-build": "node tools/check-prod-build.mjs",
     "fetch:ffmpeg": "node tools/fetch-ffmpeg.mjs",
     "fetch:ytdlp": "node tools/fetch-ytdlp.mjs",

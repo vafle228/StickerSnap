@@ -9,3 +9,6 @@ src/web/src/shared/api/events.ts text eol=lf
 
 # Generated from src/contract/bot-service.yaml; npm run check:api compares it byte for byte
 src/telegram/miniapp/src/api/schema.d.ts text eol=lf
+
+# Offline DS reference; npm run build:design-system -- --check compares a fresh build
+docs/design-system.html text eol=lf
